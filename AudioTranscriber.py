@@ -40,7 +40,6 @@ class AudioTranscriber:
         }
 
     def transcribe_audio_queue(self, audio_queue):
-        prev_text = ''
         while True:
             who_spoke, data, time_spoken = audio_queue.get()
             self.update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
@@ -59,9 +58,6 @@ class AudioTranscriber:
 
             if text != '' and text.lower() != 'you':
                 self.update_transcript(who_spoke, text, time_spoken)
-                print(f'XX: Current text = {text}')
-                print(f'YY: Prev text    = {prev_text}')
-                prev_text = text
                 self.transcript_changed_event.set()
 
     def update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken):

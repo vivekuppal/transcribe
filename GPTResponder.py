@@ -4,7 +4,7 @@ from prompts import create_prompt, INITIAL_RESPONSE
 import time
 
 openai.api_key = OPENAI_API_KEY
-# Number of phrases to use for genrating a response
+# Number of phrases to use for generating a response
 MAX_PHRASES = 10
 
 def generate_response_from_transcript(transcript):
