@@ -79,7 +79,7 @@ def create_ui_components(root):
     update_interval_slider.set(2)
     update_interval_slider.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
 
-    copy_button = ctk.CTkButton(root, text="Copy", command=None)
+    copy_button = ctk.CTkButton(root, text="Copy Audio Transcript", command=None)
     copy_button.grid(row=2, column=0, padx=10, pady=3, sticky="nsew")
 
     save_file_button = ctk.CTkButton(root, text="Save to File", command=None)
