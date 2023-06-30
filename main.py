@@ -43,7 +43,7 @@ def clear_context(transcriber, audio_queue):
 def create_ui_components(root):
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
-    root.title("Ecoute")
+    root.title("Transcribe")
     root.configure(bg='#252422')
     root.geometry("1000x600")
 
