@@ -15,8 +15,9 @@ def get_model(use_api: bool, model: str = None):
 
 class WhisperTranscriber:
     def __init__(self, model: str = 'tiny'):
-        model_filename = model + '.pt'
+        model_filename = model + '.en.pt'
         self.lang = 'en'
+        self.model = model
 
         if not os.path.isfile(model_filename):
             print(f'Could not find the model file: {model_filename}')
@@ -39,7 +40,8 @@ class WhisperTranscriber:
 
     def get_transcription(self, wav_file_path):
         try:
-            result = self.audio_model.transcribe(wav_file_path, fp16=torch.cuda.is_available(), language=self.lang)
+            result = self.audio_model.transcribe(wav_file_path,
+                                                 fp16=torch.cuda.is_available(), language=self.lang)
         except Exception as exception:
             print(exception)
             return ''
@@ -47,7 +49,13 @@ class WhisperTranscriber:
 
     def change_lang(self, lang: str):
         self.lang = lang
-        whisper.load_model(self.model_filename)
+        self.load_model()
+
+    def load_model(self):
+        if self.lang == "en":
+            self.audio_model = whisper.load_model(os.path.join(os.getcwd(), self.model + 'en.pt'))
+        else:
+            self.audio_model = whisper.load_model(os.path.join(os.getcwd(), self.model + '.pt'))
 
 
 class APIWhisperTranscriber:
