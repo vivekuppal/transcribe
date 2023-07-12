@@ -136,8 +136,8 @@ def main():
                                           {update_interval_slider.get()} \
                                           seconds")
 
-    ui.update_transcript_UI(transcriber, transcript_textbox)
-    ui.update_response_UI(responder, response_textbox, update_interval_slider_label,
+    ui.update_transcript_ui(transcriber, transcript_textbox)
+    ui.update_response_ui(responder, response_textbox, update_interval_slider_label,
                           update_interval_slider, freeze_state)
 
     root.mainloop()

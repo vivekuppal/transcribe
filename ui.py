@@ -1,20 +1,37 @@
 import customtkinter as ctk
+import AudioTranscriber
 import prompts
 
-def write_in_textbox(textbox, text):
+
+def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
+    """Update the text of textbox with the given text
+        Args:
+          textbox: textbox to be updated
+          text: updated text
+    """
     textbox.delete("0.0", "end")
     textbox.insert("0.0", text)
 
 
-def update_transcript_UI(transcriber, textbox):
+def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox):
+    """Update the text of transcription textbox with the given text
+        Args:
+          transcriber: AudioTranscriber Object
+          textbox: textbox to be updated
+    """
     transcript_string = transcriber.get_transcript()
     write_in_textbox(textbox, transcript_string)
     textbox.see("end")
-    textbox.after(300, update_transcript_UI, transcriber, textbox)
+    textbox.after(300, update_transcript_ui, transcriber, textbox)
 
 
-def update_response_UI(responder, textbox, update_interval_slider_label,
+def update_response_ui(responder, textbox, update_interval_slider_label,
                        update_interval_slider, freeze_state):
+    """Update the text of response textbox with the given text
+        Args:
+          textbox: textbox to be updated
+          text: updated text
+    """
     if not freeze_state[0]:
         response = responder.response
 
@@ -27,7 +44,7 @@ def update_response_UI(responder, textbox, update_interval_slider_label,
         update_interval_slider_label.configure(text=f"Update interval: \
                                                {update_interval} seconds")
 
-    textbox.after(300, update_response_UI, responder, textbox,
+    textbox.after(300, update_response_ui, responder, textbox,
                   update_interval_slider_label, update_interval_slider,
                   freeze_state)
 
