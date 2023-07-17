@@ -26,5 +26,4 @@ copy %ASSETS_DIR_SRC%\mel_filters.npz %ASSETS_DIR_DEST%
 copy %ASSETS_DIR_SRC%\gpt2.tiktoken %ASSETS_DIR_DEST%
 
 REM Code for zipping the final package
-
-REM "D:\Code\transcribe\output\main\whisper\assets\mel_filters.npz"
+REM Need to add whisper manuallyy
