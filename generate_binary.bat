@@ -15,3 +15,4 @@ copy C:\\git\\transcribe\\tiny.en.pt C:\\git\\output\\dist\\transcribe.exe\\tiny
 copy C:\\pyenv\\transcribe\\Lib\\site-packages\\whisper\\assets\\mel_filters.npz C:\\git\\output\\dist\\transcribe.exe\\whisper\\assets\\mel_filters.npz
 
 REM Code for zipping the final package
+REM Need to add whisper manually
