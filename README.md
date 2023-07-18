@@ -95,7 +95,7 @@ SET ZIP_FILE_DIR=D:\Code\transcribe\transcribe.rar
 SET WINRAR=C:\Program Files\WinRAR\winRAR.exe
 ```
 
-Run ```generate_binary.bat``` file by replacing paths at the top of the file to the ones in your local machine. It should generate a zip file with everything compiled. To run the program simply go to output > dist > transcribe.exe > transcribe.exe.
+Run ```generate_binary.bat``` file by replacing paths at the top of the file to the ones in your local machine. It should generate a zip file with everything compiled. To run the program simply go to zip file > transcribe.exe.
 
 ### ⚡️ Limitations ⚡️
 
