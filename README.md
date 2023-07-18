@@ -79,11 +79,23 @@ Upon initiation, Transcribe will begin transcribing microphone input and speaker
 
 The --api flag will use the whisper api for transcriptions. This significantly enhances transcription speed and accuracy, and it works in most languages (rather than just English without the flag). However, keep in mind, using the Whisper API consumes OpenAI credits than using the local model. This increased cost is attributed to the advanced features and capabilities that the Whisper API provides. Despite the additional expense, the substantial improvements in speed and transcription accuracy may make it a worthwhile for your use case.
 
-### For Non-Developers
-** Prerequisitess:** You need to have WinRAR installed on your computer. You can download it from https://www.win-rar.com/.
-Run the 
-``` generate_binary.bat```
-file by replacing all of the paths to the ones in your local machine. It should generate a zip file with everything compiled. To run the program simply go to output > dist > transcribe.exe > transcribe.exe.
+### For Non-Developers (Windows)
+**Prerequisitess:**
+
+Install Winrar from https://www.win-rar.com/.
+
+In the file ```generate_binary.bat``` replace these paths at the top of the file to paths specific to your machine. 
+
+```
+SET SOURCE_DIR=D:\Code\transcribe  
+SET OUTPUT_DIR=D:\Code\transcribe\output
+SET LIBSITE_PACAGES_DIR=D:\Code\transcribe\venv\Lib\site-packages
+SET EXECUTABLE_NAME=transcribe.exe
+SET ZIP_FILE_DIR=D:\Code\transcribe\transcribe.rar
+SET WINRAR=C:\Program Files\WinRAR\winRAR.exe
+```
+
+Run ```generate_binary.bat``` file by replacing paths at the top of the file to the ones in your local machine. It should generate a zip file with everything compiled. To run the program simply go to output > dist > transcribe.exe > transcribe.exe.
 
 ### ⚡️ Limitations ⚡️
 
