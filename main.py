@@ -11,7 +11,7 @@ import TranscriberModels
 import subprocess
 import interactions
 import ui
-from language import LANGUAGES
+from language import LANGUAGES_DICT
 import globals
 
 
@@ -61,6 +61,7 @@ def main():
         print('Operating as a standalone client')
 
     global_vars = globals.TranscriptionGlobals()
+    model = TranscriberModels.get_model(args.api, model=args.model)
 
     root = ctk.CTk()
     ui_components = ui.create_ui_components(root)
@@ -69,17 +70,13 @@ def main():
     update_interval_slider = ui_components[2]
     update_interval_slider_label = ui_components[3]
     global_vars.freeze_button = ui_components[4]
-    copy_button = ui_components[5]
-    save_file_button = ui_components[6]
-    lang_combobox = ui_components[7]
-    global_vars.transcript_button = ui_components[8]
+    lang_combobox = ui_components[5]
 
     global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     time.sleep(2)
 
     global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
-    model = TranscriberModels.get_model(args.api, model=args.model)
 
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
     global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
@@ -106,17 +103,17 @@ def main():
     root.grid_columnconfigure(1, weight=1)
 
     # Add the clear transcript button to the UI
-    clear_transcript_button = ctk.CTkButton(root, text="Clear Audio Transcript",
-                                            command=lambda: ui.clear_transcriber_context(global_vars.transcriber, global_vars.audio_queue))
-    clear_transcript_button.grid(row=1, column=0, padx=10, pady=3, sticky="nsew")
+    # clear_transcript_button = ctk.CTkButton(root, text="Clear Audio Transcript",
+    #                                        command=lambda: ui.clear_transcriber_context(global_vars.transcriber, global_vars.audio_queue))
+    # clear_transcript_button.grid(row=1, column=0, padx=10, pady=3, sticky="nsew")
 
     global_vars.freeze_state = [True]
 
     ui_cb = ui.ui_callbacks()
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
-    copy_button.configure(command=ui_cb.copy_to_clipboard)
-    save_file_button.configure(command=ui_cb.save_file)
-    global_vars.transcript_button.configure(command=ui_cb.set_transcript_state)
+    # copy_button.configure(command=ui_cb.copy_to_clipboard)
+    # save_file_button.configure(command=ui_cb.save_file)
+    # global_vars.transcript_button.configure(command=ui_cb.set_transcript_state)
     update_interval_slider_label.configure(text=f"Update interval: \
                                           {update_interval_slider.get()} \
                                           seconds")

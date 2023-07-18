@@ -18,7 +18,6 @@ class TranscriptionGlobals(object):
     # Global for determining whether to seek responses from openAI API
     freeze_state: list = None
     freeze_button: ctk.CTkButton = None
-    transcript_button: ctk.CTkButton = None
 
     def __new__(cls):
         if not hasattr(cls, 'instance'):
@@ -26,6 +25,9 @@ class TranscriptionGlobals(object):
         return cls.instance
 
     def __init__(self):
-        self.audio_queue = queue.Queue()
-        self.user_audio_recorder = AudioRecorder.DefaultMicRecorder()
-        self.speaker_audio_recorder = AudioRecorder.DefaultSpeakerRecorder()
+        if self.audio_queue is None:
+            self.audio_queue = queue.Queue()
+        if self.user_audio_recorder is None:
+            self.user_audio_recorder = AudioRecorder.DefaultMicRecorder()
+        if self.speaker_audio_recorder is None:
+            self.speaker_audio_recorder = AudioRecorder.DefaultSpeakerRecorder()
