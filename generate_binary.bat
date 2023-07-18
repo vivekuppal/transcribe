@@ -1,9 +1,10 @@
-REM Define variables for different hard coded paths
-SET SOURCE_DIR=C:\git\transcribe
-SET OUTPUT_DIR=C:\git\output
-SET LIBSITE_PACAGES_DIR=C:\pyenv\transcribe\Lib\site-packages
+REM Define variables for different hard coded paths (Change everything to your local PATHs)
+SET SOURCE_DIR=D:\Code\transcribe  
+SET OUTPUT_DIR=D:\Code\transcribe\output
+SET LIBSITE_PACAGES_DIR=D:\Code\transcribe\venv\Lib\site-packages
 SET EXECUTABLE_NAME=transcribe.exe
-SET ZIP_FILE_NAME=transcribe.zip
+SET ZIP_FILE_DIR=D:\Code\transcribe\transcribe.rar
+SET WINRAR=C:\Program Files\WinRAR\winRAR.exe
 
 REM pyinstaller --clean --noconfirm --specpath C:\\git\\output --distpath C:\\git\\output\dist -n transcribe.exe --log-level DEBUG --recursive-copy-metadata "openai-whisper" main.py
 
@@ -26,4 +27,5 @@ copy %ASSETS_DIR_SRC%\mel_filters.npz %ASSETS_DIR_DEST%
 copy %ASSETS_DIR_SRC%\gpt2.tiktoken %ASSETS_DIR_DEST%
 
 REM Code for zipping the final package
-REM Need to add whisper manuallyy
+"%WINRAR%" a -r -ep1 -df "%ZIP_FILE_DIR%" "%OUTPUT_DIR%" 
+

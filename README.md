@@ -81,27 +81,9 @@ The --api flag will use the whisper api for transcriptions. This significantly e
 
 ### For Non-Developers
 
-After doing all the above steps, install pyinstaller:
-
-```
-pip install pyinstaller
-```
-
-Run the below code by replacing the path with where your files are located
-
-```
-pyinstaller --noconfirm --onedir --console --add-data "path/to/every/file/in/the/directory
-```
-
-This should generate a new directory with the required files without installing any dependencies. Run the main.exe file to execute everything easily.
-
-Alternatively,
-
-You can go to 
-```
-https://drive.google.com/file/d/1-vwPC_zwVHiqrM4hZ35lYBlltspLIA8g/view?usp=drive_link
-``` 
-and download the .rar file to easily extract it and run main.py without installing any dependencies.
+Run the 
+``` generate_binary.bat```
+file by replacing all of the paths to the ones in your local machine. It should generate a zip file with everything compiled. To run the program simply go to output > dist > transcribe.exe > transcribe.exe.
 
 ### ⚡️ Limitations ⚡️
 
