@@ -4,6 +4,7 @@ SET OUTPUT_DIR=D:\Code\transcribe\output
 SET LIBSITE_PACAGES_DIR=D:\Code\transcribe\venv\Lib\site-packages
 SET EXECUTABLE_NAME=transcribe.exe
 SET ZIP_FILE_DIR=D:\Code\transcribe\transcribe.rar
+SET ZIP_LOCATION=D:\Code\transcribe\output\dist\transcribe.exe
 SET WINRAR=C:\Program Files\WinRAR\winRAR.exe
 
 REM pyinstaller --clean --noconfirm --specpath C:\\git\\output --distpath C:\\git\\output\dist -n transcribe.exe --log-level DEBUG --recursive-copy-metadata "openai-whisper" main.py
@@ -27,5 +28,5 @@ copy %ASSETS_DIR_SRC%\mel_filters.npz %ASSETS_DIR_DEST%
 copy %ASSETS_DIR_SRC%\gpt2.tiktoken %ASSETS_DIR_DEST%
 
 REM Code for zipping the final package
-"%WINRAR%" a -r -ep1 -df "%ZIP_FILE_DIR%" "%OUTPUT_DIR%" 
+"%WINRAR%" a -r -ep1 -df "%ZIP_FILE_DIR%" "%ZIP_LOCATION%" 
 
