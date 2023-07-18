@@ -1,12 +1,11 @@
 REM Define variables for different hard coded paths (Change everything to your local PATHs)
-REM SET SOURCE_DIR=D:\Code\transcribe  
+REM SET SOURCE_DIR=D:\Code\transcribe
 REM SET OUTPUT_DIR=D:\Code\transcribe\output
 REM SET LIBSITE_PACAGES_DIR=D:\Code\transcribe\venv\Lib\site-packages
 REM SET EXECUTABLE_NAME=transcribe.exe
 REM SET ZIP_FILE_DIR=D:\Code\transcribe\transcribe.rar
 REM SET ZIP_LOCATION=D:\Code\transcribe\output\dist\transcribe.exe
 REM SET WINRAR=C:\Program Files\WinRAR\winRAR.exe
-
 
 REM Define variables for different hard coded paths (Change everything to your local PATHs)
 SET SOURCE_DIR=C:\git\transcribe
@@ -26,8 +25,8 @@ ECHO %PYINSTALLER_DIST_PATH%
 
 pyinstaller --clean --noconfirm --workpath %PYINSTALLER_TEMP_PATH% --specpath %OUTPUT_DIR% --distpath %PYINSTALLER_DIST_PATH% -n %EXECUTABLE_NAME% --log-level DEBUG main.py
 
-SET ASSETS_DIR_SRC= %LIBSITE_PACAGES_DIR%\whisper\assets\
-SET ASSETS_DIR_DEST= %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper\assets
+SET ASSETS_DIR_SRC=%LIBSITE_PACAGES_DIR%\whisper\assets\
+SET ASSETS_DIR_DEST=%PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper\assets
 
 REM ensure the appropriate directories exist
 if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper
