@@ -61,6 +61,10 @@ class WhisperTranscriber:
 class APIWhisperTranscriber:
     def __init__(self):
         print('Using Open AI API for transcription.')
+        self.lang = 'en'
+
+    def change_lang(self, lang: str):
+        self.lang = lang
 
     def get_transcription(self, wav_file_path):
         try:
