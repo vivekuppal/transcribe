@@ -46,18 +46,12 @@ Please run these commands in a PowerShell window with administrator privileges. 
    pip install -r requirements.txt
    ```
    
-4. (Optional) Replace the Open API key in `keys.py` file in the transcribe directory:
+4. (Optional) Replace the Open API key in `parameters.yaml` file in the transcribe directory:
 
-   - Option 1: Use command prompt. Run the following command, ensuring to replace "API KEY" with the actual OpenAI API key:
-
-      ```
-      python -c "with open('keys.py', 'w', encoding='utf-8') as f: f.write('OPENAI_API_KEY=\"API KEY\"')"
-      ```
-
-   - Option 2: Replace the Open API key in keys.py file manually. Open in a text editor and enter the following content:
+   Replace the Open API key in `parameters.yaml` file manually. Open in a text editor and alter the line:
    
       ```
-      OPENAI_API_KEY="API KEY"
+        api_key: 'API_KEY'
       ```
       Replace "API KEY" with the actual OpenAI API key. Save the file.
 
