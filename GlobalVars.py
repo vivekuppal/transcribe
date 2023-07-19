@@ -1,13 +1,13 @@
 import queue
 from AudioTranscriber import AudioTranscriber
-# from GPTResponder import GPTResponder
 import AudioRecorder
 import customtkinter as ctk
 import Singleton
 
 
 class TranscriptionGlobals(Singleton.Singleton):
-    # Global constants for audio processing. It is implemented as a singleton
+    """Global constants for audio processing. It is implemented as a Singleton class.
+    """
 
     audio_queue: queue.Queue = None
     user_audio_recorder: AudioRecorder.DefaultMicRecorder = None
