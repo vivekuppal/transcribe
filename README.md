@@ -106,6 +106,7 @@ SET WINRAR=C:\Program Files\WinRAR\winRAR.exe
 ```
 
 Run ```generate_binary.bat``` file by replacing paths at the top of the file to the ones in your local machine. It should generate a zip file with everything compiled. To run the program simply go to zip file > transcribe.exe.
+
 ### ⚡️ Limitations ⚡️
 
 While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality that you should be aware of:
