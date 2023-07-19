@@ -84,6 +84,16 @@ The --api flag will use the whisper api for transcriptions. This significantly e
 
 Install Winrar from https://www.win-rar.com/.
 
+You can download the zipped file from 
+```
+https://drive.google.com/file/d/1EIz10Nvzc--A8W37YKfWgEChHYxrgvZz/view?usp=sharing
+``` 
+and run transcribe.exe directly. 
+
+**Note: Currently, this version only supports transcription.**
+
+Alternatively,
+
 In the file ```generate_binary.bat``` replace these paths at the top of the file to paths specific to your machine. 
 
 ```
@@ -96,7 +106,6 @@ SET WINRAR=C:\Program Files\WinRAR\winRAR.exe
 ```
 
 Run ```generate_binary.bat``` file by replacing paths at the top of the file to the ones in your local machine. It should generate a zip file with everything compiled. To run the program simply go to zip file > transcribe.exe.
-
 ### ⚡️ Limitations ⚡️
 
 While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality that you should be aware of:
