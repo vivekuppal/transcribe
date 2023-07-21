@@ -3,12 +3,12 @@ import argparse
 from argparse import RawTextHelpFormatter
 import time
 import requests
+import subprocess
 from requests.exceptions import ConnectionError
 from AudioTranscriber import AudioTranscriber
 from GPTResponder import GPTResponder
 import customtkinter as ctk
 import TranscriberModels
-import subprocess
 import interactions
 import ui
 from language import LANGUAGES_DICT
@@ -120,9 +120,8 @@ def main():
 
     ui_cb = ui.ui_callbacks()
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
-    update_interval_slider_label.configure(text=f"Update Response interval: \
-                                          {update_interval_slider.get()} \
-                                          seconds")
+    label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
+    update_interval_slider_label.configure(text=label_text)
 
     lang_combobox.configure(command=model.change_lang)
 
