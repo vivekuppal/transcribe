@@ -64,8 +64,8 @@ def main():
     except ConnectionError:
         print('Operating as a standalone client')
 
-    global_vars = GlobalVars.TranscriptionGlobals()
     config = configuration.Config().get_data()
+    global_vars = GlobalVars.TranscriptionGlobals(key=config["OpenAI"]["api_key"])
 
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
     if args.api_key is not None:
@@ -120,7 +120,7 @@ def main():
 
     ui_cb = ui.ui_callbacks()
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
-    update_interval_slider_label.configure(text=f"Update interval: \
+    update_interval_slider_label.configure(text=f"Update Response interval: \
                                           {update_interval_slider.get()} \
                                           seconds")
 
