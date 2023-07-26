@@ -2,17 +2,20 @@ import openai
 import GlobalVars
 from prompts import create_prompt, INITIAL_RESPONSE
 import time
-
+import conversation
+import constants
 
 # Number of phrases to use for generating a response
 MAX_PHRASES = 10
 
 
 class GPTResponder:
-    def __init__(self):
+    def __init__(self, convo: conversation.Conversation):
         self.response = INITIAL_RESPONSE
         self.response_interval = 2
-        openai.api_key = GlobalVars.TranscriptionGlobals().api_key
+        self.gl_vars = GlobalVars.TranscriptionGlobals()
+        openai.api_key = self.gl_vars.api_key
+        self.conversation = convo
 
     def generate_response_from_transcript(self, transcript):
         try:
@@ -33,6 +36,11 @@ class GPTResponder:
 
     def respond_to_transcriber(self, transcriber):
         while True:
+            if self.gl_vars.freeze_state[0]:
+                print('Skip getting response from LLM')
+                time.sleep(self.response_interval)
+                continue
+
             if transcriber.transcript_changed_event.is_set():
                 start_time = time.time()
 
@@ -45,6 +53,9 @@ class GPTResponder:
 
                 if response != '':
                     self.response = response
+                    self.conversation.update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                                          text=response,
+                                                          time_spoken=end_time)
 
                 remaining_time = self.response_interval - execution_time
                 if remaining_time > 0:
