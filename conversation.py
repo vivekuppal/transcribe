@@ -34,8 +34,6 @@ class Conversation:
         if pop:
             transcript.pop()
         transcript.append((f"{persona}: [{text}]\n\n", time_spoken))
-        print(f"update_conversation: {time_spoken}: {persona}: [{text}]\n\n")
-        print(f"Length: {len(transcript)}")
 
     def get_conversation(self,
                          sources: list = None,

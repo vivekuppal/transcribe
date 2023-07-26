@@ -4,9 +4,10 @@ from prompts import create_prompt, INITIAL_RESPONSE
 import time
 import conversation
 import constants
+import configuration
 
 # Number of phrases to use for generating a response
-MAX_PHRASES = 10
+MAX_PHRASES = 20
 
 
 class GPTResponder:
@@ -16,12 +17,14 @@ class GPTResponder:
         self.gl_vars = GlobalVars.TranscriptionGlobals()
         openai.api_key = self.gl_vars.api_key
         self.conversation = convo
+        self.config = configuration.Config().get_data()
+        self.model = self.config['OpenAI']['ai_model']
 
-    def generate_response_from_transcript(self, transcript):
+    def generate_response_from_transcript_no_check(self, transcript):
         try:
             prompt_content = create_prompt(transcript)
             response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo-0301",
+                    model=self.model,
                     messages=[{"role": "system", "content": prompt_content}],
                     temperature=0.0
             )
@@ -34,12 +37,17 @@ class GPTResponder:
         except:
             return ''
 
+    def generate_response_from_transcript(self, transcript):
+        """Ping OpenAI LLM model to get response from the Assistant
+        """
+
+        if self.gl_vars.freeze_state[0]:
+            return ''
+
+        return generate_response_from_transcript_no_check(self, transcript)
+
     def respond_to_transcriber(self, transcriber):
         while True:
-            if self.gl_vars.freeze_state[0]:
-                print('Skip getting response from LLM')
-                time.sleep(self.response_interval)
-                continue
 
             if transcriber.transcript_changed_event.is_set():
                 start_time = time.time()
