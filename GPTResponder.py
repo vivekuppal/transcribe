@@ -9,8 +9,6 @@ import configuration
 import app_logging as al
 
 
-# Number of phrases to use for generating a response
-MAX_PHRASES = 20
 root_logger = al.get_logger()
 
 
@@ -35,7 +33,8 @@ class GPTResponder:
             # prompt_content = create_prompt(transcript)
             # prompt_api_message = [{"role": "system", "content": prompt_content}]
             prompt_api_message = prompts.create_single_turn_prompt_message(transcript)
-            multiturn_prompt_content = self.conversation.get_merged_conversation(length=MAX_PHRASES)
+            multiturn_prompt_content = self.conversation.get_merged_conversation(
+                length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
             multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
             # print(f'Usual prompt api message: {prompt_api_message}')
             # print(f'Multiturn prompt: {multiturn_prompt_api_message}')
