@@ -25,7 +25,10 @@ class GPTResponder:
         self.config = configuration.Config().get_data()
         self.model = self.config['OpenAI']['ai_model']
 
-    def generate_response_from_transcript_no_check(self, transcript):
+    def generate_response_from_transcript_no_check(self, transcript) -> str:
+        """Ping LLM to get a suggested response right away.
+           Gets a response even if the continuous suggestion option is disabled.
+        """
         try:
             # prompt_content = create_prompt(transcript)
             # prompt_api_message = [{"role": "system", "content": prompt_content}]
@@ -42,12 +45,17 @@ class GPTResponder:
 
         except Exception as exception:
             print(exception)
-            return ''
+            root_logger.error('Error when attempting to get a response from LLM.')
+            root_logger.exception(exception)
+            return prompts.INITIAL_RESPONSE
+
         usual_full_response = usual_response.choices[0].message.content
         try:
             return usual_full_response.split('[')[1].split(']')[0]
-        except:
-            return ''
+        except Exception as exception:
+            root_logger.error('Error parsing response from LLM.')
+            root_logger.exception(exception)
+            return prompts.INITIAL_RESPONSE
 
     def generate_response_from_transcript(self, transcript):
         """Ping OpenAI LLM model to get response from the Assistant
@@ -65,7 +73,7 @@ class GPTResponder:
                 start_time = time.time()
 
                 transcriber.transcript_changed_event.clear()
-                transcript_string = transcriber.get_transcript(length=MAX_PHRASES)
+                transcript_string = transcriber.get_transcript(length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
                 response = self.generate_response_from_transcript(transcript_string)
 
                 end_time = time.time()  # Measure end time
