@@ -1,8 +1,8 @@
-import openai
 import datetime
+import time
 import GlobalVars
 import prompts
-import time
+import openai
 import conversation
 import constants
 import configuration
@@ -15,6 +15,8 @@ root_logger = al.get_logger()
 
 
 class GPTResponder:
+    """Handles all interactions with openAI LLM / ChatGPT
+    """
     def __init__(self, convo: conversation.Conversation):
         root_logger.info(GPTResponder.__name__)
         self.response = prompts.INITIAL_RESPONSE
@@ -67,13 +69,16 @@ class GPTResponder:
         return self.generate_response_from_transcript_no_check(transcript)
 
     def respond_to_transcriber(self, transcriber):
+        """Thread method to continously update the transcript
+        """
         while True:
 
             if transcriber.transcript_changed_event.is_set():
                 start_time = time.time()
 
                 transcriber.transcript_changed_event.clear()
-                transcript_string = transcriber.get_transcript(length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
+                transcript_string = transcriber.get_transcript(
+                    length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
                 response = self.generate_response_from_transcript(transcript_string)
 
                 end_time = time.time()  # Measure end time
@@ -92,5 +97,7 @@ class GPTResponder:
                 time.sleep(0.3)
 
     def update_response_interval(self, interval):
+        """Change the interval for pinging LLM
+        """
         root_logger.info(GPTResponder.update_response_interval.__name__)
         self.response_interval = interval

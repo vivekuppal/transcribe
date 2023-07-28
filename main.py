@@ -2,12 +2,12 @@ import threading
 import argparse
 from argparse import RawTextHelpFormatter
 import time
-import requests
 import subprocess
+import requests
 from requests.exceptions import ConnectionError
+import customtkinter as ctk
 from AudioTranscriber import AudioTranscriber
 from GPTResponder import GPTResponder
-import customtkinter as ctk
 import TranscriberModels
 import interactions
 import ui
