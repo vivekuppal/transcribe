@@ -1,6 +1,7 @@
+import sys
+import os
 import openai
 import whisper
-import os
 import torch
 import GlobalVars
 
@@ -15,14 +16,14 @@ def get_model(use_api: bool, model: str = None):
 
 
 class WhisperTranscriber:
-    def __init__(self, model: str = 'tiny.en.pt'):
-        model_filename = model
+    def __init__(self, model: str = 'tiny'):
         self.lang = 'en'
+        model_filename = model + ".en.pt"
         self.model = model
 
         if not os.path.isfile(model_filename):
-            print(f'Could not find the model file: {model_filename}')
-            print(f'Download the model file and add it to the directory: \
+            print(f'Could not find the transcription model file: {model_filename}')
+            print(f'Download the transcription model file and add it to the directory: \
                   {os.getcwd()}')
             print('tiny multi-lingual model has to be downloaded from the link \
                     https://openaipublic.azureedge.net/main/whisper/models/65147644a518d12f04e32d6f3b26facc3f8dd46e5390956a9424a650c0ce22b9/tiny.pt')
@@ -44,7 +45,7 @@ class WhisperTranscriber:
                     https://openaipublic.azureedge.net/main/whisper/models/e4b87e7e0bf463eb8e6956e646f1e277e901512310def2c24bf0e11bd3c28e9a/large-v1.pt')
             print('large-v2 model has to be downloaded from the link \
                     https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')
-            exit()
+            sys.exit()
 
         self.model_filename = os.path.join(os.getcwd(), model_filename)
         self.audio_model = whisper.load_model(self.model_filename)
@@ -65,7 +66,7 @@ class WhisperTranscriber:
 
     def load_model(self):
         if self.lang == "en":
-            self.audio_model = whisper.load_model(os.path.join(os.getcwd(), self.model + 'en.pt'))
+            self.audio_model = whisper.load_model(os.path.join(os.getcwd(), self.model + '.en.pt'))
         else:
             self.audio_model = whisper.load_model(os.path.join(os.getcwd(), self.model + '.pt'))
 

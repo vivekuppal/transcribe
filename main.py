@@ -27,7 +27,7 @@ def main():
     cmd_args.add_argument('-k', '--api_key', action='store', default=None,
                           help='API Key for accessing OpenAI APIs. This is an optional parameter.\
                             Without the API Key only transcription works.')
-    cmd_args.add_argument('-m', '--model', action='store', choices=['tiny', 'tiny.en.pt', 'base', 'base.en.pt', 'small', 'small.en.pt', 'medium', 'medium.en.pt' 'large-v1', 'large-v2', 'large'],
+    cmd_args.add_argument('-m', '--model', action='store', choices=['tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large'],
                           default='tiny',
                           help='Specify the model to use for transcription.'
                           '\nBy default tiny english model is part of the install.'
