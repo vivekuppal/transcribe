@@ -10,6 +10,77 @@ DYNAMIC_ENERGY_THRESHOLD = False
 root_logger = al.get_logger()
 
 
+# https://people.csail.mit.edu/hubert/pyaudio/docs/#id6
+driver_type = {
+    -1: 'Not actually an audio device',
+    0: 'Still in development',
+    1: 'DirectSound (Windows only)',
+    2: 'Multimedia Extension (Windows only)',
+    3: 'Steinberg Audio Stream Input/Output',
+    4: 'SoundManager (OSX only)',
+    5: 'CoreAudio (OSX only)',
+    7: 'Open Sound System (Linux only)',
+    8: 'Advanced Linux Sound Architecture (Linux only)',
+    9: 'Open Audio Library',
+    10: 'BeOS Sound System',
+    11: 'Windows Driver Model (Windows only)',
+    12: 'JACK Audio Connection Kit',
+    13: 'Windows Vista Audio stack architecture'
+}
+
+
+def print_detailed_audio_info(print_func=print):
+    """
+    Print information about Host APIs and devices,
+    using `print_func`.
+
+    :param print_func: Print function(or wrapper)
+    :type print_func: function
+    :rtype: None
+    """
+    print_func("\n|", "~ Audio Drivers on this machine ~".center(20), "|\n")
+    header = f" ^ #{'INDEX'.center(7)}#{'DRIVER TYPE'.center(13)}#{'DEVICE COUNT'.center(15)}#{'NAME'.center(5)}"
+    print_func(header)
+    print_func("-"*len(header))
+    py_audio = pyaudio.PyAudio()
+    for host_api in py_audio.get_host_api_info_generator():
+        print_func(
+            (
+            f" » "
+            f"{('['+str(host_api['index'])+']').center(8)}|"
+            f"{str(host_api['type']).center(13)}|"
+            f"{str(host_api['deviceCount']).center(15)}|"
+            f"  {host_api['name']}"
+            )
+        )
+
+    print_func("\n\n\n|", "~ Audio Devices on this machine ~".center(20), "|\n")
+    header = f" ^ #{'INDEX'.center(7)}# HOST API INDEX #{'LOOPBACK'.center(10)}#{'NAME'.center(5)}"
+    print_func(header)
+    print_func("-"*len(header))
+    for device in py_audio.get_device_info_generator():
+        print_func(
+            (
+            f" » "
+            f"{('['+str(device['index'])+']').center(8)}"
+            f"{str(device['hostApi']).center(16)}"
+            f"  {str(device['isLoopbackDevice']).center(10)}"
+            f"  {device['name']}"
+            )
+        )
+
+    # Below statements are useful to view all available fields in the
+    # driver and device list
+    # Do not remove these statements from here
+    # print('Windows Audio Drivers')
+    # for host_api_info_gen in py_audio.get_host_api_info_generator():
+    #    print(host_api_info_gen)
+
+    # print('Windows Audio Devices')
+    # for device_info_gen in py_audio.get_device_info_generator():
+    #    print(device_info_gen)
+
+
 class BaseRecorder:
     def __init__(self, source, source_name):
         root_logger.info(BaseRecorder.__name__)
@@ -69,3 +140,7 @@ class DefaultSpeakerRecorder(BaseRecorder):
         super().__init__(source=source, source_name="Speaker")
         self.adjust_for_noise("Default Speaker",
                               "Please make or play some noise from the Default Speaker...")
+
+
+if __name__ == "__main__":
+    print_detailed_audio_info()
