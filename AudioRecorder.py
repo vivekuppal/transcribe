@@ -82,10 +82,6 @@ def print_detailed_audio_info(print_func=print):
     #    print(device_info_gen)
 
 
-def log_detailed_audio_info(print_func):
-    print_detailed_audio_info(print_func=print_func)
-
-
 class BaseRecorder:
     def __init__(self, source, source_name):
         root_logger.info(BaseRecorder.__name__)
