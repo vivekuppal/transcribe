@@ -143,9 +143,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ➕ Enhancements from base repository ➕
 - Do not need Open AI key, paid Open AI account to use the complete functionality
+- Allow users selective disabling of mic, speaker audio input
 - Allow users to add contextual information to provide customized responses to conversation
 - Allows usage of different models for transcription using command line arguments
 - Allow to pause audio transcription
+- List all active devices on the system
+- Allow user to get response from LLM on demand, even when it is disabled at application level
 - Transcribe audio of any video
 - Preserve all conversation text in UI
 - Allow saving conversation to file
