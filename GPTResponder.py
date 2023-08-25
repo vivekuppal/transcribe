@@ -31,13 +31,11 @@ class GPTResponder:
            Gets a response even if the continuous suggestion option is disabled.
         """
         try:
-            # prompt_content = create_prompt(transcript)
-            # prompt_api_message = [{"role": "system", "content": prompt_content}]
             prompt_api_message = prompts.create_single_turn_prompt_message(transcript)
             multiturn_prompt_content = self.conversation.get_merged_conversation(
                 length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
             multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
-            pprint.pprint(f'Prompt api message: {prompt_api_message}')
+            # pprint.pprint(f'Prompt api message: {prompt_api_message}')
             # print(f'Multiturn prompt for ChatGPT: {multiturn_prompt_api_message}')
             usual_response = openai.ChatCompletion.create(
                     model=self.model,
@@ -54,22 +52,24 @@ class GPTResponder:
         usual_full_response = usual_response.choices[0].message.content
         # pprint.pprint(f'Prompt api response: {usual_response}')
         try:
-            response = usual_full_response.split('[')[1].split(']')[0]
+            # The original way of processing the response. It used to cause issues when there
+            # were multiple questions in the transcript.
+            # response = usual_full_response.split('[')[1].split(']')[0]
             processed_response = self.process_response(usual_full_response)
             self.update_conversation(persona=constants.PERSONA_ASSISTANT, response=processed_response)
-            return response
+            return processed_response
         except Exception as exception:
             root_logger.error('Error parsing response from LLM.')
             root_logger.exception(exception)
             return prompts.INITIAL_RESPONSE
 
     def process_response(self, input_str: str) -> str:
-        # There are 2 types of responses
-        # Speaker 1, Speaker 2 etc.
-        # Straight up response for multiple questions
         lines = input_str.split(sep='\n')
         response = ''
         for line in lines:
+            # Skip any responses that contain content like
+            # Speaker 1: <Some statement>
+            # This is generated content added by OpenAI that can be skipped
             if 'Speaker' in line and ':' in line:
                 continue
             response = response + line.strip().strip('[').strip(']')
