@@ -1,4 +1,5 @@
 import queue
+import datetime
 import pyperclip
 import tkinter as tk
 import AudioTranscriber
@@ -13,6 +14,7 @@ import constants
 
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
+last_transcript_ui_update_time: datetime.datetime = datetime.datetime.now()
 
 
 class ui_callbacks:
@@ -94,10 +96,17 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
           transcriber: AudioTranscriber Object
           textbox: textbox to be updated
     """
-    transcript_string = transcriber.get_transcript()
-    write_in_textbox(textbox, transcript_string)
-    textbox.see("end")
-    textbox.after(300, update_transcript_ui, transcriber, textbox)
+
+    global last_transcript_ui_update_time
+
+    if last_transcript_ui_update_time < GlobalVars.TranscriptionGlobals().convo.last_update:
+        transcript_string = transcriber.get_transcript()
+        write_in_textbox(textbox, transcript_string)
+        textbox.see("end")
+        last_transcript_ui_update_time = datetime.datetime.now()
+
+    textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,
+                  update_transcript_ui, transcriber, textbox)
 
 
 def update_response_ui(responder: GPTResponder,
@@ -119,7 +128,7 @@ def update_response_ui(responder: GPTResponder,
 
         update_interval = int(update_interval_slider.get())
         responder.update_response_interval(update_interval)
-        update_interval_slider_label.configure(text=f"Update Response interval: {update_interval} seconds")
+        update_interval_slider_label.configure(text=f'Update Response interval: {update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
                   update_interval_slider_label, update_interval_slider,
