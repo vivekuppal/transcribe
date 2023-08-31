@@ -10,7 +10,6 @@ import GPTResponder
 import app_logging as al
 import constants
 
-
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
 
@@ -42,6 +41,17 @@ class ui_callbacks:
         self.global_vars.freeze_state[0] = not self.global_vars.freeze_state[0]  # Invert the state
         self.global_vars.freeze_button.configure(
             text="Suggest Responses Continuously" if self.global_vars.freeze_state[0] else "Do Not Suggest Responses Continuously"
+            )
+    def enable_disable_speaker(self):
+        self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
+        self.global_vars.speaker_button.configure(
+            text="Speaker enabled" if self.global_vars.speaker_audio_recorder.enabled else "Speaker disabled" 
+            )
+        
+    def enable_disable_microphone(self):
+        self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
+        self.global_vars.microphone_button.configure(
+            text="Microphone enabled" if self.global_vars.user_audio_recorder.enabled else "Microphone disabled" 
             )
 
     def update_response_ui_now(self):
@@ -219,11 +229,17 @@ def create_ui_components(root):
     update_interval_slider.set(2)
     update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
-    lang_combobox = ctk.CTkOptionMenu(root, values=list(LANGUAGES_DICT.values()))
-    lang_combobox.grid(row=3, column=0, padx=200, pady=10, sticky="nsew")
+    lang_combobox = ctk.CTkOptionMenu(root,width=15, values=list(LANGUAGES_DICT.values()))
+    lang_combobox.grid(row=3, column=0,ipadx = 60, sticky="w")
+
+    microphone_button = ctk.CTkButton(root,width=15, text="Microphone enabled", command=None )
+    microphone_button.grid(row=3, column = 0,ipadx= 50, sticky="e")
+
+    speaker_button = ctk.CTkButton(root,width=15, text=" Speaker enabled", command=None )
+    speaker_button.grid(row=3, column = 0,ipadx= 60,)
 
     # Order of returned components is important.
     # Add new components to the end
     return [transcript_textbox, response_textbox, update_interval_slider,
             update_interval_slider_label, freeze_button, lang_combobox,
-            filemenu, response_now_button, read_response_now_button]
+            filemenu, response_now_button, read_response_now_button, microphone_button, speaker_button]

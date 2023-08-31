@@ -146,7 +146,8 @@ def main():
     global_vars.filemenu = ui_components[6]
     response_now_button = ui_components[7]
     read_response_now_button = ui_components[8]
-
+    global_vars.microphone_button = ui_components[9]
+    global_vars.speaker_button =  ui_components[10]
     global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     time.sleep(2)
@@ -195,9 +196,10 @@ def main():
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
     update_interval_slider_label.configure(text=label_text)
-
+    global_vars.microphone_button.configure(command=ui_cb.enable_disable_microphone)
+    global_vars.speaker_button.configure(command=ui_cb.enable_disable_speaker)
     lang_combobox.configure(command=model.change_lang)
-
+    
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,
                           update_interval_slider_label, update_interval_slider,
