@@ -43,22 +43,22 @@ class GPTResponder:
                     messages=prompt_api_message,
                     temperature=0.0
             )
-            # Multi is only effective if continuous mode is off. In continuous mode, there are
-            # far too many responses from LLM to add them into the conversation as responses from
-            # assistant.
+            # Multi turn response is only effective when continuous mode is off. 
+            # In continuous mode, there are far too many responses from LLM,
+            # they confuse the LLM if that many responses are replayed back to LLM.
             multi_turn_response = openai.ChatCompletion.create(
                     model=self.model,
                     messages=multiturn_prompt_api_message,
                     temperature=0.0
             )
 
-            print('-------- Single Turn --------')
-            pprint.pprint(f'message={prompt_api_message}', width=120)
-            pprint.pprint(f'response={usual_response}', width=120)
-            print('-------- Multi Turn --------')
-            pprint.pprint(f'message={multiturn_prompt_api_message}', width=120)
-            pprint.pprint(f'response={multi_turn_response}', width=120)
-            print('-------- -------- -------- -------- -------- --------')
+            # print('-------- Single Turn --------')
+            # pprint.pprint(f'message={prompt_api_message}', width=120)
+            # pprint.pprint(f'response={usual_response}', width=120)
+            # print('-------- Multi Turn --------')
+            # pprint.pprint(f'message={multiturn_prompt_api_message}', width=120)
+            # pprint.pprint(f'response={multi_turn_response}', width=120)
+            # print('-------- -------- -------- -------- -------- --------')
 
         except Exception as exception:
             print(exception)
@@ -66,16 +66,17 @@ class GPTResponder:
             root_logger.exception(exception)
             return prompts.INITIAL_RESPONSE
 
-        single_turn_response_content = usual_response.choices[0].message.content
+        # single_turn_response_content = usual_response.choices[0].message.content
         multi_turn_response_content = multi_turn_response.choices[0].message.content
         # pprint.pprint(f'Prompt api response: {usual_response}')
         try:
-            # The original way of processing the response. It used to cause issues when there
-            # were multiple questions in the transcript.
+            # The original way of processing the response.
+            # It causes issues when there are multiple questions in the transcript.
             # response = single_turn_response_content.split('[')[1].split(']')[0]
-            processed_single_turn_response = self.process_response(single_turn_response_content)
+            # processed_single_turn_response = self.process_response(single_turn_response_content)
             processed_multi_turn_response = self.process_response(multi_turn_response_content)
-            self.update_conversation(persona=constants.PERSONA_ASSISTANT, response=processed_multi_turn_response)
+            self.update_conversation(persona=constants.PERSONA_ASSISTANT, 
+                                     response=processed_multi_turn_response)
             return processed_multi_turn_response
         except Exception as exception:
             root_logger.error('Error parsing response from LLM.')
@@ -83,6 +84,8 @@ class GPTResponder:
             return prompts.INITIAL_RESPONSE
 
     def process_response(self, input_str: str) -> str:
+        """ Extract relevant data from LLM response.
+        """
         lines = input_str.split(sep='\n')
         response = ''
         for line in lines:

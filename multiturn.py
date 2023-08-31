@@ -126,7 +126,7 @@ def get_chatgpt_response(message_list):
 
 
 if __name__ == "__main__":
-    openai.api_key = "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"
+    openai.api_key = "<OpenAI Key>"
     model_response = get_chatgpt_response(messages)
     messages = update_chat(messages, "assistant",
                            model_response['choices'][0]['message']['content'])
