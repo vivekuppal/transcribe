@@ -87,7 +87,7 @@ def main():
     global_vars = GlobalVars.TranscriptionGlobals()
 
     global_vars = GlobalVars.TranscriptionGlobals(key=config["OpenAI"]["api_key"])
-
+    
     # Initiate logging
     log_listener = app_logging.initiate_log(config=config)
 
@@ -98,14 +98,6 @@ def main():
     if args.speaker_device_index is not None:
         print('[INFO] Override default speaker with device specified on command line.')
         global_vars.speaker_audio_recorder.set_device(index=args.speaker_device_index)
-
-    if args.disable_mic:
-        print('[INFO] Disabling Microphone')
-        global_vars.user_audio_recorder.disable()
-
-    if args.disable_speaker:
-        print('[INFO] Disabling Speaker')
-        global_vars.speaker_audio_recorder.disable()
 
     try:
         subprocess.run(["ffmpeg", "-version"],
@@ -136,6 +128,7 @@ def main():
     model = TranscriberModels.get_model(args.api, model=args.model)
 
     root = ctk.CTk()
+    ui_cb = ui.ui_callbacks()
     ui_components = ui.create_ui_components(root)
     transcript_textbox = ui_components[0]
     global_vars.response_textbox = ui_components[1]
@@ -146,8 +139,7 @@ def main():
     global_vars.filemenu = ui_components[6]
     response_now_button = ui_components[7]
     read_response_now_button = ui_components[8]
-    global_vars.microphone_button = ui_components[9]
-    global_vars.speaker_button =  ui_components[10]
+    global_vars.menu_button = ui_components[9]
     global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     time.sleep(2)
@@ -156,6 +148,16 @@ def main():
     global_vars.freeze_state = [True]
     convo = conversation.Conversation()
 
+    if args.disable_mic:
+        print('[INFO] Disabling Microphone')
+        ui_cb.menu_value()
+        global_vars.user_audio_recorder.disable()
+
+    if args.disable_speaker:
+        print('[INFO] Disabling Speaker')
+        ui_cb.menu_value()
+        global_vars.speaker_audio_recorder.disable()
+        
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
     global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
                                                global_vars.speaker_audio_recorder.source,
@@ -190,16 +192,15 @@ def main():
     root.grid_columnconfigure(0, weight=2)
     root.grid_columnconfigure(1, weight=1)
 
-    ui_cb = ui.ui_callbacks()
+    
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
     response_now_button.configure(command=ui_cb.update_response_ui_now)
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
     update_interval_slider_label.configure(text=label_text)
-    global_vars.microphone_button.configure(command=ui_cb.enable_disable_microphone)
-    global_vars.speaker_button.configure(command=ui_cb.enable_disable_speaker)
+    global_vars.menu_button.configure(command=ui_cb.check)
     lang_combobox.configure(command=model.change_lang)
-    
+
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,
                           update_interval_slider_label, update_interval_slider,

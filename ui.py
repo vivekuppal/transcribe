@@ -40,19 +40,31 @@ class ui_callbacks:
         root_logger.info(ui_callbacks.freeze_unfreeze.__name__)
         self.global_vars.freeze_state[0] = not self.global_vars.freeze_state[0]  # Invert the state
         self.global_vars.freeze_button.configure(
-            text="Suggest Responses Continuously" if self.global_vars.freeze_state[0] else "Do Not Suggest Responses Continuously"
-            )
-    def enable_disable_speaker(self):
-        self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
-        self.global_vars.speaker_button.configure(
-            text="Speaker enabled" if self.global_vars.speaker_audio_recorder.enabled else "Speaker disabled" 
+            value="Suggest Responses Continuously" if self.global_vars.freeze_state[0] else "Do Not Suggest Responses Continuously"
             )
         
+    def menu_value(self):
+        self.global_vars.menu_button.configure(
+            values=("Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker",
+                    "Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone" 
+                    )
+            )
+        self.global_vars.menu_button.set("Menu")
+        
+    def check(self,value):
+        if value == "Disable Speaker" or value == "Enable Speaker" :
+           self.enable_disable_speaker()
+        elif value == "Disable Microphone" or value == "Enable Microphone":
+           self.enable_disable_microphone()   
+
+    def enable_disable_speaker(self):
+        self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
+        self.menu_value()
+                    
     def enable_disable_microphone(self):
         self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
-        self.global_vars.microphone_button.configure(
-            text="Microphone enabled" if self.global_vars.user_audio_recorder.enabled else "Microphone disabled" 
-            )
+        self.menu_value()
+            
 
     def update_response_ui_now(self):
         """Get response from LLM right away
@@ -230,16 +242,14 @@ def create_ui_components(root):
     update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
     lang_combobox = ctk.CTkOptionMenu(root,width=15, values=list(LANGUAGES_DICT.values()))
-    lang_combobox.grid(row=3, column=0,ipadx = 60, sticky="w")
+    lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="wn")
 
-    microphone_button = ctk.CTkButton(root,width=15, text="Microphone enabled", command=None )
-    microphone_button.grid(row=3, column = 0,ipadx= 50, sticky="e")
-
-    speaker_button = ctk.CTkButton(root,width=15, text=" Speaker enabled", command=None )
-    speaker_button.grid(row=3, column = 0,ipadx= 60,)
+    menu_button = ctk.CTkOptionMenu(root,values=["Disable Microphone", "Disable Speaker"], command=None)
+    menu_button.set("Menu")
+    menu_button.grid(row=3, column=0, ipadx=60, sticky="ne")
 
     # Order of returned components is important.
     # Add new components to the end
     return [transcript_textbox, response_textbox, update_interval_slider,
             update_interval_slider_label, freeze_button, lang_combobox,
-            filemenu, response_now_button, read_response_now_button, microphone_button, speaker_button]
+            filemenu, response_now_button, read_response_now_button, menu_button]
