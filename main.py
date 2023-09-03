@@ -139,7 +139,7 @@ def main():
     global_vars.filemenu = ui_components[6]
     response_now_button = ui_components[7]
     read_response_now_button = ui_components[8]
-    global_vars.menu_button = ui_components[9]
+    global_vars.editmenu = ui_components[9]
     global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     time.sleep(2)
@@ -148,16 +148,15 @@ def main():
     global_vars.freeze_state = [True]
     convo = conversation.Conversation()
 
-    if args.disable_mic:
-        print('[INFO] Disabling Microphone')
-        ui_cb.menu_value()
-        global_vars.user_audio_recorder.disable()
-
+    # disable speaker/microphone on startup
     if args.disable_speaker:
         print('[INFO] Disabling Speaker')
-        ui_cb.menu_value()
-        global_vars.speaker_audio_recorder.disable()
-        
+        ui_cb.enable_disable_speaker(global_vars.editmenu)
+
+    if args.disable_mic:
+        print('[INFO] Disabling Microphone')
+        ui_cb.enable_disable_microphone(global_vars.editmenu)
+
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
     global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
                                                global_vars.speaker_audio_recorder.source,
@@ -198,7 +197,6 @@ def main():
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
     update_interval_slider_label.configure(text=label_text)
-    global_vars.menu_button.configure(command=ui_cb.check)
     lang_combobox.configure(command=model.change_lang)
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
