@@ -141,17 +141,16 @@ class AudioTranscriber:
         current_return_val = "".join([t[0] for t in combined_transcript])
         sources = [
             constants.PERSONA_YOU,
-            constants.PERSONA_SPEAKER,
-            constants.PERSONA_ASSISTANT
+            constants.PERSONA_SPEAKER
             ]
         convo_object_return_value = self.conversation.get_conversation(sources=sources)
-        print('---------- AudioTranscriber.py get_transcript convo object----------')
-        pprint.pprint(convo_object_return_value, width=120)
+        # print('---------- AudioTranscriber.py get_transcript convo object----------')
+        # pprint.pprint(convo_object_return_value, width=120)
 
-        print('---------- AudioTranscriber.py get_transcript current implementation----------')
-        pprint.pprint(current_return_val, width=120)
+        # print('---------- AudioTranscriber.py get_transcript current implementation----------')
+        # pprint.pprint(current_return_val, width=120)
 
-        return current_return_val
+        return convo_object_return_value
 
     def clear_transcript_data(self):
         """

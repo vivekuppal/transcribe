@@ -43,7 +43,7 @@ class GPTResponder:
                     messages=prompt_api_message,
                     temperature=0.0
             )
-            # Multi turn response is only effective when continuous mode is off. 
+            # Multi turn response is only effective when continuous mode is off.
             # In continuous mode, there are far too many responses from LLM,
             # they confuse the LLM if that many responses are replayed back to LLM.
             multi_turn_response = openai.ChatCompletion.create(
@@ -75,7 +75,7 @@ class GPTResponder:
             # response = single_turn_response_content.split('[')[1].split(']')[0]
             # processed_single_turn_response = self.process_response(single_turn_response_content)
             processed_multi_turn_response = self.process_response(multi_turn_response_content)
-            self.update_conversation(persona=constants.PERSONA_ASSISTANT, 
+            self.update_conversation(persona=constants.PERSONA_ASSISTANT,
                                      response=processed_multi_turn_response)
             return processed_multi_turn_response
         except Exception as exception:

@@ -25,13 +25,15 @@ class ui_callbacks:
         self.global_vars = GlobalVars.TranscriptionGlobals()
 
     def copy_to_clipboard(self):
-        """Copy transcription text data to clipboard
+        """Copy transcription text data to clipboard.
+           Does not include responses from assistant.
         """
         root_logger.info(ui_callbacks.copy_to_clipboard.__name__)
         pyperclip.copy(self.global_vars.transcriber.get_transcript())
 
     def save_file(self):
-        """Save transcription text data to file
+        """Save transcription text data to file.
+           Does not include responses from assistant.
         """
         root_logger.info(ui_callbacks.save_file.__name__)
         filename = ctk.filedialog.asksaveasfilename()
@@ -48,7 +50,7 @@ class ui_callbacks:
 
     def update_response_ui_now(self):
         """Get response from LLM right away
-        Update the Response UI with the response
+           Update the Response UI with the response
         """
         transcript_string = self.global_vars.transcriber.get_transcript(
             length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
