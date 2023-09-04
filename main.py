@@ -87,7 +87,7 @@ def main():
     global_vars = GlobalVars.TranscriptionGlobals()
 
     global_vars = GlobalVars.TranscriptionGlobals(key=config["OpenAI"]["api_key"])
-    
+
     # Initiate logging
     log_listener = app_logging.initiate_log(config=config)
 
@@ -191,7 +191,6 @@ def main():
     root.grid_columnconfigure(0, weight=2)
     root.grid_columnconfigure(1, weight=1)
 
-    
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
     response_now_button.configure(command=ui_cb.update_response_ui_now)
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)

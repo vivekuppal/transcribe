@@ -42,16 +42,15 @@ class ui_callbacks:
         self.global_vars.freeze_button.configure(
             value="Suggest Responses Continuously" if self.global_vars.freeze_state[0] else "Do Not Suggest Responses Continuously"
             )
-         
+
     # to enable/disable speaker/microphone when args are given or button is pressed
-    def enable_disable_speaker(self,editmenu):
+    def enable_disable_speaker(self, editmenu):
         self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
-        editmenu.entryconfigure(2,label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
-                    
-    def enable_disable_microphone(self,editmenu):
+        editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
+
+    def enable_disable_microphone(self, editmenu):
         self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
-        editmenu.entryconfigure(3,label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
-            
+        editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
 
     def update_response_ui_now(self):
         """Get response from LLM right away
@@ -179,20 +178,20 @@ def create_ui_components(root):
 
     # Create an edit menu
     editmenu = tk.Menu(menubar, tearoff=False)
-    
+
     # Add a "Clear Audio Transcript" menu item to the file menu
     editmenu.add_command(label="Clear Audio Transcript", command=lambda: clear_transcriber_context(
         global_vars.transcriber, global_vars.audio_queue))
-    
+
     # Add a "Copy To Clipboard" menu item to the file menu
     editmenu.add_command(label="Copy Transcript to Clipboard", command=ui_cb.copy_to_clipboard)
 
     # Add "Disable Speaker" menu item to file menu
     editmenu.add_command(label="Disable Speaker", command=lambda: ui_cb.enable_disable_speaker(editmenu))
-    
+
     # Add "Disable Microphone" menu item to file menu
     editmenu.add_command(label="Disable Microphone", command=lambda: ui_cb.enable_disable_microphone(editmenu))
-    
+
     # See example of add_radiobutton() at https://www.plus2net.com/python/tkinter-menu.php
     # Radiobutton would be a good way to display different languages
     # lang_menu = tk.Menu(menubar, tearoff=False)
@@ -234,7 +233,7 @@ def create_ui_components(root):
     update_interval_slider.set(2)
     update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
-    lang_combobox = ctk.CTkOptionMenu(root,width=15, values=list(LANGUAGES_DICT.values()))
+    lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
     lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="wn")
 
     # Order of returned components is important.
