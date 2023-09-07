@@ -79,7 +79,7 @@ def main():
 
     if args.list_devices:
         print('\n\nList all audio drivers and devices on this machine')
-        ar.print_detailed_audio_info()
+        ar.print_detailed_audio_info_2()
         return
 
     # Initiate global variables
