@@ -1,13 +1,22 @@
 from datetime import datetime
 from abc import abstractmethod
-import custom_speech_recognition as sr
-import pyaudiowpatch as pyaudio
+# import custom_speech_recognition as sr
+import speech_recognition as sr
+# import pyaudiowpatch as pyaudio
+import pyaudio
+import platform
 import app_logging as al
 
 # Attempt transcription of the sound file after every RECORD_TIMEOUT seconds
 RECORD_TIMEOUT = 1
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False
+
+MBP_MIC_NAME = "MacBook Pro Microphone"
+PLANTRONICS_3220_MIC_NAME = "Plantronics Blackwire 3220 Series"
+HUMAN_MIC_NAME = PLANTRONICS_3220_MIC_NAME
+# macOS specific, see README.md#macos for the details on how to configure the BlackHole device
+BLACKHOLE_MIC_NAME = "BlackHole 2ch"
 
 root_logger = al.get_logger()
 
@@ -29,6 +38,12 @@ driver_type = {
     12: 'JACK Audio Connection Kit',
     13: 'Windows Vista Audio stack architecture'
 }
+
+# This needs to be formatted better
+# Attempt to get more info from it like, device_type Mic vs speaker
+def print_detailed_audio_info_2():
+    for index, name in enumerate(sr.Microphone.list_microphone_names()):
+        print(f'Audio device with name "{name}" found at index {index}')
 
 
 def print_detailed_audio_info(print_func=print):
@@ -137,19 +152,44 @@ class MicRecorder(BaseRecorder):
     """
     def __init__(self):
         root_logger.info(MicRecorder.__name__)
-        with pyaudio.PyAudio() as py_audio:
+        os_name = platform.system()
+        self.device_index = None
+
+        if os_name == 'Windows':
+            py_audio = pyaudio.PyAudio()
             # WASAPI is windows specific
             wasapi_info = py_audio.get_host_api_info_by_type(pyaudio.paWASAPI)
             self.device_index = wasapi_info["defaultInputDevice"]
             default_mic = py_audio.get_device_info_by_index(self.device_index)
 
-        self.device_info = default_mic
+            self.device_info = default_mic
 
-        source = sr.Microphone(device_index=default_mic["index"],
-                               sample_rate=int(default_mic["defaultSampleRate"]),
-                               channels=default_mic["maxInputChannels"]
-                               )
-        self.source = source
+            source = sr.Microphone(device_index=default_mic["index"],
+                                   sample_rate=int(default_mic["defaultSampleRate"])
+                                   # channels=default_mic["maxInputChannels"]
+                                   )
+            self.source = source
+            py_audio.terminate()
+
+        elif os_name == 'Darwin':
+            for index, name in enumerate(sr.Microphone.list_microphone_names()):
+                # print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
+
+                # this assumes that mic has lower index number for combinded headsets (like Plantronics)
+                if name == HUMAN_MIC_NAME:
+                    self.device_index = index
+
+            default_mic = py_audio.get_device_info_by_index(self.device_index)  
+
+            self.device_info = default_mic
+
+            source = sr.Microphone(
+                device_index=self.device_index, 
+                chunk_size=pyaudio.get_sample_size(pyaudio.paInt16)
+                )
+
+            print("[DEBUG] \"{}\" microphone index is: {}".format(HUMAN_MIC_NAME, self.device_index))
+
         super().__init__(source=source, source_name="You")
         print(f'[INFO] Listening to sound from Microphone: {self.get_name()} ')
         # This line is commented because in case of non default microphone it can occasionally take
@@ -183,7 +223,12 @@ class SpeakerRecorder(BaseRecorder):
     """
     def __init__(self):
         root_logger.info(SpeakerRecorder.__name__)
-        with pyaudio.PyAudio() as p:
+
+        os_name = platform.system()
+        self.device_index = None
+
+        if os_name == 'Windows':
+            p = pyaudio.PyAudio()
             wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
             self.device_index = wasapi_info["defaultOutputDevice"]
             default_speakers = p.get_device_info_by_index(self.device_index)
@@ -195,14 +240,26 @@ class SpeakerRecorder(BaseRecorder):
                         break
                 else:
                     print("[ERROR] No loopback device found.")
+            p.terminate()
+            source = sr.Microphone(speaker=True,
+                                   device_index=default_speakers["index"],
+                                   sample_rate=int(default_speakers["defaultSampleRate"]),
+                                   chunk_size=pyaudio.get_sample_size(pyaudio.paInt16),
+                                   channels=default_speakers["maxInputChannels"])
+        
+        elif os_name == 'Darwin':
+            for index, name in enumerate(sr.Microphone.list_microphone_names()):
+                # print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
+                if name == BLACKHOLE_MIC_NAME:
+                    self.device_index = index
+            
+            p = pyaudio.PyAudio()
+            default_speakers = p.get_device_info_by_index(self.device_index)
+
+            print("[DEBUG] \"{}\" microphone index is: {}".format(BLACKHOLE_MIC_NAME, self.device_index))
 
         self.device_info = default_speakers
 
-        source = sr.Microphone(speaker=True,
-                               device_index=default_speakers["index"],
-                               sample_rate=int(default_speakers["defaultSampleRate"]),
-                               chunk_size=pyaudio.get_sample_size(pyaudio.paInt16),
-                               channels=default_speakers["maxInputChannels"])
         super().__init__(source=source, source_name="Speaker")
         print(f'[INFO] Listening to sound from Speaker: {self.get_name()} ')
         self.adjust_for_noise("Default Speaker",

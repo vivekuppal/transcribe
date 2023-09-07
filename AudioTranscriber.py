@@ -7,8 +7,10 @@ import datetime
 # import pprint
 import wave
 import tempfile
-import custom_speech_recognition as sr
-import pyaudiowpatch as pyaudio
+# import custom_speech_recognition as sr
+import speech_recognition as sr
+# import pyaudiowpatch as pyaudio
+import pyaudio
 import conversation
 import constants
 import app_logging as al
@@ -28,11 +30,12 @@ class AudioTranscriber:
         self.audio_model = model
         # Determines if transcription is enabled for the application. By default it is enabled.
         self.transcribe = True
+        #  channels commented for mac
         self.audio_sources = {
             "You": {
                 "sample_rate": mic_source.SAMPLE_RATE,
                 "sample_width": mic_source.SAMPLE_WIDTH,
-                "channels": mic_source.channels,
+                # "channels": mic_source.channels,
                 "last_sample": bytes(),
                 "last_spoken": None,
                 "new_phrase": True,
@@ -41,7 +44,7 @@ class AudioTranscriber:
             "Speaker": {
                 "sample_rate": speaker_source.SAMPLE_RATE,
                 "sample_width": speaker_source.SAMPLE_WIDTH,
-                "channels": speaker_source.channels,
+                # "channels": speaker_source.channels,
                 "last_sample": bytes(),
                 "last_spoken": None,
                 "new_phrase": True,
@@ -105,7 +108,8 @@ class AudioTranscriber:
         if not self.transcribe:
             return
         with wave.open(temp_file_name, 'wb') as wf:
-            wf.setnchannels(self.audio_sources["Speaker"]["channels"])
+            # commented for mac, get from pyaudio itself
+            # wf.setnchannels(self.audio_sources["Speaker"]["channels"])
             p = pyaudio.PyAudio()
             wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
             wf.setframerate(self.audio_sources["Speaker"]["sample_rate"])
