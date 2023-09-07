@@ -11,7 +11,8 @@ RECORD_TIMEOUT = 3
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False
 
-MBP_MIC_NAME = "MacBook Pro Microphone"
+MBP_MIC_NAME = "MacBook Air Microphone"
+MBP_SPEAKER_NAME = "MacBook Air Speakers"
 PLANTRONICS_3220_MIC_NAME = "Plantronics Blackwire 3220 Series"
 HUMAN_MIC_NAME = PLANTRONICS_3220_MIC_NAME
 # macOS specific, see README.md#macos for the details on how to configure the BlackHole device
@@ -129,12 +130,14 @@ class BaseRecorder:
         """
         self.enabled = False
 
-    def adjust_for_noise(self, device_name, msg):
+    # def adjust_for_noise(self, device_name, msg):
+    def adjust_for_noise(self, msg):
         root_logger.info(BaseRecorder.adjust_for_noise.__name__)
-        print(f"[INFO] Adjusting for ambient noise from {device_name}. " + msg)
+        # print(f"[INFO] Adjusting for ambient noise from {device_name}. " + msg)
+        print(f"[INFO] Adjusting for ambient noise... " + msg)
         with self.source:
             self.recorder.adjust_for_ambient_noise(self.source)
-        print(f"[INFO] Completed ambient noise adjustment for {device_name}.")
+        print(f"[INFO] Completed ambient noise adjustment.")
 
     def record_into_queue(self, audio_queue):
         def record_callback(_, audio: sr.AudioData) -> None:
@@ -172,13 +175,14 @@ class MicRecorder(BaseRecorder):
 
         elif os_name == 'Darwin':
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
-                # print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
+                print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
 
                 # this assumes that mic has lower index number for combinded headsets (like Plantronics)
-                if name == HUMAN_MIC_NAME:
+                if name == MBP_MIC_NAME:
                     self.device_index = index
-
-            default_mic = py_audio.get_device_info_by_index(self.device_index)  
+            
+            py_audio = pyaudio.PyAudio()
+            default_mic = py_audio.get_device_info_by_index(self.device_index)
 
             self.device_info = default_mic
 
@@ -186,6 +190,7 @@ class MicRecorder(BaseRecorder):
                 device_index=self.device_index, 
                 chunk_size=pyaudio.get_sample_size(pyaudio.paInt16)
                 )
+            py_audio.terminate()
 
             print("[DEBUG] \"{}\" microphone index is: {}".format(HUMAN_MIC_NAME, self.device_index))
 
@@ -249,11 +254,16 @@ class SpeakerRecorder(BaseRecorder):
         elif os_name == 'Darwin':
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
                 # print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
-                if name == BLACKHOLE_MIC_NAME:
+                if name == MBP_SPEAKER_NAME:
                     self.device_index = index
             
             p = pyaudio.PyAudio()
+            source = sr.Microphone(
+                device_index=self.device_index,
+                chunk_size=pyaudio.get_sample_size(pyaudio.paInt16)
+                )
             default_speakers = p.get_device_info_by_index(self.device_index)
+            p.terminate()
 
             print("[DEBUG] \"{}\" microphone index is: {}".format(BLACKHOLE_MIC_NAME, self.device_index))
 
@@ -261,8 +271,9 @@ class SpeakerRecorder(BaseRecorder):
 
         super().__init__(source=source, source_name="Speaker")
         print(f'[INFO] Listening to sound from Speaker: {self.get_name()} ')
-        self.adjust_for_noise("Default Speaker",
-                              "Please play sound from Default Speaker...")
+        # self.adjust_for_noise("Default Speaker",
+        #                      "Please play sound from Default Speaker...")
+        self.adjust_for_noise("Please play sound from Default Speaker...")
 
     def get_name(self):
         return f'#{self.device_index} - {self.device_info["name"]}'
@@ -292,8 +303,8 @@ class SpeakerRecorder(BaseRecorder):
                                channels=speakers["maxInputChannels"])
         self.source = source
         print(f'[INFO] Listening to sound from Speaker: {self.get_name()} ')
-        self.adjust_for_noise("Speaker",
-                              f"Please play sound from selected Speakers {self.get_name()}...")
+        # self.adjust_for_noise("Speaker",
+        self.adjust_for_noise(f"Please play sound from selected Speakers {self.get_name()}...")
 
 
 if __name__ == "__main__":
