@@ -132,11 +132,13 @@ class BaseRecorder:
         self.enabled = False
 
     def adjust_for_noise(self, device_name, msg):
+    # def adjust_for_noise(self, msg):
         root_logger.info(BaseRecorder.adjust_for_noise.__name__)
         print(f"[INFO] Adjusting for ambient noise from {device_name}. " + msg)
+        # print(f"[INFO] Adjusting for ambient noise... " + msg)
         with self.source:
             self.recorder.adjust_for_ambient_noise(self.source)
-        print(f"[INFO] Completed ambient noise adjustment.")
+        print("[INFO] Completed ambient noise adjustment.")
 
     def record_into_queue(self, audio_queue):
         def record_callback(_, audio: sr.AudioData) -> None:
@@ -189,7 +191,7 @@ class MicRecorder(BaseRecorder):
 
                 if name == HUMAN_MIC_NAME:
                     self.device_index = index
-            
+
             py_audio = pyaudio.PyAudio()
             if self.device_index is not None:
                 default_mic = py_audio.get_device_info_by_index(self.device_index)
@@ -229,7 +231,7 @@ class MicRecorder(BaseRecorder):
                                    sample_rate=int(mic["defaultSampleRate"]),
                                    channels=mic["maxInputChannels"]
                                    )
-        
+
         elif os_name == 'Darwin':
             p = pyaudio.PyAudio()
             self.device_index = index
@@ -277,7 +279,7 @@ class SpeakerRecorder(BaseRecorder):
         elif os_name == 'Darwin':
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
                 # print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
-                if name == BLACKHOLE_MIC_NAME:
+                if name == MBP_SPEAKER_NAME:
                     self.device_index = index
 
             p = pyaudio.PyAudio()
@@ -296,6 +298,7 @@ class SpeakerRecorder(BaseRecorder):
         print(f'[INFO] Listening to sound from Speaker: {self.get_name()} ')
         self.adjust_for_noise("Default Speaker",
                               "Please play sound from Default Speaker...")
+        # self.adjust_for_noise("Please play sound from Default Speaker...")
 
     def get_name(self):
         return f'#{self.device_index} - {self.device_info["name"]}'
