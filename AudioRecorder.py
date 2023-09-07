@@ -48,13 +48,6 @@ def print_detailed_audio_info_2():
         print(f'Audio device with name "{name}" found at index {index}')
 
 
-# This needs to be formatted better
-# Attempt to get more info from it like, device_type Mic vs speaker
-def print_detailed_audio_info_2():
-    for index, name in enumerate(sr.Microphone.list_microphone_names()):
-        print(f'Audio device with name "{name}" found at index {index}')
-
-
 def print_detailed_audio_info(print_func=print):
     """
     Print information about Host APIs and devices,
