@@ -15,6 +15,9 @@ class Conversation:
                                 constants.PERSONA_YOU: [],
                                 constants.PERSONA_SPEAKER: [],
                                 constants.PERSONA_ASSISTANT: []}
+        self.initialize_conversation()
+
+    def initialize_conversation(self):
         config = configuration.Config().get_data()
         prompt = config["OpenAI"]["system_prompt"]
         self.update_conversation(persona=constants.PERSONA_SYSTEM, text=prompt,
@@ -35,7 +38,7 @@ class Conversation:
         self.transcript_data[constants.PERSONA_SPEAKER].clear()
         self.transcript_data[constants.PERSONA_SYSTEM].clear()
         self.transcript_data[constants.PERSONA_ASSISTANT].clear()
-        self.last_update = datetime.datetime.now()
+        self.initialize_conversation()
 
     def update_conversation(self, persona: str, text: str, time_spoken, pop: bool = False):
         """Update conversation with new data

@@ -165,3 +165,5 @@ class AudioTranscriber:
 
         self.audio_sources["You"]["new_phrase"] = True
         self.audio_sources["Speaker"]["new_phrase"] = True
+
+        self.conversation.clear_conversation_data()

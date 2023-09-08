@@ -16,10 +16,10 @@ class Duration:
         Duration(dd:hh:ss:ms) of Test Operation 0:00:02.000826
     """
 
-    def __init__(self, operation_name: str = 'undefined'):
+    def __init__(self, name: str = 'undefined'):
         self.start: datetime.datetime = None
         self.end: datetime.datetime = None
-        self.operation_name = operation_name
+        self.operation_name = name
 
     def __enter__(self):
         """Records the start time of an operation
