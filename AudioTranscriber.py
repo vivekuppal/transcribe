@@ -3,21 +3,24 @@ import queue
 from heapq import merge
 import threading
 import io
-from datetime import timedelta
-import pprint
+import datetime
+# import pprint
 import wave
 import tempfile
 import custom_speech_recognition as sr
 import pyaudiowpatch as pyaudio
 import conversation
 import constants
+import app_logging as al
 
 
 PHRASE_TIMEOUT = 3.05
+root_logger = al.get_logger()
 
 
 class AudioTranscriber:
     def __init__(self, mic_source, speaker_source, model, convo: conversation.Conversation):
+        root_logger.info(AudioTranscriber.__name__)
         # Transcript_data should be replaced with the conversation object.
         # We do not need to store transcription in 2 different places.
         self.transcript_data = {"You": [], "Speaker": []}
@@ -60,8 +63,8 @@ class AudioTranscriber:
 
             text = ''
             try:
-                fd, path = tempfile.mkstemp(suffix=".wav")
-                os.close(fd)
+                file_descritor, path = tempfile.mkstemp(suffix=".wav")
+                os.close(file_descritor)
                 source_info["process_data_func"](source_info["last_sample"], path)
                 if self.transcribe:
                     text = self.audio_model.get_transcription(path)
@@ -75,10 +78,11 @@ class AudioTranscriber:
                 self.transcript_changed_event.set()
 
     def update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken):
+        root_logger.info(AudioTranscriber.update_last_sample_and_phrase_status.__name__)
         if not self.transcribe:
             return
         source_info = self.audio_sources[who_spoke]
-        if source_info["last_spoken"] and time_spoken - source_info["last_spoken"] > timedelta(seconds=PHRASE_TIMEOUT):
+        if source_info["last_spoken"] and time_spoken - source_info["last_spoken"] > datetime.timedelta(seconds=PHRASE_TIMEOUT):
             source_info["last_sample"] = bytes()
             source_info["new_phrase"] = True
         else:
@@ -88,6 +92,7 @@ class AudioTranscriber:
         source_info["last_spoken"] = time_spoken
 
     def process_mic_data(self, data, temp_file_name):
+        root_logger.info(AudioTranscriber.process_mic_data.__name__)
         if not self.transcribe:
             return
         audio_data = sr.AudioData(data, self.audio_sources["You"]["sample_rate"], self.audio_sources["You"]["sample_width"])
@@ -96,6 +101,7 @@ class AudioTranscriber:
             file_handle.write(wav_data.read())
 
     def process_speaker_data(self, data, temp_file_name):
+        root_logger.info(AudioTranscriber.process_speaker_data.__name__)
         if not self.transcribe:
             return
         with wave.open(temp_file_name, 'wb') as wf:
@@ -138,7 +144,7 @@ class AudioTranscriber:
             self.transcript_data["You"], self.transcript_data["Speaker"],
             key=lambda x: x[1], reverse=False))
         combined_transcript = combined_transcript[-length:]
-        current_return_val = "".join([t[0] for t in combined_transcript])
+        # current_return_val = "".join([t[0] for t in combined_transcript])
         sources = [
             constants.PERSONA_YOU,
             constants.PERSONA_SPEAKER

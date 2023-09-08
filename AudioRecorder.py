@@ -4,7 +4,8 @@ import custom_speech_recognition as sr
 import pyaudiowpatch as pyaudio
 import app_logging as al
 
-RECORD_TIMEOUT = 3
+# Attempt transcription of the sound file after every RECORD_TIMEOUT seconds
+RECORD_TIMEOUT = 1
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False
 
