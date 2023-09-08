@@ -40,6 +40,7 @@ driver_type = {
     13: 'Windows Vista Audio stack architecture'
 }
 
+
 # This needs to be formatted better
 # Attempt to get more info from it like, device_type Mic vs speaker
 def print_detailed_audio_info_2():
@@ -231,7 +232,6 @@ class MicRecorder(BaseRecorder):
                                    sample_rate=int(mic["defaultSampleRate"]),
                                    channels=mic["maxInputChannels"]
                                    )
-
         elif os_name == 'Darwin':
             p = pyaudio.PyAudio()
             self.device_index = index
@@ -279,7 +279,7 @@ class SpeakerRecorder(BaseRecorder):
         elif os_name == 'Darwin':
             for index, name in enumerate(sr.Microphone.list_microphone_names()):
                 # print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
-                if name == MBP_SPEAKER_NAME:
+                if name == BLACKHOLE_MIC_NAME:
                     self.device_index = index
 
             p = pyaudio.PyAudio()
