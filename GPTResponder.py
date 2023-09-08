@@ -32,17 +32,18 @@ class GPTResponder:
            Updates the conversation object with the response from LLM.
         """
         try:
-            prompt_api_message = prompts.create_single_turn_prompt_message(transcript)
+            root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
+            # prompt_api_message = prompts.create_single_turn_prompt_message(transcript)
             multiturn_prompt_content = self.conversation.get_merged_conversation(
                 length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
             multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
             # pprint.pprint(f'Prompt api message: {prompt_api_message}')
             # print(f'Multiturn prompt for ChatGPT: {multiturn_prompt_api_message}')
-            usual_response = openai.ChatCompletion.create(
-                    model=self.model,
-                    messages=prompt_api_message,
-                    temperature=0.0
-            )
+            # usual_response = openai.ChatCompletion.create(
+            #        model=self.model,
+            #        messages=prompt_api_message,
+            #        temperature=0.0
+            # )
             # Multi turn response is only effective when continuous mode is off.
             # In continuous mode, there are far too many responses from LLM,
             # they confuse the LLM if that many responses are replayed back to LLM.
@@ -101,13 +102,14 @@ class GPTResponder:
     def generate_response_from_transcript(self, transcript):
         """Ping OpenAI LLM model to get response from the Assistant
         """
-
+        root_logger.info(GPTResponder.generate_response_from_transcript.__name__)
         if self.gl_vars.freeze_state[0]:
             return ''
 
         return self.generate_response_from_transcript_no_check(transcript)
 
     def update_conversation(self, response, persona):
+        root_logger.info(GPTResponder.update_conversation.__name__)
         if response != '':
             self.response = response
             self.conversation.update_conversation(persona=persona,
@@ -129,7 +131,7 @@ class GPTResponder:
                 if not self.gl_vars.freeze_state[0]:
                     transcript_string = transcriber.get_transcript(
                         length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
-                    response = self.generate_response_from_transcript(transcript_string)
+                    self.generate_response_from_transcript(transcript_string)
 
                 end_time = time.time()  # Measure end time
                 execution_time = end_time - start_time  # Calculate time to execute the function

@@ -14,6 +14,7 @@ import constants
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
 last_transcript_ui_update_time: datetime.datetime = datetime.datetime.now()
+global_vars_module: GlobalVars.TranscriptionGlobals = None
 
 
 class ui_callbacks:
@@ -49,10 +50,12 @@ class ui_callbacks:
 
     # to enable/disable speaker/microphone when args are given or button is pressed
     def enable_disable_speaker(self, editmenu):
+        """Toggles the state of speaker"""
         self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
         editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
 
     def enable_disable_microphone(self, editmenu):
+        """Toggles the state of microphone"""
         self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
         editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
 
@@ -108,8 +111,12 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
     """
 
     global last_transcript_ui_update_time
+    global global_vars_module
 
-    if last_transcript_ui_update_time < GlobalVars.TranscriptionGlobals().convo.last_update:
+    if global_vars_module is None:
+        global_vars_module = GlobalVars.TranscriptionGlobals()
+
+    if last_transcript_ui_update_time < global_vars_module.convo.last_update:
         transcript_string = transcriber.get_transcript()
         write_in_textbox(textbox, transcript_string)
         textbox.see("end")
