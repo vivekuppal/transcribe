@@ -192,7 +192,6 @@ class MicRecorder(BaseRecorder):
 
                 if name == HUMAN_MIC_NAME:
                     self.device_index = index
-
             py_audio = pyaudio.PyAudio()
             if self.device_index is not None:
                 default_mic = py_audio.get_device_info_by_index(self.device_index)
@@ -281,7 +280,6 @@ class SpeakerRecorder(BaseRecorder):
                 # print("Microphone with name \"{1}\" found for `Microphone(device_index={0})`".format(index, name))
                 if name == BLACKHOLE_MIC_NAME:
                     self.device_index = index
-
             p = pyaudio.PyAudio()
             source = sr.Microphone(
                 device_index=self.device_index,
