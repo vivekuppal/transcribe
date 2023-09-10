@@ -37,6 +37,8 @@ class ui_callbacks:
         """
         root_logger.info(ui_callbacks.save_file.__name__)
         filename = ctk.filedialog.asksaveasfilename()
+        if filename == '':
+            return
         with open(file=filename, mode="w", encoding='utf-8') as file_handle:
             file_handle.write(self.global_vars.transcriber.get_transcript())
 

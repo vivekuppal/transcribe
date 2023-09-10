@@ -3,9 +3,8 @@ from abc import abstractmethod
 import custom_speech_recognition as sr
 import pyaudiowpatch as pyaudio
 import app_logging as al
+import configuration
 
-# Attempt transcription of the sound file after every RECORD_TIMEOUT seconds
-RECORD_TIMEOUT = 1
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False
 
@@ -99,6 +98,7 @@ class BaseRecorder:
 
         self.source = source
         self.source_name = source_name
+        self.config = configuration.Config().get_data()
 
     @abstractmethod
     def get_name(self):
@@ -129,7 +129,7 @@ class BaseRecorder:
                 audio_queue.put((self.source_name, data, datetime.utcnow()))
 
         self.recorder.listen_in_background(self.source, record_callback,
-                                           phrase_time_limit=RECORD_TIMEOUT)
+                                           phrase_time_limit=self.config['General']['transcript_audio_duration_seconds'])
 
 
 class MicRecorder(BaseRecorder):

@@ -45,3 +45,5 @@ OpenAI:
 
 General:
   log_file: 'Transcribe.log'
+# Attempt transcription of the sound file after these number of seconds
+  transcript_audio_duration_seconds: 1
