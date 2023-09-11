@@ -2,18 +2,23 @@ import os
 import queue
 from heapq import merge
 import threading
+import platform
 import io
 import datetime
 # import pprint
 import wave
 import tempfile
-# import custom_speech_recognition as sr
-import speech_recognition as sr
-# import pyaudiowpatch as pyaudio
-import pyaudio
 import conversation
 import constants
 import app_logging as al
+
+os_name = platform.system()
+if os_name == 'Windows':
+    import custom_speech_recognition as csr
+    import pyaudiowpatch as pyaudio
+if os_name == 'Darwin':
+    import speech_recognition as sr
+    import pyaudio
 
 
 PHRASE_TIMEOUT = 3.05
@@ -30,27 +35,51 @@ class AudioTranscriber:
         self.audio_model = model
         # Determines if transcription is enabled for the application. By default it is enabled.
         self.transcribe = True
-        #  channels commented for mac
-        self.audio_sources = {
-            "You": {
-                "sample_rate": mic_source.SAMPLE_RATE,
-                "sample_width": mic_source.SAMPLE_WIDTH,
-                # "channels": mic_source.channels,
-                "last_sample": bytes(),
-                "last_spoken": None,
-                "new_phrase": True,
-                "process_data_func": self.process_mic_data
-            },
-            "Speaker": {
-                "sample_rate": speaker_source.SAMPLE_RATE,
-                "sample_width": speaker_source.SAMPLE_WIDTH,
-                # "channels": speaker_source.channels,
-                "last_sample": bytes(),
-                "last_spoken": None,
-                "new_phrase": True,
-                "process_data_func": self.process_speaker_data
+        self.os_name = platform.system()
+
+        if self.os_name == 'Windows':
+            self.audio_sources = {
+                "You": {
+                    "sample_rate": mic_source.SAMPLE_RATE,
+                    "sample_width": mic_source.SAMPLE_WIDTH,
+                    "channels": mic_source.channels,
+                    "last_sample": bytes(),
+                    "last_spoken": None,
+                    "new_phrase": True,
+                    "process_data_func": self.process_mic_data
+                },
+                "Speaker": {
+                    "sample_rate": speaker_source.SAMPLE_RATE,
+                    "sample_width": speaker_source.SAMPLE_WIDTH,
+                    "channels": speaker_source.channels,
+                    "last_sample": bytes(),
+                    "last_spoken": None,
+                    "new_phrase": True,
+                    "process_data_func": self.process_speaker_data
+                }
             }
-        }
+        elif self.os_name == 'Darwin':
+            self.audio_sources = {
+                "You": {
+                    "sample_rate": mic_source.SAMPLE_RATE,
+                    "sample_width": mic_source.SAMPLE_WIDTH,
+                    # "channels": mic_source.channels,
+                    "last_sample": bytes(),
+                    "last_spoken": None,
+                    "new_phrase": True,
+                    "process_data_func": self.process_mic_data
+                },
+                "Speaker": {
+                    "sample_rate": speaker_source.SAMPLE_RATE,
+                    "sample_width": speaker_source.SAMPLE_WIDTH,
+                    # "channels": speaker_source.channels,
+                    "last_sample": bytes(),
+                    "last_spoken": None,
+                    "new_phrase": True,
+                    "process_data_func": self.process_speaker_data
+                }
+            }
+
         self.conversation = convo
 
     def transcribe_audio_queue(self, audio_queue: queue.Queue):
@@ -98,7 +127,10 @@ class AudioTranscriber:
         root_logger.info(AudioTranscriber.process_mic_data.__name__)
         if not self.transcribe:
             return
-        audio_data = sr.AudioData(data, self.audio_sources["You"]["sample_rate"], self.audio_sources["You"]["sample_width"])
+        if self.os_name == 'Windows':
+            audio_data = csr.AudioData(data, self.audio_sources["You"]["sample_rate"], self.audio_sources["You"]["sample_width"])
+        elif self.os_name == 'Darwin':
+            audio_data = sr.AudioData(data, self.audio_sources["You"]["sample_rate"], self.audio_sources["You"]["sample_width"])
         wav_data = io.BytesIO(audio_data.get_wav_data())
         with open(temp_file_name, 'w+b') as file_handle:
             file_handle.write(wav_data.read())
@@ -108,9 +140,12 @@ class AudioTranscriber:
         if not self.transcribe:
             return
         with wave.open(temp_file_name, 'wb') as wf:
-            # commented for mac, get from pyaudio itself
-            # wf.setnchannels(self.audio_sources["Speaker"]["channels"])
-            p = pyaudio.PyAudio()
+            if self.os_name == 'Windows':
+                wf.setnchannels(self.audio_sources["Speaker"]["channels"])
+                p = pyaudio.PyAudio()
+            if self.os_name == 'Darwin':
+                p = pyaudio.PyAudio()
+
             wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
             wf.setframerate(self.audio_sources["Speaker"]["sample_rate"])
             wf.writeframes(data)

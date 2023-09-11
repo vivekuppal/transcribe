@@ -9,11 +9,12 @@ Follow below steps to run transcribe on your local machine.
 
 ### 📋 Prerequisites
 
+#### Common
 - Python >=3.8.0
 - (Optional) An OpenAI API key that can access OpenAI API (set up a paid account OpenAI account)
-- Windows OS (Not tested on others)
 - FFmpeg 
 
+#### Windows
 If FFmpeg is not installed in your system, follow the steps below to install it.
 
 First, install Chocolatey, a package manager for Windows. Open PowerShell as Administrator and run the following command:
@@ -25,6 +26,23 @@ Once Chocolatey is installed, install FFmpeg by running the following command in
 choco install ffmpeg
 ```
 Please run these commands in a PowerShell window with administrator privileges. For any issues during the installation, visit the official [Chocolatey](https://chocolatey.org/) and [FFmpeg](https://ffmpeg.org/) websites for troubleshooting.
+
+#### macOS
+
+**Dependencies and tools**
+
+- XCode Command Line Tools
+- `brew install portaudio python-tk ffmpeg blackhole-2ch`
+
+**BlackHole configuration**
+
+Setup "Multi-Ouput Device" and set it as default sound output device for your macOS. Guidelines are available [here](https://github.com/ExistentialAudio/BlackHole/wiki/Multi-Output-Device)
+
+**Configuring device names**
+
+Speakers audio on macOS will be recorded from the virtual "BlackHole 2ch" microphone. Your and BlackHole microphone device names could be adjusted via `HUMAN_MIC_NAME` and `BLACKHOLE_MIC_NAME` vars in the [AudioRecorder.py](./AudioRecorder.py).
+
+Run `python main.py -l` to get speaker and microphone devices list and their indices.
 
 ### 🔧 Code Installation
 
@@ -149,7 +167,7 @@ https://drive.google.com/file/d/1Iy32YjDXK7Bga7amOUTA4Gx9VEoibPi-/view?usp=shari
 
 ### ⚡️ Limitations ⚡️
 
-While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality that you should be aware of:
+While Transcribe provides real-time transcription and optional response suggestions, there are few known limitations to its functionality:
 
 **Whisper Model**: If the --api flag is not used, we utilize the 'tiny' version of the Whisper ASR model, due to its low resource consumption and fast response times. However, this model may not be as accurate as the larger models in transcribing certain types of speech, including accents or uncommon words.
 
@@ -167,6 +185,7 @@ Incorrect API key provided: API_KEY. You can find your API key at https://platfo
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## ➕ Enhancements from base repository ➕
+- macOS support
 - Speech Mode - Read out responses from ChatGPT as Audio
 - Do not need Open AI key, paid Open AI account to use the complete functionality
 - Allow users selective disabling of mic, speaker audio input
