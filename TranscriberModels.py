@@ -7,6 +7,7 @@ import GlobalVars
 
 
 def get_model(use_api: bool, model: str = None):
+    print("fetched model")
     if use_api:
         return APIWhisperTranscriber()
 

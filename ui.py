@@ -28,14 +28,14 @@ class ui_callbacks:
         """Copy transcription text data to clipboard.
            Does not include responses from assistant.
         """
-        root_logger.info(ui_callbacks.copy_to_clipboard.__name__)
+        root_logger.info(ui_callbacks.copy_to_clipboard)
         pyperclip.copy(self.global_vars.transcriber.get_transcript())
 
     def save_file(self):
         """Save transcription text data to file.
            Does not include responses from assistant.
         """
-        root_logger.info(ui_callbacks.save_file.__name__)
+        root_logger.info(ui_callbacks.save_file)
         filename = ctk.filedialog.asksaveasfilename()
         if filename == '':
             return
@@ -44,7 +44,7 @@ class ui_callbacks:
 
     def freeze_unfreeze(self):
         """Respond to start / stop of seeking responses from openAI API"""
-        root_logger.info(ui_callbacks.freeze_unfreeze.__name__)
+        root_logger.info(ui_callbacks.freeze_unfreeze)
         self.global_vars.freeze_state[0] = not self.global_vars.freeze_state[0]  # Invert the state
         self.global_vars.freeze_button.configure(
             text="Suggest Responses Continuously" if self.global_vars.freeze_state[0] else "Do Not Suggest Responses Continuously"
