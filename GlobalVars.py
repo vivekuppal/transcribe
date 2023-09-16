@@ -7,6 +7,7 @@ import AudioRecorder
 import Singleton
 import app_logging as al
 import conversation
+import streamlit as st
 
 
 root_logger = al.get_logger()
@@ -26,11 +27,12 @@ class TranscriptionGlobals(Singleton.Singleton):
     responder = None
     # Global for determining whether to seek responses from openAI API
     freeze_state: list = None
-    freeze_button: ctk.CTkButton = None
-    editmenu: tk.Menu = None
+    freeze_button: st.button = None
+    speaker_button: st.toggle = None
+    microphone_button: st.toggle = None
     api_key: str = None
     filemenu: tk.Menu = None
-    response_textbox: ctk.CTkTextbox = None
+    response_textbox: st.text_area = None
 
     convo: conversation.Conversation = None
 
