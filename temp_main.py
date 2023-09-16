@@ -18,8 +18,13 @@ import configuration
 import conversation
 import app_logging
 import temp_ui
+import streamlit as st
 
-def temp_main():
+
+
+
+def main():
+    
     """Primary method to run transcribe
     """
     # Set up all arguments
@@ -81,7 +86,7 @@ def temp_main():
         print('\n\nList all audio drivers and devices on this machine')
         ar.print_detailed_audio_info()
         return
-
+    
     # Initiate global variables
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
     global_vars = GlobalVars.TranscriptionGlobals()
@@ -90,7 +95,7 @@ def temp_main():
 
     # Initiate logging
     log_listener = app_logging.initiate_log(config=config)
-
+   
     if args.mic_device_index is not None:
         print('[INFO] Override default microphone with device specified on command line.')
         global_vars.user_audio_recorder.set_device(index=args.mic_device_index)
@@ -98,7 +103,7 @@ def temp_main():
     if args.speaker_device_index is not None:
         print('[INFO] Override default speaker with device specified on command line.')
         global_vars.speaker_audio_recorder.set_device(index=args.speaker_device_index)
-
+   
     try:
         subprocess.run(["ffmpeg", "-version"],
                        stdout=subprocess.DEVNULL,
@@ -108,7 +113,7 @@ def temp_main():
         print("ERROR: The ffmpeg library is not installed. Please install \
               ffmpeg and try again.")
         return
-
+    
     query_params = interactions.create_params()
     try:
         response = requests.get("http://127.0.0.1:5000/ping", params=query_params)
@@ -116,7 +121,7 @@ def temp_main():
             print(f'Error received: {response}')
     except ConnectionError:
         print('[INFO] Operating in Desktop mode')
-
+    
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
     if args.api_key is not None:
         api_key: bool = args.api_key
@@ -124,9 +129,9 @@ def temp_main():
         api_key: bool = config['OpenAI']['api_key']
 
     global_vars.api_key = api_key
-
+    
     model = TranscriberModels.get_model(args.api , model=args.model)
-
+    print("still runs")
     ui_cb = temp_ui.temp_ui_callbacks()
     ui_components = temp_ui.create_temp_ui()
 
@@ -138,8 +143,8 @@ def temp_main():
     copy_button = ui_components[5]
     speaker_button = ui_components[6]
     microhphone_button = ui_components[7]
-    suggest = ui_components[8]
-    csuggest = ui_components[9]
+    # suggest = ui_components[8]
+    # csuggest = ui_components[9]
     time.sleep(2)
 
     global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
@@ -156,6 +161,7 @@ def temp_main():
         ui_cb.enable_disable_microphone()
 
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
+    
     global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
                                                global_vars.speaker_audio_recorder.source,
                                                model,
@@ -185,12 +191,12 @@ def temp_main():
 
 
 
-    temp_ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
-    temp_ui.update_response_ui(global_vars.responder, global_vars.response_textbox,
+    temp_ui.update_transcript_ui(global_vars.transcriber)
+    temp_ui.update_response_ui(global_vars.responder,
                           global_vars.freeze_state)
 
     log_listener.stop()
 
 
-if __name__ == "__temp_main__":
-    temp_main()
+if __name__ == "__main__":
+    main()

@@ -250,7 +250,7 @@ def create_ui_components(root):
 
     update_interval_slider = ctk.CTkSlider(root, from_=1, to=10, width=300, height=20,
                                            number_of_steps=9)
-    update_interval_slider.set(2)
+    update_intervals_slider.set(2)
     update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
     lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
