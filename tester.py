@@ -1,9 +1,13 @@
 import streamlit as st
+import time 
+import random
 
-if 'num' not in st.session_state:
-    st.session_state.num = 0
+def hello():
+    return (f"{random.randint(1,100)}")
+def recursion():
+    st.session_state.text = hello()
+    time.sleep(0.3)
+    recursion()
 
-def wuttt():
-    st.session_state.num += 1
-    print(f"wtf man how does this work {st.session_state.num}")
-st.toggle("wtf?", on_change= wuttt)
+st.text_area("Enter text", key="text")
+st.button("Upper Text", on_click=recursion)

@@ -135,7 +135,7 @@ def main():
     ui_cb = temp_ui.temp_ui_callbacks()
     ui_components = temp_ui.create_temp_ui()
 
-    transcript_textbox = ui_components[0]
+    global_vars.transcript_textbox = ui_components[0]
     global_vars.response_textbox = ui_components[1]
     language_box = ui_components[2]
     download_button = ui_components[3]
@@ -191,8 +191,8 @@ def main():
 
 
 
-    temp_ui.update_transcript_ui(global_vars.transcriber)
-    temp_ui.update_response_ui(global_vars.responder,
+    ui_cb.update_transcript_ui(global_vars.transcriber)
+    ui_cb.update_response_ui(global_vars.responder,
                           global_vars.freeze_state)
 
     log_listener.stop()

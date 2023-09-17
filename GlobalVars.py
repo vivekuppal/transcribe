@@ -32,6 +32,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     microphone_button: st.toggle = None
     api_key: str = None
     filemenu: tk.Menu = None
+    transcript_textbox:st.text_area = None
     response_textbox: st.text_area = None
 
     convo: conversation.Conversation = None

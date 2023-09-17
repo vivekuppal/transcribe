@@ -55,7 +55,7 @@ class temp_ui_callbacks:
         response_string = self.global_vars.responder.generate_response_from_transcript_no_check(
             transcript_string)
         self.global_vars.response_textbox(disabled = False)
-        write_in_transciption_textbox(self.global_vars.response_textbox, response_string)
+        temp_ui_callbacks.write_in_transciption_textbox(self.global_vars.response_textbox, response_string)
         self.global_vars.response_textbox(disabled = True)
 
     
@@ -70,55 +70,55 @@ class temp_ui_callbacks:
         self.global_vars.audio_player.speech_text_available.set()
 
 
-def write_in_conversation_textbox(text: str):
-    """Update the text of textbox with the given text
-        Args:
-          textbox: textbox to be updated
-          text: updated text
-    """
-    #textbox.empty()
-    print(text)
+    def write_in_conversation_textbox(self, text: str):
+        """Update the text of textbox with the given text
+            Args:
+            textbox: textbox to be updated
+            text: updated text
+        """
+        self.global_vars.transcript_textbox(value= text)
+        
     
 
-def write_in_transciption_textbox(text: str):
-    """Update the text of textbox with the given text
-        Args:
-          textbox: textbox to be updated
-          text: updated text
-    """
-    #textbox.empty()
-    print(text)
-    textbox = text
+    def write_in_transciption_textbox(self, text: str):
+        """Update the text of textbox with the given text
+            Args:
+            textbox: textbox to be updated
+            text: updated text
+        """
+        #textbox.empty()
+        self.global_vars.response_textbox(value= text)
 
-def update_transcript_ui(_transcriber: AudioTranscriber):
-    global last_transcript_ui_update_time
-    global global_vars_module
+    def update_transcript_ui(self, _transcriber: AudioTranscriber):
+        global last_transcript_ui_update_time
+        global global_vars_module
 
-    if global_vars_module is None:
-        global_vars_module = GlobalVars.TranscriptionGlobals()
+        if global_vars_module is None:
+            global_vars_module = GlobalVars.TranscriptionGlobals()
 
-    if last_transcript_ui_update_time < global_vars_module.convo.last_update:
-        transcript_string = _transcriber.get_transcript()
-        write_in_conversation_textbox(transcript_string)
-        last_transcript_ui_update_time = datetime.datetime.now()
-        time.sleep(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS)
-        update_transcript_ui(_transcriber)
-
-
-def update_response_ui(_responder: GPTResponder,
-                       
-                       freeze_state):
-    """Update the text of response textbox with the given text
-        Args:
-          textbox: textbox to be updated
-          text: updated text
-    """
-    if not freeze_state[0]:
-        response = _responder.response
-        write_in_transciption_textbox( response)
+        if last_transcript_ui_update_time < global_vars_module.convo.last_update:
+            transcript_string = _transcriber.get_transcript()
+            temp_ui_callbacks.write_in_conversation_textbox(self, transcript_string)
+            last_transcript_ui_update_time = datetime.datetime.now()
+            time.sleep(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS)
+            self.update_transcript_ui(self, _transcriber)
         
-    time.sleep(0.3)
-    update_response_ui(_responder, freeze_state)    
+
+
+    def update_response_ui(self, _responder: GPTResponder,
+                        
+                        freeze_state):
+        """Update the text of response textbox with the given text
+            Args:
+            textbox: textbox to be updated
+            text: updated text
+        """
+        if not freeze_state[0]:
+            response = _responder.response
+            temp_ui_callbacks.write_in_transciption_textbox(self, response)
+            
+        time.sleep(0.3)
+        self.update_response_ui(self, _responder, freeze_state)    
 
 
 def clear_transcriber_context(transcriber: AudioTranscriber,
@@ -143,7 +143,7 @@ def create_temp_ui():
 
     with conversation_col:
         if "convo_key" not in st.session_state:
-            conversationn = st.text_area("Conversation",key="convo_key", height=350)
+            conversationn = st.text_area("Conversation",value="wow tf?", key="convo_key", height=350)
 
     with transcription_col:
         if "transci_key" not in st.session_state:
