@@ -149,10 +149,10 @@ class AudioTranscriber:
                 Default value = 0, gives the complete transcript
         """
         # This data should be retrieved from the conversation object.
-        combined_transcript = list(merge(
-            self.transcript_data["You"], self.transcript_data["Speaker"],
-            key=lambda x: x[1], reverse=False))
-        combined_transcript = combined_transcript[-length:]
+        # combined_transcript = list(merge(
+        #    self.transcript_data["You"], self.transcript_data["Speaker"],
+        #    key=lambda x: x[1], reverse=False))
+        # combined_transcript = combined_transcript[-length:]
         # current_return_val = "".join([t[0] for t in combined_transcript])
         sources = [
             constants.PERSONA_YOU,
@@ -184,8 +184,8 @@ class AudioTranscriber:
           text: updated text
     """
         with self.mutex:
-            # This method can be invoked from 2 different contexts. Mutex ensures integrity
-            # of data for race conditions.
+            # This method can be invoked from 2 different contexts.
+            # Mutex ensures integrity of data for race conditions.
             root_logger.info(AudioTranscriber.clear_transcriber_context.__name__)
             self.clear_transcript_data()
             with audio_queue.mutex:
