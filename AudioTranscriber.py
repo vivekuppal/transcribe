@@ -171,7 +171,6 @@ class AudioTranscriber:
         """Clear transcript data at a specified interval if needed.
         Args:
           audio_queue: queue object with reference to audio files
-
         """
         while True:
             if self.clear_transcript_periodically:
@@ -184,10 +183,13 @@ class AudioTranscriber:
           textbox: textbox to be updated
           text: updated text
     """
-        root_logger.info(AudioTranscriber.clear_transcriber_context.__name__)
-        self.clear_transcript_data()
-        with audio_queue.mutex:
-            audio_queue.queue.clear()
+        with self.mutex:
+            # This method can be invoked from 2 different contexts. Mutex ensures integrity
+            # of data for race conditions.
+            root_logger.info(AudioTranscriber.clear_transcriber_context.__name__)
+            self.clear_transcript_data()
+            with audio_queue.mutex:
+                audio_queue.queue.clear()
 
     def clear_transcript_data(self):
         """
