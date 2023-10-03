@@ -182,6 +182,12 @@ def main():
     audio_response_thread.daemon = True
     audio_response_thread.start()
 
+    clear_transcript_thread = threading.Thread(target=global_vars.transcriber.clear_transcript_data_loop,
+                                               name='ClearTranscript',
+                                               args=(global_vars.audio_queue,))
+    clear_transcript_thread.daemon = True
+    clear_transcript_thread.start()
+
     print("READY")
 
     root.grid_rowconfigure(0, weight=100)
