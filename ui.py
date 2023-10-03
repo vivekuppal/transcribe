@@ -147,24 +147,12 @@ def update_response_ui(responder: GPTResponder,
 
         update_interval = int(update_interval_slider.get())
         responder.update_response_interval(update_interval)
-        update_interval_slider_label.configure(text=f'Update Response interval: {update_interval} seconds')
+        update_interval_slider_label.configure(text=f'Update Response interval: '
+                                               f'{update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
                   update_interval_slider_label, update_interval_slider,
                   freeze_state)
-
-
-def clear_transcriber_context(transcriber: AudioTranscriber,
-                              audio_queue: queue.Queue):
-    """Reset the transcriber
-        Args:
-          textbox: textbox to be updated
-          text: updated text
-    """
-    root_logger.info(clear_transcriber_context.__name__)
-    transcriber.clear_transcript_data()
-    with audio_queue.mutex:
-        audio_queue.queue.clear()
 
 
 def create_ui_components(root):
