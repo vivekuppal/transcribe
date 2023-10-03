@@ -1,5 +1,6 @@
 import os
 import queue
+import time
 from heapq import merge
 import threading
 import io
@@ -9,6 +10,7 @@ import wave
 import tempfile
 import custom_speech_recognition as sr
 import pyaudiowpatch as pyaudio
+import configuration
 import conversation
 import constants
 import app_logging as al
@@ -26,6 +28,13 @@ class AudioTranscriber:
         self.transcript_data = {"You": [], "Speaker": []}
         self.transcript_changed_event = threading.Event()
         self.audio_model = model
+        self.mutex = threading.Lock()
+        self.config = configuration.Config().get_data()
+        self.clear_transcript_periodically: bool = \
+            self.config['General']['clear_transcript_periodically']
+        self.clear_transcript_interval_seconds: int = \
+            self.config['General']['clear_transcript_interval_seconds']
+
         # Determines if transcription is enabled for the application. By default it is enabled.
         self.transcribe = True
         self.audio_sources = {
@@ -157,6 +166,28 @@ class AudioTranscriber:
         # pprint.pprint(current_return_val, width=120)
 
         return convo_object_return_value
+
+    def clear_transcript_data_loop(self, audio_queue: queue.Queue):
+        """Clear transcript data at a specified interval if needed.
+        Args:
+          audio_queue: queue object with reference to audio files
+
+        """
+        while True:
+            if self.clear_transcript_periodically:
+                self.clear_transcriber_context(audio_queue=audio_queue)
+            time.sleep(self.clear_transcript_interval_seconds)
+
+    def clear_transcriber_context(self, audio_queue: queue.Queue):
+        """Reset the transcriber
+        Args:
+          textbox: textbox to be updated
+          text: updated text
+    """
+        root_logger.info(AudioTranscriber.clear_transcriber_context.__name__)
+        self.clear_transcript_data()
+        with audio_queue.mutex:
+            audio_queue.queue.clear()
 
     def clear_transcript_data(self):
         """

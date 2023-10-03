@@ -46,4 +46,9 @@ OpenAI:
 General:
   log_file: 'Transcribe.log'
 # Attempt transcription of the sound file after these number of seconds
-  transcript_audio_duration_seconds: 1
+  transcript_audio_duration_seconds: 3
+# These two parameters are used together.
+# Setting clear_transcript_periodically: yes will clear transcript data at a regular interval
+# clear_transcript_interval_seconds is applicable when clear_transcript_periodically is set to Yes
+  clear_transcript_periodically: No # Possible values are Yes, No
+  clear_transcript_interval_seconds: 30

@@ -1,6 +1,5 @@
 # import datetime
 # import pprint
-# from CustomPrompts import PREAMBLE, EPILOGUE
 import configuration
 
 INITIAL_RESPONSE = '👋 Welcome to Transcribe 🤝'

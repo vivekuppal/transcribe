@@ -200,8 +200,8 @@ def create_ui_components(root):
     editmenu = tk.Menu(menubar, tearoff=False)
 
     # Add a "Clear Audio Transcript" menu item to the file menu
-    editmenu.add_command(label="Clear Audio Transcript", command=lambda: clear_transcriber_context(
-        global_vars.transcriber, global_vars.audio_queue))
+    editmenu.add_command(label="Clear Audio Transcript", command=lambda:
+                         global_vars.transcriber.clear_transcriber_context(global_vars.audio_queue))
 
     # Add a "Copy To Clipboard" menu item to the file menu
     editmenu.add_command(label="Copy Transcript to Clipboard", command=ui_cb.copy_to_clipboard)
