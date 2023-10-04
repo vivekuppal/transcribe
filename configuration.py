@@ -13,10 +13,12 @@ class Config(Singleton.Singleton):
     _default_data: dict = None   # Data as read from parameters.yaml
     _override_data: dict = None  # Data as read from override.yaml
     _current_data: dict = None   # Merged data of parameters.yaml and override.yaml
+    _initialized: bool = False
 
     def __init__(self, default_config_filename: str = 'parameters.yaml',
                  override_config_filename: str = 'override.yaml'):
-        print('constructor for Config()')
+        if self._initialized:
+            return
         with open(default_config_filename, mode='r', encoding='utf-8') as default_config_file:
             try:
                 if self._default_data is None:
@@ -42,6 +44,7 @@ class Config(Singleton.Singleton):
         # Merge default and override values
         self._current_data = copy.deepcopy(self._default_data)
         utilities.merge(self._current_data, self._override_data)
+        self._initialized = True
 
     def add_override_value(self, input_dict: dict):
         if not isinstance(input_dict, dict):

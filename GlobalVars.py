@@ -33,9 +33,12 @@ class TranscriptionGlobals(Singleton.Singleton):
     response_textbox: ctk.CTkTextbox = None
 
     convo: conversation.Conversation = None
+    _initialized: bool = None
 
     def __init__(self, key: str = 'API_KEY'):
         root_logger.info(TranscriptionGlobals.__name__)
+        if self._initialized:
+            return
         if self.audio_queue is None:
             self.audio_queue = queue.Queue()
         if self.user_audio_recorder is None:
@@ -44,3 +47,5 @@ class TranscriptionGlobals(Singleton.Singleton):
             self.speaker_audio_recorder = AudioRecorder.SpeakerRecorder()
         if self.api_key is None:
             self.api_key = key
+
+        self._initialized = True
