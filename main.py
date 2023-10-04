@@ -93,10 +93,10 @@ def main():
         yml = configuration.Config()
         altered_config: dict = {'OpenAI': {'api_key': args.save_api_key}}
         yml.add_override_value(altered_config)
-
-        with open(file=yml.override_file, mode="w", encoding='utf-8') as file:
+        # save file to disk
+        with open(file=yml.config_override_file, mode="w", encoding='utf-8') as file:
             yaml.dump(altered_config, file, default_flow_style=False)
-        print(f'Saved API Key to {yml.override_file}')
+        print(f'Saved API Key to {yml.config_override_file}')
         return
 
     # Initiate global variables
