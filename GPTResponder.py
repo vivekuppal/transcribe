@@ -23,7 +23,7 @@ class GPTResponder:
         self.gl_vars = GlobalVars.TranscriptionGlobals()
         openai.api_key = self.gl_vars.api_key
         self.conversation = convo
-        self.config = configuration.Config().get_data()
+        self.config = configuration.Config().data
         self.model = self.config['OpenAI']['ai_model']
 
     def generate_response_from_transcript_no_check(self, transcript) -> str:

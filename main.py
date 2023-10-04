@@ -75,7 +75,7 @@ def main():
     args = cmd_args.parse_args()
 
     # Initiate config
-    config = configuration.Config().get_data()
+    config = configuration.Config().data
 
     if args.list_devices:
         print('\n\nList all audio drivers and devices on this machine')

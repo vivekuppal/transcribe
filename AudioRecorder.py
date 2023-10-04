@@ -98,7 +98,7 @@ class BaseRecorder:
 
         self.source = source
         self.source_name = source_name
-        self.config = configuration.Config().get_data()
+        self.config = configuration.Config().data
 
     @abstractmethod
     def get_name(self):

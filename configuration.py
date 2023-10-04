@@ -8,8 +8,8 @@ import utilities
 class Config(Singleton.Singleton):
     """A Singleton object with all configuration data
     """
-    default_config_filename:  str = None
-    override_config_filename: str = None
+    _default_config_filename:  str = None
+    _override_config_filename: str = None
     _default_data: dict = None   # Data as read from parameters.yaml
     _override_data: dict = None  # Data as read from override.yaml
     _current_data: dict = None   # Merged data of parameters.yaml and override.yaml
@@ -38,8 +38,8 @@ class Config(Singleton.Singleton):
                 print(f'Error: {err}')
                 sys.exit(1)
 
-        self.default_config_filename = default_config_filename
-        self.override_config_filename = override_config_filename
+        self._default_config_filename = default_config_filename
+        self._override_config_filename = override_config_filename
 
         # Merge default and override values
         self._current_data = copy.deepcopy(self._default_data)
@@ -54,15 +54,10 @@ class Config(Singleton.Singleton):
         # update the current values
         utilities.merge(self._current_data, input_dict)
         # Write override values to file
-        with open(file=self.override_config_filename, mode="w", encoding='utf-8') as override_file:
+        with open(file=self._override_config_filename, mode="w", encoding='utf-8') as override_file:
             yaml.dump(self._override_data, override_file, default_flow_style=False)
-
 
     @property
     def data(self) -> dict:
         """Get all configuration data read from yaml file"""
         return self._current_data
-
-    def get_data(self) -> dict:
-        """Get all configuration data read from yaml file"""
-        return self._default_data

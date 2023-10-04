@@ -18,7 +18,7 @@ class Conversation:
         self.initialize_conversation()
 
     def initialize_conversation(self):
-        config = configuration.Config().get_data()
+        config = configuration.Config().data
         prompt = config["OpenAI"]["system_prompt"]
         self.update_conversation(persona=constants.PERSONA_SYSTEM, text=prompt,
                                  time_spoken=datetime.datetime.now())
