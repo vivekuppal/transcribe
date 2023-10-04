@@ -6,7 +6,7 @@ INITIAL_RESPONSE = '👋 Welcome to Transcribe 🤝'
 
 
 def create_prompt(transcript):
-    config = configuration.Config().get_data()
+    config = configuration.Config().data
     preamble = config["OpenAI"]["default_prompt_preamble"]
     epilogue = config["OpenAI"]["default_prompt_epilogue"]
     return f'{preamble} \
@@ -24,7 +24,7 @@ def create_single_turn_prompt_message(transcript: str) -> list:
             }]
        The single message contains everything including system prompt and user input
     """
-    config = configuration.Config().get_data()
+    config = configuration.Config().data
     response_lang = config["OpenAI"]["response_lang"]
     preamble = config["OpenAI"]["default_prompt_preamble"]
     epilogue = config["OpenAI"]["default_prompt_epilogue"]

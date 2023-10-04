@@ -1,7 +1,7 @@
 from datetime import datetime
 from abc import abstractmethod
-import custom_speech_recognition as sr
 import pyaudiowpatch as pyaudio
+import custom_speech_recognition as sr
 import app_logging as al
 import configuration
 
@@ -98,7 +98,7 @@ class BaseRecorder:
 
         self.source = source
         self.source_name = source_name
-        self.config = configuration.Config().get_data()
+        self.config = configuration.Config().data
 
     @abstractmethod
     def get_name(self):
