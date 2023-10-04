@@ -62,6 +62,11 @@ class Config(Singleton.Singleton):
         """Get all configuration data read from yaml file"""
         return self._current_data
 
+    @property
+    def override_file(self) -> dict:
+        """Get all configuration data read from yaml file"""
+        return self._override_config_filename
+
     def get_data(self) -> dict:
         """Get all configuration data read from yaml file"""
         return self._default_data

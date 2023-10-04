@@ -35,6 +35,7 @@ if not exist %ASSETS_DIR_DEST% mkdir %ASSETS_DIR_DEST%
 REM Copy appropriate files to the dir
 copy %SOURCE_DIR%\tiny.en.pt %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\tiny.en.pt
 copy %SOURCE_DIR%\parameters.yaml %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\parameters.yaml
+copy %SOURCE_DIR%\override.yaml %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\override.yaml
 copy %ASSETS_DIR_SRC%\mel_filters.npz %ASSETS_DIR_DEST%
 copy %ASSETS_DIR_SRC%\gpt2.tiktoken %ASSETS_DIR_DEST%
 

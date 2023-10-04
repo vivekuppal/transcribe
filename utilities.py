@@ -19,7 +19,7 @@ def merge(first: dict, second: dict, path=[]):
             if isinstance(first[key], dict) and isinstance(second[key], dict):
                 merge(first[key], second[key], path + [str(key)])
             elif first[key] != second[key]:
-                print(f'Replacing the value of {key} from {first[key]} to {second[key]}')
+                # print(f'Replacing the value of {key} from {first[key]} to {second[key]}')
                 first[key] = second[key]
         else:
             first[key] = second[key]
