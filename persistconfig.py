@@ -9,7 +9,6 @@ if __name__ == "__main__":
 
     print('Executing persist yaml')
     y = configuration.Config()
-    yaml_config: dict = y.data
     altered_config: dict = {'General': {'transcript_audio_duration_seconds': 20}}
 
     y.add_override_value(altered_config)

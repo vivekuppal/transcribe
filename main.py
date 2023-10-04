@@ -4,6 +4,7 @@ from argparse import RawTextHelpFormatter
 import time
 import subprocess
 import requests
+import yaml
 from requests.exceptions import ConnectionError
 import customtkinter as ctk
 from AudioTranscriber import AudioTranscriber
@@ -32,7 +33,13 @@ def main():
                           help='Experimental command line argument. Behavior is undefined.')
     cmd_args.add_argument('-k', '--api_key', action='store', default=None,
                           help='API Key for accessing OpenAI APIs. This is an optional parameter.\
-                            \nWithout the API Key only transcription works.')
+                            \nWithout the API Key only transcription works.\
+                            \nThis option will not save the API key anywhere, to persist the API'
+                          ' key use the -sk option.')
+    cmd_args.add_argument('-sk', '--save_api_key', action='store', default=None,
+                          help='Save the API key for accessing OpenAI APIs to override.yaml file.\
+                            \nSubsequent invocations of the program will not require API key on command line.\
+                            \nTo not persist the API key use the -k option.')
     cmd_args.add_argument('-m', '--model', action='store', choices=[
         'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large'],
         default='tiny',
@@ -80,6 +87,16 @@ def main():
     if args.list_devices:
         print('\n\nList all audio drivers and devices on this machine')
         ar.print_detailed_audio_info()
+        return
+
+    if args.save_api_key is not None:
+        yml = configuration.Config()
+        altered_config: dict = {'OpenAI': {'api_key': args.save_api_key}}
+        yml.add_override_value(altered_config)
+        # save file to disk
+        with open(file=yml.config_override_file, mode="w", encoding='utf-8') as file:
+            yaml.dump(altered_config, file, default_flow_style=False)
+        print(f'Saved API Key to {yml.config_override_file}')
         return
 
     # Initiate global variables
