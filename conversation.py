@@ -48,7 +48,7 @@ class Conversation:
         time_spoken: Time at which conversation happened, this is typically reported in local time
         """
         transcript = self.transcript_data[persona]
-        if pop:
+        if pop and len(transcript) > 0:
             transcript.pop()
         transcript.append((f"{persona}: [{text}]\n\n", time_spoken))
         self.last_update = datetime.datetime.now()

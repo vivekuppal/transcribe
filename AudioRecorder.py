@@ -1,7 +1,7 @@
 from datetime import datetime
 from abc import abstractmethod
-import custom_speech_recognition as sr
 import pyaudiowpatch as pyaudio
+import custom_speech_recognition as sr
 import app_logging as al
 import configuration
 

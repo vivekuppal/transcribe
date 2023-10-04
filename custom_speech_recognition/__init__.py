@@ -417,7 +417,8 @@ class Recognizer(AudioSource):
 
             if offset_reached or not offset:
                 elapsed_time += seconds_per_buffer
-                if duration and elapsed_time > duration: break
+                if duration and elapsed_time > duration:
+                    break
 
                 frames.write(buffer)
 
@@ -443,7 +444,8 @@ class Recognizer(AudioSource):
         # adjust energy threshold until a phrase starts
         while True:
             elapsed_time += seconds_per_buffer
-            if elapsed_time > duration: break
+            if elapsed_time > duration:
+                break
             buffer = source.stream.read(source.CHUNK)
             energy = audioop.rms(buffer, source.SAMPLE_WIDTH)  # energy of the audio signal
 
@@ -503,17 +505,33 @@ class Recognizer(AudioSource):
 
     def listen(self, source, timeout=None, phrase_time_limit=None, snowboy_configuration=None):
         """
-        Records a single phrase from ``source`` (an ``AudioSource`` instance) into an ``AudioData`` instance, which it returns.
+        Records a single phrase from ``source`` (an ``AudioSource`` instance) into an ``AudioData``
+        instance, which it returns.
 
-        This is done by waiting until the audio has an energy above ``recognizer_instance.energy_threshold`` (the user has started speaking), and then recording until it encounters ``recognizer_instance.pause_threshold`` seconds of non-speaking or there is no more audio input. The ending silence is not included.
+        This is done by waiting until the audio has an energy above
+        ``recognizer_instance.energy_threshold`` (the user has started speaking), and then
+        recording until it encounters ``recognizer_instance.pause_threshold`` seconds of
+        non-speaking or there is no more audio input. The ending silence is not included.
 
-        The ``timeout`` parameter is the maximum number of seconds that this will wait for a phrase to start before giving up and throwing an ``speech_recognition.WaitTimeoutError`` exception. If ``timeout`` is ``None``, there will be no wait timeout.
+        The ``timeout`` parameter is the maximum number of seconds that this will wait
+        for a phrase to start before giving up and throwing an
+        ``speech_recognition.WaitTimeoutError`` exception. If ``timeout`` is ``None``,
+        there will be no wait timeout.
 
-        The ``phrase_time_limit`` parameter is the maximum number of seconds that this will allow a phrase to continue before stopping and returning the part of the phrase processed before the time limit was reached. The resulting audio will be the phrase cut off at the time limit. If ``phrase_timeout`` is ``None``, there will be no phrase time limit.
+        The ``phrase_time_limit`` parameter is the maximum number of seconds that this will allow a phrase to continue
+        before stopping and returning the part of the phrase processed before the time limit was reached.
+        The resulting audio will be the phrase cut off at the time limit. If ``phrase_timeout`` is ``None``, there will
+        be no phrase time limit.
 
-        The ``snowboy_configuration`` parameter allows integration with `Snowboy <https://snowboy.kitt.ai/>`__, an offline, high-accuracy, power-efficient hotword recognition engine. When used, this function will pause until Snowboy detects a hotword, after which it will unpause. This parameter should either be ``None`` to turn off Snowboy support, or a tuple of the form ``(SNOWBOY_LOCATION, LIST_OF_HOT_WORD_FILES)``, where ``SNOWBOY_LOCATION`` is the path to the Snowboy root directory, and ``LIST_OF_HOT_WORD_FILES`` is a list of paths to Snowboy hotword configuration files (`*.pmdl` or `*.umdl` format).
+        The ``snowboy_configuration`` parameter allows integration with `Snowboy <https://snowboy.kitt.ai/>`__,
+        an offline, high-accuracy, power-efficient hotword recognition engine. When used, this function will pause
+        until Snowboy detects a hotword, after which it will unpause. This parameter should either be ``None`` to turn
+        off Snowboy support, or a tuple of the form ``(SNOWBOY_LOCATION, LIST_OF_HOT_WORD_FILES)``, where
+        ``SNOWBOY_LOCATION`` is the path to the Snowboy root directory, and ``LIST_OF_HOT_WORD_FILES`` is a list of 
+        paths to Snowboy hotword configuration files (`*.pmdl` or `*.umdl` format).
 
-        This operation will always complete within ``timeout + phrase_timeout`` seconds if both are numbers, either by returning the audio data, or by raising a ``speech_recognition.WaitTimeoutError`` exception.
+        This operation will always complete within ``timeout + phrase_timeout`` seconds if both are numbers, either by
+        returning the audio data, or by raising a ``speech_recognition.WaitTimeoutError`` exception.
         """
         assert isinstance(source, AudioSource), "Source must be an audio source"
         assert source.stream is not None, "Audio source must be entered before listening, see documentation for ``AudioSource``; are you using ``source`` outside of a ``with`` statement?"
@@ -543,14 +561,17 @@ class Recognizer(AudioSource):
                         raise WaitTimeoutError("listening timed out while waiting for phrase to start")
 
                     buffer = source.stream.read(source.CHUNK)
-                    if len(buffer) == 0: break  # reached end of the stream
+                    if len(buffer) == 0:
+                        print('Buffer length is zero. Reached end of stream.')
+                        break  # reached end of the stream
                     frames.append(buffer)
                     if len(frames) > non_speaking_buffer_count:  # ensure we only keep the needed amount of non-speaking buffers
                         frames.popleft()
 
                     # detect whether speaking has started on audio input
                     energy = audioop.rms(buffer, source.SAMPLE_WIDTH)  # energy of the audio signal
-                    if energy > self.energy_threshold: break
+                    if energy > self.energy_threshold: 
+                        break
 
                     # dynamically adjust the energy threshold using asymmetric weighted average
                     if self.dynamic_energy_threshold:
@@ -562,7 +583,8 @@ class Recognizer(AudioSource):
                 snowboy_location, snowboy_hot_word_files = snowboy_configuration
                 buffer, delta_time = self.snowboy_wait_for_hot_word(snowboy_location, snowboy_hot_word_files, source, timeout)
                 elapsed_time += delta_time
-                if len(buffer) == 0: break  # reached end of the stream
+                if len(buffer) == 0:
+                    break  # reached end of the stream
                 frames.append(buffer)
 
             # read audio input until the phrase ends
@@ -575,7 +597,9 @@ class Recognizer(AudioSource):
                     break
 
                 buffer = source.stream.read(source.CHUNK)
-                if len(buffer) == 0: break  # reached end of the stream
+                if len(buffer) == 0:
+                    print('Reached end of stream.')
+                    break  # reached end of the stream
                 frames.append(buffer)
                 phrase_count += 1
 
@@ -590,12 +614,14 @@ class Recognizer(AudioSource):
 
             # check how long the detected phrase is, and retry listening if the phrase is too short
             phrase_count -= pause_count  # exclude the buffers for the pause before the phrase
-            if phrase_count >= phrase_buffer_count or len(buffer) == 0: break  # phrase is long enough or we've reached the end of the stream, so stop listening
+            if phrase_count >= phrase_buffer_count or len(buffer) == 0:
+                break  # phrase is long enough or we've reached the end of the stream, so stop listening
 
         # obtain frame data
-        for i in range(pause_count - non_speaking_buffer_count): frames.pop()  # remove extra non-speaking frames at the end
+        for i in range(pause_count - non_speaking_buffer_count):
+            frames.pop()  # remove extra non-speaking frames at the end
         frame_data = b"".join(frames)
-
+        # print(f'listen: Sample Width: {source.SAMPLE_WIDTH}, Sample Rate: {source.SAMPLE_RATE}, datelen: {len(frame_data)}')
         return AudioData(frame_data, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
 
     def listen_in_background(self, source, callback, phrase_time_limit=None):
