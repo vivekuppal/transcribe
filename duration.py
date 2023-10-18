@@ -1,5 +1,10 @@
 import datetime
 import time
+import app_logging as al
+
+
+# pylint: disable=logging-fstring-interpolation
+root_logger = al.get_logger()
 
 
 class Duration:
@@ -31,7 +36,7 @@ class Duration:
         Prints the duration between start and end of an operation
         """
         self.end = datetime.datetime.now()
-        print(f'Duration(dd:hh:ss:ms) of {self.operation_name} {self.end - self.start}')
+        root_logger.info(f'Duration(dd:hh:ss:ms) of {self.operation_name} {self.end - self.start}')
 
 
 if __name__ == "__main__":

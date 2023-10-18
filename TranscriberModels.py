@@ -4,7 +4,7 @@ import openai
 import whisper
 import torch
 import GlobalVars
-
+import pprint
 
 def get_model(use_api: bool, model: str = None):
     if use_api:
@@ -51,14 +51,18 @@ class WhisperTranscriber:
         self.audio_model = whisper.load_model(self.model_filename)
         print(f'[INFO] Whisper using GPU: {str(torch.cuda.is_available())}')
 
-    def get_transcription(self, wav_file_path):
+    def get_transcription(self, wav_file_path) -> dict:
         try:
             result = self.audio_model.transcribe(wav_file_path,
                                                  fp16=torch.cuda.is_available(), language=self.lang)
         except Exception as exception:
             print(exception)
             return ''
-        return result['text'].strip()
+        # print('--------------------------------------------------------------------------------------------')
+        # pprint.pprint(result)
+        # print('--------------------------------------------------------------------------------------------')
+        # return result['text'].strip()
+        return result
 
     def change_lang(self, lang: str):
         self.lang = lang
@@ -85,11 +89,12 @@ class APIWhisperTranscriber:
     def change_lang(self, lang: str):
         self.lang = lang
 
-    def get_transcription(self, wav_file_path):
+    def get_transcription(self, wav_file_path) -> dict:
         try:
             with open(wav_file_path, "rb") as audio_file:
                 result = openai.Audio.transcribe("whisper-1", audio_file)
         except Exception as exception:
             print(exception)
             return ''
-        return result['text'].strip()
+        # return result['text'].strip()
+        return result

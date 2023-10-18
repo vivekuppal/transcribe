@@ -3,9 +3,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 import time
 import subprocess
-import requests
 import yaml
-from requests.exceptions import ConnectionError
 import customtkinter as ctk
 from AudioTranscriber import AudioTranscriber
 from GPTResponder import GPTResponder
@@ -116,6 +114,8 @@ def main():
         print('[INFO] Override default speaker with device specified on command line.')
         global_vars.speaker_audio_recorder.set_device(index=args.speaker_device_index)
 
+    interactions.params(args)
+
     try:
         subprocess.run(["ffmpeg", "-version"],
                        stdout=subprocess.DEVNULL,
@@ -125,14 +125,6 @@ def main():
         print("ERROR: The ffmpeg library is not installed. Please install \
               ffmpeg and try again.")
         return
-
-    query_params = interactions.create_params()
-    try:
-        response = requests.get("http://127.0.0.1:5000/ping", params=query_params)
-        if response.status_code != 200:
-            print(f'Error received: {response}')
-    except ConnectionError:
-        print('[INFO] Operating in Desktop mode')
 
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
     if args.api_key is not None:

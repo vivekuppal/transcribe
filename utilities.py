@@ -1,5 +1,6 @@
 import copy
 
+
 def merge(first: dict, second: dict, path=[]):
     """Recursively merge two dictionaries.
        For keys with different values, values in the second dictionary
