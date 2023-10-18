@@ -33,11 +33,10 @@ class GPTResponder:
         """
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
-            # prompt_api_message = prompts.create_single_turn_prompt_message(transcript)
+            # print(f'{datetime.datetime.now()} - {GPTResponder.generate_response_from_transcript_no_check.__name__}')
             multiturn_prompt_content = self.conversation.get_merged_conversation(
                 length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
             multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
-            # pprint.pprint(f'Prompt api message: {prompt_api_message}')
             # print(f'Multiturn prompt for ChatGPT: {multiturn_prompt_api_message}')
             # usual_response = openai.ChatCompletion.create(
             #        model=self.model,
@@ -47,15 +46,14 @@ class GPTResponder:
             # Multi turn response is only effective when continuous mode is off.
             # In continuous mode, there are far too many responses from LLM,
             # they confuse the LLM if that many responses are replayed back to LLM.
+            # print(f'{datetime.datetime.now()} - Request response')
             multi_turn_response = openai.ChatCompletion.create(
                     model=self.model,
                     messages=multiturn_prompt_api_message,
                     temperature=0.0
             )
+            # print(f'{datetime.datetime.now()} - Got response')
 
-            # print('-------- Single Turn --------')
-            # pprint.pprint(f'message={prompt_api_message}', width=120)
-            # pprint.pprint(f'response={usual_response}', width=120)
             # print('-------- Multi Turn --------')
             # pprint.pprint(f'message={multiturn_prompt_api_message}', width=120)
             # pprint.pprint(f'response={multi_turn_response}', width=120)
@@ -67,9 +65,7 @@ class GPTResponder:
             root_logger.exception(exception)
             return prompts.INITIAL_RESPONSE
 
-        # single_turn_response_content = usual_response.choices[0].message.content
         multi_turn_response_content = multi_turn_response.choices[0].message.content
-        # pprint.pprint(f'Prompt api response: {usual_response}')
         try:
             # The original way of processing the response.
             # It causes issues when there are multiple questions in the transcript.
