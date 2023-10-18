@@ -1,5 +1,6 @@
 from datetime import datetime
 from abc import abstractmethod
+import queue
 import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
 import app_logging as al
@@ -91,13 +92,13 @@ class BaseRecorder:
         self.recorder.energy_threshold = ENERGY_THRESHOLD
         self.recorder.dynamic_energy_threshold = DYNAMIC_ENERGY_THRESHOLD
         # Determines if this device is being used for transcription
-        self.enabled = True
+        self.enabled: bool = True
 
         if source is None:
             raise ValueError("audio source can't be None")
 
         self.source = source
-        self.source_name = source_name
+        self.source_name: str = source_name
         self.config = configuration.Config().data
 
     @abstractmethod
@@ -122,7 +123,7 @@ class BaseRecorder:
             self.recorder.adjust_for_ambient_noise(self.source)
         print(f"[INFO] Completed ambient noise adjustment for {device_name}.")
 
-    def record_into_queue(self, audio_queue):
+    def record_into_queue(self, audio_queue: queue.Queue):
         def record_callback(_, audio: sr.AudioData) -> None:
             if self.enabled:
                 data = audio.get_raw_data()

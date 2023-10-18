@@ -503,7 +503,7 @@ class Recognizer(AudioSource):
 
         return b"".join(frames), elapsed_time
 
-    def listen(self, source, timeout=None, phrase_time_limit=None, snowboy_configuration=None):
+    def listen(self, source, timeout=None, phrase_time_limit=None, snowboy_configuration=None) -> AudioData:
         """
         Records a single phrase from ``source`` (an ``AudioSource`` instance) into an ``AudioData``
         instance, which it returns.
@@ -645,7 +645,8 @@ class Recognizer(AudioSource):
                     except WaitTimeoutError:  # listening timed out, just try again
                         pass
                     else:
-                        if running[0]: callback(self, audio)
+                        if running[0]:
+                            callback(self, audio)
 
         def stopper(wait_for_stop=True):
             running[0] = False
