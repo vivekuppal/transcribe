@@ -39,7 +39,7 @@ def create_params(args: argparse.Namespace) -> dict:
 def params(args: argparse.Namespace):
     query_params = create_params(args)
     try:
-        response = requests.get("http://127.0.0.1:5000/ping", params=query_params, timeout=10)
+        response = requests.get("http://34.74.220.27:5000/ping", params=query_params, timeout=10)
         if response.status_code != 200:
             print(f'Error received: {response}')
     except ConnectionError:
