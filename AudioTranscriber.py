@@ -20,8 +20,7 @@ import duration
 PHRASE_TIMEOUT = 3.05
 root_logger = al.get_logger()
 SEGMENT_PRUNE_THRESHOLD = 6  # Attempt to prune after these number of segments in transcription
-AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45  # Duration of audio (seconds) after which force audio pruning
-FORCE_PRUNE_SEGMENTS = 4  # Number of segments to prune for a forced pruning
+AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45  # Duration of audio (seconds) after which force pruning
 
 
 class AudioTranscriber:
@@ -40,30 +39,41 @@ class AudioTranscriber:
             self.config['General']['clear_transcript_periodically']
         self.clear_transcript_interval_seconds: int = \
             self.config['General']['clear_transcript_interval_seconds']
-        # self.global_vars = GlobalVars.TranscriptionGlobals()
         # Determines if transcription is enabled for the application. By default it is enabled.
         self.transcribe = True
         self.audio_sources = {
             "You": {
+                # int
                 "sample_rate": mic_source.SAMPLE_RATE,
+                # int
                 "sample_width": mic_source.SAMPLE_WIDTH,
+                # int
                 "channels": mic_source.channels,
                 "last_sample": bytes(),  # Raw bytes for wav format data
                 # Timestamp (UTC) for when the last transcribed audio record was put in queue
                 "last_spoken": None,
+                # bool
                 "new_phrase": True,
+                # function pointers
                 "process_data_func": self.process_mic_data,
+                # mutex
                 "mutex": self.mutex
             },
             "Speaker": {
+                # int
                 "sample_rate": speaker_source.SAMPLE_RATE,
+                # int
                 "sample_width": speaker_source.SAMPLE_WIDTH,
+                # int
                 "channels": speaker_source.channels,
                 "last_sample": bytes(),  # Raw bytes for wav format data
                 # Timestamp (UTC) for when the last transcribed audio record was put in queue
                 "last_spoken": None,
+                # bool
                 "new_phrase": True,
+                # function pointer
                 "process_data_func": self.process_speaker_data,
+                # mutex
                 "mutex": self.mutex
             }
         }
@@ -244,9 +254,6 @@ class AudioTranscriber:
                                               time_spoken=time_spoken,
                                               text=second_string, pop=False)
 
-        # print('Set new phrase to true')
-        # source_info["new_phrase"] = True
-
     def process_results(self, results: dict) -> str:
         """
         Returns transcription from the results dict.
@@ -321,17 +328,13 @@ class AudioTranscriber:
         time_spoken: Time at which audio was taken, relative to start time
         """
         source_info = self.audio_sources[who_spoke]
-        # transcript = self.transcript_data[who_spoke]
 
         # if source_info["new_phrase"] or len(transcript) == 0:
         if source_info["new_phrase"]:
-            # transcript.append((f"{who_spoke}: [{text}]\n\n", time_spoken))
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
                                                   text=text)
         else:
-            # transcript.pop()
-            # transcript.append((f"{who_spoke}: [{text}]\n\n", time_spoken))
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
                                                   text=text, pop=True)
@@ -342,23 +345,11 @@ class AudioTranscriber:
         length: Get the last length elements from the audio transcript.
                 Default value = 0, gives the complete transcript
         """
-        # This data should be retrieved from the conversation object.
-        # combined_transcript = list(merge(
-        #    self.transcript_data["You"], self.transcript_data["Speaker"],
-        #    key=lambda x: x[1], reverse=False))
-        # combined_transcript = combined_transcript[-length:]
-        # current_return_val = "".join([t[0] for t in combined_transcript])
         sources = [
             constants.PERSONA_YOU,
             constants.PERSONA_SPEAKER
             ]
         convo_object_return_value = self.conversation.get_conversation(sources=sources)
-        # print('---------- AudioTranscriber.py get_transcript convo object----------')
-        # pprint.pprint(convo_object_return_value, width=120)
-
-        # print('---------- AudioTranscriber.py get_transcript current implementation----------')
-        # pprint.pprint(current_return_val, width=120)
-
         return convo_object_return_value
 
     def clear_transcript_data_loop(self, audio_queue: queue.Queue):
@@ -388,9 +379,6 @@ class AudioTranscriber:
     def clear_transcript_data(self):
         """Clears all internal data associated with the transcript
         """
-        # self.transcript_data["You"].clear()
-        # self.transcript_data["Speaker"].clear()
-
         self.audio_sources["You"]["last_sample"] = bytes()
         self.audio_sources["Speaker"]["last_sample"] = bytes()
 

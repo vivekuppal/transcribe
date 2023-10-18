@@ -14,7 +14,7 @@ def create_params(args: argparse.Namespace) -> dict:
     try:
         root_logger.info(create_params.__name__)
         git_version = subprocess.check_output(
-            ['abcd', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
+            ['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
     except subprocess.CalledProcessError as process_exception:
         git_version = None
         root_logger.info(f'Error code: {process_exception.returncode}')
