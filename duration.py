@@ -21,10 +21,14 @@ class Duration:
         Duration(dd:hh:ss:ms) of Test Operation 0:00:02.000826
     """
 
-    def __init__(self, name: str = 'undefined'):
+    def __init__(self, name: str = 'undefined', 
+                 log: bool = True,
+                 screen: bool = False):
         self.start: datetime.datetime = None
         self.end: datetime.datetime = None
         self.operation_name = name
+        self.log = log
+        self.screen = screen
 
     def __enter__(self):
         """Records the start time of an operation
@@ -36,7 +40,10 @@ class Duration:
         Prints the duration between start and end of an operation
         """
         self.end = datetime.datetime.now()
-        root_logger.info(f'Duration(dd:hh:ss:ms) of {self.operation_name} {self.end - self.start}')
+        if self.log:
+            root_logger.info(f'Duration(dd:hh:ss:ms) of {self.operation_name} {self.end - self.start}')
+        if self.screen:
+            print(f'Duration(dd:hh:ss:ms) of {self.operation_name} {self.end - self.start}')
 
 
 if __name__ == "__main__":

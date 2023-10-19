@@ -16,6 +16,9 @@ import app_logging as al
 import duration
 
 
+# There can be prompts for speech to text aspects as well, that have not been considered as yet.
+# See the prompting section here https://platform.openai.com/docs/guides/speech-to-text/prompting
+
 # pylint: disable=logging-fstring-interpolation
 PHRASE_TIMEOUT = 3.05
 root_logger = al.get_logger()
@@ -99,7 +102,7 @@ class AudioTranscriber:
                 os.close(file_descritor)
                 source_info["process_data_func"](source_info["last_sample"], path)
                 if self.transcribe:
-                    with duration.Duration('Transcription (Speech to Text)') as measure:
+                    with duration.Duration('Transcription (Speech to Text)'):
                         root_logger.info(f'{datetime.datetime.now()} - Begin transcription')
                         results = self.audio_model.get_transcription(path)
                         text = self.process_results(results)
