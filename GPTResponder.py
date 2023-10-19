@@ -38,11 +38,6 @@ class GPTResponder:
                 length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
             multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
             # print(f'Multiturn prompt for ChatGPT: {multiturn_prompt_api_message}')
-            # usual_response = openai.ChatCompletion.create(
-            #        model=self.model,
-            #        messages=prompt_api_message,
-            #        temperature=0.0
-            # )
             # Multi turn response is only effective when continuous mode is off.
             # In continuous mode, there are far too many responses from LLM,
             # they confuse the LLM if that many responses are replayed back to LLM.
@@ -52,6 +47,7 @@ class GPTResponder:
                     messages=multiturn_prompt_api_message,
                     temperature=0.0
             )
+            # pprint.pprint(multi_turn_response)
             # print(f'{datetime.datetime.now()} - Got response')
 
             # print('-------- Multi Turn --------')
@@ -69,8 +65,7 @@ class GPTResponder:
         try:
             # The original way of processing the response.
             # It causes issues when there are multiple questions in the transcript.
-            # response = single_turn_response_content.split('[')[1].split(']')[0]
-            # processed_single_turn_response = self.process_response(single_turn_response_content)
+            # pprint.pprint(f'Multi turn response: {multi_turn_response_content}')
             processed_multi_turn_response = self.process_response(multi_turn_response_content)
             self.update_conversation(persona=constants.PERSONA_ASSISTANT,
                                      response=processed_multi_turn_response)

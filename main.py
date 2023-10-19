@@ -1,3 +1,5 @@
+import sys
+import os
 import threading
 import argparse
 from argparse import RawTextHelpFormatter
@@ -16,12 +18,72 @@ import GlobalVars
 import configuration
 import conversation
 import app_logging
+import utilities
+import duration
+
+def save_api_key(args: argparse.Namespace):
+    """Save the API key specified on command line to parameters file"""
+    yml = configuration.Config()
+    altered_config: dict = {'OpenAI': {'api_key': args.save_api_key}}
+    yml.add_override_value(altered_config)
+    # save file to disk
+    with open(file=yml.config_override_file, mode="w", encoding='utf-8') as file:
+        yaml.dump(altered_config, file, default_flow_style=False)
+    print(f'Saved API Key to {yml.config_override_file}')
 
 
-def main():
-    """Primary method to run transcribe
-    """
-    # Set up all arguments
+def initiate_app_threads(global_vars: GlobalVars, 
+                         model: TranscriberModels.APIWhisperTranscriber | TranscriberModels.WhisperTranscriber):
+    """Start all threads required for the application"""
+    # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
+    global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
+                                               global_vars.speaker_audio_recorder.source,
+                                               model,
+                                               convo=global_vars.convo)
+    global_vars.audio_player = AudioPlayer(convo=global_vars.convo)
+    transcribe_thread = threading.Thread(target=global_vars.transcriber.transcribe_audio_queue,
+                                         name='Transcribe',
+                                         args=(global_vars.audio_queue,))
+    transcribe_thread.daemon = True
+    transcribe_thread.start()
+
+    global_vars.responder = GPTResponder(convo=global_vars.convo)
+
+    respond_thread = threading.Thread(target=global_vars.responder.respond_to_transcriber,
+                                      name='Respond',
+                                      args=(global_vars.transcriber,))
+    respond_thread.daemon = True
+    respond_thread.start()
+
+    audio_response_thread = threading.Thread(target=global_vars.audio_player.play_audio_loop,
+                                             name='AudioResponse')
+    audio_response_thread.daemon = True
+    audio_response_thread.start()
+
+    clear_transcript_thread = threading.Thread(
+        target=global_vars.transcriber.clear_transcript_data_loop,
+        name='ClearTranscript',
+        args=(global_vars.audio_queue,))
+
+    clear_transcript_thread.daemon = True
+    clear_transcript_thread.start()
+
+
+def start_ffmpeg():
+    """Start ffmpeg library"""
+    try:
+        subprocess.run(["ffmpeg", "-version"],
+                       stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL,
+                       check=True)
+    except FileNotFoundError:
+        print("ERROR: The ffmpeg library is not installed. Please install \
+              ffmpeg and try again.")
+        sys.exit(1)
+
+
+def create_args() -> argparse.Namespace:
+    """Set up Command line arguments for application"""
     cmd_args = argparse.ArgumentParser(description='Command Line Arguments for Transcribe',
                                        formatter_class=RawTextHelpFormatter)
     cmd_args.add_argument('-a', '--api', action='store_true',
@@ -38,6 +100,13 @@ def main():
                           help='Save the API key for accessing OpenAI APIs to override.yaml file.\
                             \nSubsequent invocations of the program will not require API key on command line.\
                             \nTo not persist the API key use the -k option.')
+    cmd_args.add_argument('-t', '--transcribe', action='store', default=None,
+                          help='Transcribe the given audio file to generate text.\
+                            \nThis option respects the -m (model) option.\
+                            \nOutput is produced in transcription.txt or file specified using the -o option.')
+    cmd_args.add_argument('-o', '--output_file', action='store', default=None,
+                          help='Generate output in this file.\
+                            \nThis option is valid only for the -t (transcribe) option.')
     cmd_args.add_argument('-m', '--model', action='store', choices=[
         'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large'],
         default='tiny',
@@ -78,24 +147,70 @@ def main():
     cmd_args.add_argument('-ds', '--disable_speaker', action='store_true',
                           help='Enable transcription from Speaker')
     args = cmd_args.parse_args()
+    return args
 
-    # Initiate config
-    config = configuration.Config().data
+
+def handle_args_batch_tasks(args: argparse.Namespace):
+    """Handle batch tasks, after which the program will exit."""
+    interactions.params(args)
 
     if args.list_devices:
         print('\n\nList all audio drivers and devices on this machine')
         ar.print_detailed_audio_info()
-        return
+        sys.exit(0)
 
     if args.save_api_key is not None:
-        yml = configuration.Config()
-        altered_config: dict = {'OpenAI': {'api_key': args.save_api_key}}
-        yml.add_override_value(altered_config)
-        # save file to disk
-        with open(file=yml.config_override_file, mode="w", encoding='utf-8') as file:
-            yaml.dump(altered_config, file, default_flow_style=False)
-        print(f'Saved API Key to {yml.config_override_file}')
-        return
+        save_api_key(args)
+        sys.exit(0)
+
+    if args.transcribe is not None:
+        with duration.Duration(name='Transcription', log=False, screen=True):
+            output_file = args.output_file if args.output_file is not None else "transcription.txt"
+            model = TranscriberModels.get_model(args.api, model=args.model)
+            print(f'Converting the audio file {args.transcribe} to text.')
+            print(f'{args.transcribe} file size '
+                  f'{utilities.naturalsize(os.path.getsize(args.transcribe))}.')
+            print(f'Text output will be produced in {output_file}.')
+            results = model.get_transcription(args.transcribe)
+            if results is not None and len(results) > 0:
+                with open(output_file, encoding='utf-8', mode='w') as f:
+                    for segment in results['segments']:
+                        f.write(f"{segment['start']} - {segment['end']}s: {segment['text']}\n")
+
+                print('Complete!')
+            else:
+                print('Error during Transcription!')
+                print('Please ensure {args.transcribe} is an audio file.')
+                sys.exit(1)
+        sys.exit(0)
+
+
+def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict):
+    """Handle all application configuration using the command line args"""
+    if args.mic_device_index is not None:
+        print('[INFO] Override default microphone with device specified on command line.')
+        global_vars.user_audio_recorder.set_device(index=args.mic_device_index)
+
+    if args.speaker_device_index is not None:
+        print('[INFO] Override default speaker with device specified on command line.')
+        global_vars.speaker_audio_recorder.set_device(index=args.speaker_device_index)
+
+    # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
+    if args.api_key is not None:
+        api_key: bool = args.api_key
+    else:
+        api_key: bool = config['OpenAI']['api_key']
+    global_vars.api_key = api_key
+
+
+def main():
+    """Primary method to run transcribe
+    """
+    args = create_args()
+
+    # Initiate config
+    config = configuration.Config().data
+    handle_args_batch_tasks(args)
 
     # Initiate global variables
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
@@ -106,33 +221,9 @@ def main():
     # Initiate logging
     log_listener = app_logging.initiate_log(config=config)
 
-    if args.mic_device_index is not None:
-        print('[INFO] Override default microphone with device specified on command line.')
-        global_vars.user_audio_recorder.set_device(index=args.mic_device_index)
+    handle_args(args, global_vars, config)
 
-    if args.speaker_device_index is not None:
-        print('[INFO] Override default speaker with device specified on command line.')
-        global_vars.speaker_audio_recorder.set_device(index=args.speaker_device_index)
-
-    interactions.params(args)
-
-    try:
-        subprocess.run(["ffmpeg", "-version"],
-                       stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL,
-                       check=True)
-    except FileNotFoundError:
-        print("ERROR: The ffmpeg library is not installed. Please install \
-              ffmpeg and try again.")
-        return
-
-    # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
-    if args.api_key is not None:
-        api_key: bool = args.api_key
-    else:
-        api_key: bool = config['OpenAI']['api_key']
-
-    global_vars.api_key = api_key
+    start_ffmpeg()
 
     model = TranscriberModels.get_model(args.api, model=args.model)
 
@@ -166,36 +257,7 @@ def main():
         print('[INFO] Disabling Microphone')
         ui_cb.enable_disable_microphone(global_vars.editmenu)
 
-    # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
-    global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
-                                               global_vars.speaker_audio_recorder.source,
-                                               model,
-                                               convo=global_vars.convo)
-    global_vars.audio_player = AudioPlayer(convo=global_vars.convo)
-    transcribe_thread = threading.Thread(target=global_vars.transcriber.transcribe_audio_queue,
-                                         name='Transcribe',
-                                         args=(global_vars.audio_queue,))
-    transcribe_thread.daemon = True
-    transcribe_thread.start()
-
-    global_vars.responder = GPTResponder(convo=global_vars.convo)
-
-    respond_thread = threading.Thread(target=global_vars.responder.respond_to_transcriber,
-                                      name='Respond',
-                                      args=(global_vars.transcriber,))
-    respond_thread.daemon = True
-    respond_thread.start()
-
-    audio_response_thread = threading.Thread(target=global_vars.audio_player.play_audio_loop,
-                                             name='AudioResponse')
-    audio_response_thread.daemon = True
-    audio_response_thread.start()
-
-    clear_transcript_thread = threading.Thread(target=global_vars.transcriber.clear_transcript_data_loop,
-                                               name='ClearTranscript',
-                                               args=(global_vars.audio_queue,))
-    clear_transcript_thread.daemon = True
-    clear_transcript_thread.start()
+    initiate_app_threads(global_vars=global_vars, model=model)
 
     print("READY")
 
