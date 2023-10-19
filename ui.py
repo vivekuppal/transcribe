@@ -66,11 +66,7 @@ class ui_callbacks:
            Update the Response UI with the response
         """
         # print(f'{datetime.datetime.now()}: Get the response from LLM now')
-        transcript_string = self.global_vars.transcriber.get_transcript(
-            length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
-
-        response_string = self.global_vars.responder.generate_response_from_transcript_no_check(
-            transcript_string)
+        response_string = self.global_vars.responder.generate_response_from_transcript_no_check()
         self.global_vars.response_textbox.configure(state="normal")
         write_in_textbox(self.global_vars.response_textbox, response_string)
         self.global_vars.response_textbox.configure(state="disabled")

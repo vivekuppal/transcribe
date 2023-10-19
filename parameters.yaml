@@ -45,6 +45,10 @@ OpenAI:
 
 General:
   log_file: 'Transcribe.log'
+  # These two parameters are used together.
+  # Save LLM response to file if save_llm_response_to_file is Yes
+  save_llm_response_to_file: Yes # Possible values are Yes, No
+  llm_response_file: 'response.txt'
 # Attempt transcription of the sound file after these number of seconds
   transcript_audio_duration_seconds: 3
 # These two parameters are used together.

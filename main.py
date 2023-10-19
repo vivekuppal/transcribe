@@ -34,6 +34,7 @@ def save_api_key(args: argparse.Namespace):
 
 
 def initiate_app_threads(global_vars: GlobalVars,
+                         config: dict,
                          model: TranscriberModels.APIWhisperTranscriber | TranscriberModels.WhisperTranscriber):
     """Start all threads required for the application"""
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
@@ -48,7 +49,11 @@ def initiate_app_threads(global_vars: GlobalVars,
     transcribe_thread.daemon = True
     transcribe_thread.start()
 
-    global_vars.responder = GPTResponder(convo=global_vars.convo)
+    save_llm_response_to_file: bool = config['General']['save_llm_response_to_file']
+    llm_response_file = config['General']['llm_response_file']
+    global_vars.responder = GPTResponder(convo=global_vars.convo,
+                                         save_to_file=save_llm_response_to_file,
+                                         file_name=llm_response_file)
 
     respond_thread = threading.Thread(target=global_vars.responder.respond_to_transcriber,
                                       name='Respond',
@@ -260,7 +265,7 @@ def main():
         print('[INFO] Disabling Microphone')
         ui_cb.enable_disable_microphone(global_vars.editmenu)
 
-    initiate_app_threads(global_vars=global_vars, model=model)
+    initiate_app_threads(global_vars=global_vars, config=config, model=model)
 
     print("READY")
 

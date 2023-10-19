@@ -16,7 +16,9 @@ root_logger = al.get_logger()
 class GPTResponder:
     """Handles all interactions with openAI LLM / ChatGPT
     """
-    def __init__(self, convo: conversation.Conversation):
+    def __init__(self, convo: conversation.Conversation,
+                 save_to_file: bool = False,
+                 file_name: str = 'response.txt'):
         root_logger.info(GPTResponder.__name__)
         self.response = prompts.INITIAL_RESPONSE
         self.response_interval = 2
@@ -25,8 +27,10 @@ class GPTResponder:
         self.conversation = convo
         self.config = configuration.Config().data
         self.model = self.config['OpenAI']['ai_model']
+        self.save_response_to_file = save_to_file
+        self.response_file = file_name
 
-    def generate_response_from_transcript_no_check(self, transcript) -> str:
+    def generate_response_from_transcript_no_check(self) -> str:
         """Ping LLM to get a suggested response right away.
            Gets a response even if the continuous suggestion option is disabled.
            Updates the conversation object with the response from LLM.
@@ -63,17 +67,20 @@ class GPTResponder:
 
         multi_turn_response_content = multi_turn_response.choices[0].message.content
         try:
-            # The original way of processing the response.
-            # It causes issues when there are multiple questions in the transcript.
             # pprint.pprint(f'Multi turn response: {multi_turn_response_content}')
             processed_multi_turn_response = self.process_response(multi_turn_response_content)
             self.update_conversation(persona=constants.PERSONA_ASSISTANT,
                                      response=processed_multi_turn_response)
-            return processed_multi_turn_response
         except Exception as exception:
             root_logger.error('Error parsing response from LLM.')
             root_logger.exception(exception)
             return prompts.INITIAL_RESPONSE
+
+        if self.save_response_to_file:
+            with open(file=self.response_file, mode="a", encoding='utf-8') as f:
+                f.write(f'{datetime.datetime.now()} - {processed_multi_turn_response}\n')
+
+        return processed_multi_turn_response
 
     def process_response(self, input_str: str) -> str:
         """ Extract relevant data from LLM response.
@@ -97,7 +104,7 @@ class GPTResponder:
         if self.gl_vars.freeze_state[0]:
             return ''
 
-        return self.generate_response_from_transcript_no_check(transcript)
+        return self.generate_response_from_transcript_no_check()
 
     def update_conversation(self, response, persona):
         root_logger.info(GPTResponder.update_conversation.__name__)
