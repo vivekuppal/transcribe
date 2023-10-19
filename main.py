@@ -21,18 +21,19 @@ import app_logging
 import utilities
 import duration
 
+
 def save_api_key(args: argparse.Namespace):
-    """Save the API key specified on command line to parameters file"""
+    """Save the API key specified on command line to override parameters file"""
     yml = configuration.Config()
     altered_config: dict = {'OpenAI': {'api_key': args.save_api_key}}
     yml.add_override_value(altered_config)
-    # save file to disk
+    # save override file to disk
     with open(file=yml.config_override_file, mode="w", encoding='utf-8') as file:
         yaml.dump(altered_config, file, default_flow_style=False)
     print(f'Saved API Key to {yml.config_override_file}')
 
 
-def initiate_app_threads(global_vars: GlobalVars, 
+def initiate_app_threads(global_vars: GlobalVars,
                          model: TranscriberModels.APIWhisperTranscriber | TranscriberModels.WhisperTranscriber):
     """Start all threads required for the application"""
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
@@ -55,11 +56,13 @@ def initiate_app_threads(global_vars: GlobalVars,
     respond_thread.daemon = True
     respond_thread.start()
 
+    # Convert response from text to sound and play to user
     audio_response_thread = threading.Thread(target=global_vars.audio_player.play_audio_loop,
                                              name='AudioResponse')
     audio_response_thread.daemon = True
     audio_response_thread.start()
 
+    # Periodically clear transcription data, if so configured
     clear_transcript_thread = threading.Thread(
         target=global_vars.transcriber.clear_transcript_data_loop,
         name='ClearTranscript',
