@@ -1,7 +1,9 @@
 
 # 👂🏻️ Transcribe ✍🏼️
 
-Transcribe is a live transcription tool that provides real-time transcripts for the microphone input (You) and the audio output (Speaker). It optionally generates a suggested response using OpenAI's GPT-3.5 for the user to say based on the live transcription of the conversation.
+Transcribe is a live transcription tool that provides real-time transcripts for the microphone input (You) and the audio output (Speaker). It optionally generates a suggested response using OpenAI's GPT API for the user to say based on the live transcription of the conversation.
+
+![Screenshot](assets\Screenshot.png)
 
 ## 🆕 Getting Started 🥇
 
@@ -9,12 +11,12 @@ Follow below steps to run transcribe on your local machine.
 
 ### 📋 Prerequisites
 
-- Python >=3.8.0
+- Python >=3.11.0
 - (Optional) An OpenAI API key that can access OpenAI API (set up a paid account OpenAI account)
 - Windows OS (Not tested on others)
-- FFmpeg 
+- FFmpeg
 
-If FFmpeg is not installed in your system, follow the steps below to install it.
+Follow the below steps to install FFmpeg on your system.
 
 First, install Chocolatey, a package manager for Windows. Open PowerShell as Administrator and run the following command:
 ```
@@ -129,6 +131,8 @@ Run ```generate_binary.bat``` file by replacing paths at the top of the file to 
 
 ## Software Installation
 
+Note that installation files are generated every few weeks. So these file will almost always trail the latst codebase available in the repo.
+
 1. Download the zip file from
 ```
 https://drive.google.com/file/d/1Iy32YjDXK7Bga7amOUTA4Gx9VEoibPi-/view?usp=sharing
@@ -151,14 +155,12 @@ https://drive.google.com/file/d/1Iy32YjDXK7Bga7amOUTA4Gx9VEoibPi-/view?usp=shari
 
 While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality that you should be aware of:
 
-**Whisper Model**: If the --api flag is not used, we utilize the 'tiny' version of the Whisper ASR model, due to its low resource consumption and fast response times. However, this model may not be as accurate as the larger models in transcribing certain types of speech, including accents or uncommon words.
+**Whisper Model**: If the --api flag is not used, we utilize the 'tiny' version of the Whisper ASR model, due to its low resource consumption and fast response times. However, this model may not be as accurate as the larger models in transcribing certain types of speech, including accents or uncommon words. Other larger models and their multi lingual versions can be downloaded and used for transcription by following instructions using transcribe command line arguments. Larger models provide better quality transcription and they have higher memory requirements.
 
 **OpenAI Account**: If a paid OpenAI account with a valid Open API Key is not used, the command window displays the following error message repeatedly, though the application behvaior is not impacted in any way.
 ```
 Incorrect API key provided: API_KEY. You can find your API key at https://platform.openai.com/account/api-keys.
 ```
-
-**Models**: The default install of transcribe has the tiny(72 Mb) model for english. Other larger models and their multi lingual versions can be downloaded and used for transcription by following instructions using transcribe command line arguments. Larger models provide better quality transcription and they have higher memory requirements.
 
 **Language**: If you are not using the --api flag the Whisper model used in Transcribe is set to English. As a result, it may not accurately transcribe non-English languages or dialects. 
 
@@ -176,10 +178,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - List all active devices on the system
 - Allow user to get response from LLM on demand, even when it is disabled at application level
 - Transcribe audio of any video
+- Transcribe audio of any audio file as a batch job
 - Preserve all conversation text in UI
 - Allow saving conversation to file
+- Allow saving GPT responses to file
+- Clear out active conversation at a defined interval
 
 
 ## 🤝 Contributing 🤝
 
-Contributions are welcome! Feel free to open issues or submit pull requests to improve Transcribe.
+Contributions are welcome! Open issues or submit pull requests to improve Transcribe.

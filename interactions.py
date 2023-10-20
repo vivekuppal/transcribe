@@ -1,4 +1,5 @@
 import argparse
+import pprint
 import subprocess
 import socket
 import requests
@@ -19,11 +20,11 @@ def create_params(args: argparse.Namespace) -> dict:
         git_version = None
         root_logger.info(f'Error code: {process_exception.returncode}')
         root_logger.info(f'Error message: {process_exception.output}')
-    except FileNotFoundError as fnf_excption:
+    except FileNotFoundError as fnf_exception:
         git_version = None
-        root_logger.info(f'errno: {fnf_excption.errno}')
-        root_logger.info(f'winerror: {fnf_excption.winerror}')
-        root_logger.info(f'File Not Found: {fnf_excption.filename}')
+        root_logger.info(f'errno: {fnf_exception.errno}')
+        root_logger.info(f'winerror: {fnf_exception.winerror}')
+        root_logger.info(f'File Not Found: {fnf_exception.filename}')
 
     hostname = socket.gethostname()
     host_ip = socket.gethostbyname(hostname)
@@ -41,6 +42,7 @@ def params(args: argparse.Namespace):
     try:
         response = requests.get("http://34.74.220.77:5000/ping", params=query_params, timeout=10)
         if response.status_code != 200:
-            print(f'Error received: {response}')
-    except ConnectionError:
+            root_logger.info(f'Error received: {response}')
+    except ConnectionError as ce:
+        pprint.pprint(ce)
         print('[INFO] Operating in Desktop mode')
