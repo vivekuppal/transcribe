@@ -3,7 +3,7 @@
 
 Transcribe is a live transcription tool that provides real-time transcripts for the microphone input (You) and the audio output (Speaker). It optionally generates a suggested response using OpenAI's GPT API for the user to say based on the live transcription of the conversation.
 
-![Screenshot](assets\Screenshot.png)
+![Screenshot](assets/Screenshot.png)
 
 ## 🆕 Getting Started 🥇
 
