@@ -16,7 +16,7 @@ Follow below steps to run transcribe on your local machine.
 - Windows OS (Not tested on others)
 - FFmpeg
 
-Follow the below steps to install FFmpeg on your system.
+Steps to install FFmpeg on your system.
 
 First, install Chocolatey, a package manager for Windows. Open PowerShell as Administrator and run the following command:
 ```
@@ -79,17 +79,18 @@ The --api flag will use the whisper api for transcriptions. This significantly e
 
 ## Features ##
 
-[Response Customization](./docs/ResponseCustomization.md)
-[Speech Mode](./docs/SpeechMode.md)
-[Audio Customization](./docs/AudioCustomization.md)
-[Save Content](./docs/SaveContent.md)
-[Model Selection](./docs/ModelSelection.md)
-[Batch Operations](./docs/BatchOperations.md)
+- [Response Customization](./docs/ResponseCustomization.md)
+- [Speech Mode](./docs/SpeechMode.md)
+- [Audio Customization](./docs/AudioCustomization.md)
+- [Save Content](./docs/SaveContent.md)
+- [Model Selection](./docs/ModelSelection.md)
+- [Batch Operations](./docs/BatchOperations.md)
+- [Application Configuration](./docs/AppConfig.md)
 
 ## Developer Guide ##
 [Developer Guide](./docs/ResponseCustomization.md)
 
-### ⚡️ Limitations ⚡️
+## ⚡️ Limitations ⚡️
 
 While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality that you should be aware of:
 
