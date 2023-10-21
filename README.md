@@ -5,6 +5,18 @@ Transcribe is a live transcription tool that provides real-time transcripts for 
 
 ![Screenshot](assets/Screenshot.png)
 
+## Features ##
+- [Response Customization](./docs/ResponseCustomization.md)
+- [Audio Customization](./docs/AudioCustomization.md)
+- [Speech Mode](./docs/SpeechMode.md)
+- [Save Content](./docs/SaveContent.md)
+- [Model Selection](./docs/ModelSelection.md)
+- [Batch Operations](./docs/BatchOperations.md)
+- [Application Configuration](./docs/AppConfig.md)
+
+## Developer Guide ##
+[Developer Guide](./docs/ResponseCustomization.md)
+
 ## 🆕 Getting Started 🥇
 
 Follow below steps to run transcribe on your local machine.
@@ -26,7 +38,7 @@ Once Chocolatey is installed, install FFmpeg by running the following command in
 ```
 choco install ffmpeg
 ```
-Please run these commands in a PowerShell window with administrator privileges. For any issues during the installation, visit the official [Chocolatey](https://chocolatey.org/) and [FFmpeg](https://ffmpeg.org/) websites for troubleshooting.
+Run these commands in a PowerShell window with administrator privileges. For any issues during the installation, visit the official [Chocolatey](https://chocolatey.org/) and [FFmpeg](https://ffmpeg.org/) websites for troubleshooting.
 
 ### 🔧 Code Installation
 
@@ -67,7 +79,7 @@ Run the main script:
 python main.py
 ```
 
-For a better and faster version that also works with most languages, use:
+For a better version that also works with many other languages, use:
 
 ```
 python main.py --api
@@ -75,24 +87,11 @@ python main.py --api
 
 Upon initiation, Transcribe will begin transcribing microphone input and speaker output in real-time, optionally generating a suggested response based on the conversation. It might take a few seconds for the system to warm up before the transcription becomes real-time.
 
-The --api flag will use the whisper api for transcriptions. This significantly enhances transcription speed and accuracy, and it works in most languages (rather than just English without the flag). However, keep in mind, using the Whisper API consumes OpenAI credits than using the local model. This increased cost is attributed to the advanced features and capabilities that the Whisper API provides. Despite the additional expense, the substantial improvements in speed and transcription accuracy may make it a worthwhile for your use case.
-
-## Features ##
-
-- [Response Customization](./docs/ResponseCustomization.md)
-- [Speech Mode](./docs/SpeechMode.md)
-- [Audio Customization](./docs/AudioCustomization.md)
-- [Save Content](./docs/SaveContent.md)
-- [Model Selection](./docs/ModelSelection.md)
-- [Batch Operations](./docs/BatchOperations.md)
-- [Application Configuration](./docs/AppConfig.md)
-
-## Developer Guide ##
-[Developer Guide](./docs/ResponseCustomization.md)
+The --api flag will use the online whisper api for transcriptions. This significantly enhances transcription  accuracy, and it works in many languages (rather than just English without the flag). However, keep in mind, using the Whisper API consumes OpenAI credits than using the local model. This increased cost is attributed to the advanced features and capabilities that the Whisper API provides. Despite the additional expense, the substantial improvements in speed and transcription accuracy may make it a worthwhile for your use case.
 
 ## ⚡️ Limitations ⚡️
 
-While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality that you should be aware of:
+While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality to be aware of:
 
 **Whisper Model**: If the --api flag is not used, we utilize the 'tiny' version of the Whisper ASR model, due to its low resource consumption and fast response times. However, this model may not be as accurate as the larger models in transcribing certain types of speech, including accents or uncommon words. Other larger models and their multi lingual versions can be downloaded and used for transcription by following instructions using transcribe command line arguments. Larger models provide better quality transcription and they have higher memory requirements.
 

@@ -151,9 +151,9 @@ def create_args() -> argparse.Namespace:
                           help='Device index of the speaker for capturing sound.'
                           '\nDevice index can be obtained using the -l option.')
     cmd_args.add_argument('-dm', '--disable_mic', action='store_true',
-                          help='Enable transcription from Microphone')
+                          help='Disable transcription from Microphone')
     cmd_args.add_argument('-ds', '--disable_speaker', action='store_true',
-                          help='Enable transcription from Speaker')
+                          help='Disable transcription from Speaker')
     args = cmd_args.parse_args()
     return args
 
