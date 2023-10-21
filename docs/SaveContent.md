@@ -1,4 +1,4 @@
-## Save, Update Content
+# Save, Update Content #
 
 Transcribe provides options to save various content using different means.
 - Save all text in Transcription window

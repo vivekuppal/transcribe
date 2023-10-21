@@ -4,7 +4,8 @@ import openai
 import whisper
 import torch
 import GlobalVars
-import pprint
+# import pprint
+
 
 def get_model(use_api: bool, model: str = None):
     if use_api:

@@ -108,10 +108,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ➕ Enhancements from base repository ➕
 - Do not need Open AI key, paid Open AI account to use the complete functionality
-- Allow user to get response from LLM on demand, even when it is disabled at application level
-
-
-- Clear out active conversation at a defined interval
 
 
 ## 🤝 Contributing 🤝

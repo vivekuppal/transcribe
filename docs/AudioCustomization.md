@@ -1,4 +1,4 @@
-## Audio Customization
+# Audio Customization #
 
 ### Enable Disable Mic, Speaker Transcription
 Transcribe allows users to selectively enable / disable microphone input or speaker output for Transcription.
