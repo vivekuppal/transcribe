@@ -1,6 +1,6 @@
 # Developer Guide #
 
-## 🎬 Testing Transcribe Code changes
+## 🎬 Testing Code changes
 
 Unit Tests
 
@@ -12,7 +12,7 @@ python -m unittest discover --verbose .\tests
 
 Install Winrar from https://www.win-rar.com/.
 
-Required for generating binaries from python code. If you do not intend to generate binaries and are only writing python code, you do not need to install winrar. 
+Winrar is required for generating binaries from python code. If you do not intend to generate binaries and are only writing python code, you do not need to install winrar. 
 
 In the file ```generate_binary.bat``` replace these paths at the top of the file to paths specific to your machine. 
 
@@ -37,13 +37,13 @@ https://drive.google.com/file/d/1Iy32YjDXK7Bga7amOUTA4Gx9VEoibPi-/view?usp=shari
 ```
 2. Unzip the files in a folder.
 
-3. (Optional) Replace the Open API key in `parameters.yaml` file in the transcribe directory:
+3. (Optional) Replace the Open API key in `parameters.yaml` or `override.yaml` file in the transcribe directory:
 
    Replace the Open API key in `parameters.yaml` file manually. Open in a text editor and alter the line:
 
       ```
         api_key: 'API_KEY'
       ```
-      Replace "API KEY" with the actual OpenAI API key. Save the file.
+      Replace "API_KEY" with the actual OpenAI API key. Save the file.
 
 4. Execute the file `transcribe\transcribe.exe\transcribe.exe`

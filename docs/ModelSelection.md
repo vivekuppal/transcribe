@@ -8,9 +8,9 @@ Transcribe architecture has two primary components that require model selection
 Speech to text aspect can be done locally or online using the Whisper API. The online option requires the use of `-api` option on command line.
 
 ### Local Speech to Text
-Local Speech to Text requires model selection. By default the `tiny` model for english is used. This model is part of the downloaded source code. There are many more models available, though they vary by size and computing power required.
+Local Speech to Text requires model selection. By default the `tiny` model for English is used. This model is part of the downloaded source code. There are many more models available, though they vary by size and computing power required.
 
-See the help of transcribe for further details on the models.
+See the help of transcribe `python main.py -h` for further details on local transcription models.
 
 ```python
   -m {tiny,base,small,medium,large-v1,large-v2,large}, --model {tiny,base,small,medium,large-v1,large-v2,large}
@@ -42,5 +42,6 @@ The quality, cost and speed of responses from LLM depends on the model chosen. O
     ai_model: gpt-3.5-turbo-0301
 ```
 
-The model can be changed by altering the config in parameters.yaml file. 
+The model can be changed by altering the config in `parameters.yaml` or `override.yaml` file. 
+
 Details of all models for OpenAI are available at `https://platform.openai.com/docs/models/continuous-model-upgrades`
