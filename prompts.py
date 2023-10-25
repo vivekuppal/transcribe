@@ -37,7 +37,7 @@ def create_single_turn_prompt_message(transcript: str) -> list:
     return prompt_api_message
 
 
-def create_multiturn_prompt(convo: list) -> list:
+def create_multiturn_prompt(convo: list[tuple]) -> list[dict[str, str]]:
     """Create message list to be sent to LLM.
        Creates multiple items in the list in the format
             [
@@ -57,8 +57,9 @@ def create_multiturn_prompt(convo: list) -> list:
        The single message contains everything including system prompt and user input
     """
     ret_value = []
-
+    # Each convo item is a tuple
     for convo_item in convo:
+        # print(convo_item)
         # Get Persona, text
         convo_persona = convo_item[0][0:convo_item[0].find(':')]
         # print(convo_persona)
