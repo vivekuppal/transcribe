@@ -39,7 +39,7 @@ class GPTResponder:
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
             # print(f'{datetime.datetime.now()} - {GPTResponder.generate_response_from_transcript_no_check.__name__}')
-            with duration.Duration(name='OpenAI Chat Completion', screen=True):
+            with duration.Duration(name='OpenAI Chat Completion', screen=False):
                 multiturn_prompt_content = self.conversation.get_merged_conversation(
                     length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
                 multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
