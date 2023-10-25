@@ -90,7 +90,7 @@ class AudioTranscriber:
         root_logger.info(AudioTranscriber.transcribe_audio_queue)
         while True:
             who_spoke, data, time_spoken = audio_queue.get()
-            root_logger.info(f'Current time: {datetime.datetime.utcnow()} - Time Spoken: '
+            root_logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} - Time Spoken: '
                              f'{time_spoken} by : {who_spoke}, queue_backlog - '
                              f'{audio_queue.qsize()}')
             self.update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
@@ -116,8 +116,8 @@ class AudioTranscriber:
                                                     time_spoken=time_spoken,
                                                     file_path=path)
 
-                        root_logger.info(f'{datetime.datetime.now()} = Transcription text: {text}')
-                        root_logger.info(f'{datetime.datetime.now()} - End transcription')
+                        root_logger.info(f'{datetime.datetime.utcnow()} = Transcription text: {text}')
+                        root_logger.info(f'{datetime.datetime.utcnow()} - End transcription')
 
             except Exception as exception:
                 print(exception)
@@ -352,7 +352,7 @@ class AudioTranscriber:
             constants.PERSONA_YOU,
             constants.PERSONA_SPEAKER
             ]
-        convo_object_return_value = self.conversation.get_conversation(sources=sources)
+        convo_object_return_value = self.conversation.get_conversation(sources=sources, length=length)
         return convo_object_return_value
 
     def clear_transcript_data_loop(self, audio_queue: queue.Queue):

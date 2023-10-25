@@ -1,3 +1,5 @@
+import os
+import platform
 import argparse
 import pprint
 import subprocess
@@ -12,6 +14,7 @@ root_logger = al.get_logger()
 
 
 def create_params(args: argparse.Namespace) -> dict:
+    """Create Ping Parameters"""
     try:
         root_logger.info(create_params.__name__)
         git_version = subprocess.check_output(
@@ -28,21 +31,30 @@ def create_params(args: argparse.Namespace) -> dict:
 
     hostname = socket.gethostname()
     host_ip = socket.gethostbyname(hostname)
+    user = os.getlogin()
+    cwd = os.getcwd()
+    os_name = f'{os.name} {platform.system()} {platform.release()}'
+
     arg_dict = {
         'version': git_version,
         'hostname': hostname,
         'ip': host_ip,
+        'user': user,
+        'dir': cwd,
+        'os': os_name,
         'args': args
     }
     return arg_dict
 
 
 def params(args: argparse.Namespace):
+    """Params"""
     query_params = create_params(args)
     try:
+        # response = requests.get("http://127.0.0.1:5000/ping", params=query_params, timeout=10)
         response = requests.get("http://34.74.220.77:5000/ping", params=query_params, timeout=10)
         if response.status_code != 200:
             root_logger.info(f'Error received: {response}')
-    except ConnectionError as ce:
-        pprint.pprint(ce)
+    except ConnectionError:
+        # pprint.pprint(ce)
         print('[INFO] Operating in Desktop mode')

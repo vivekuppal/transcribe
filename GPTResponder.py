@@ -1,6 +1,6 @@
 import datetime
 import time
-# import pprint
+import pprint
 import openai
 import GlobalVars
 import prompts
@@ -8,6 +8,7 @@ import conversation
 import constants
 import configuration
 import app_logging as al
+import duration
 
 
 root_logger = al.get_logger()
@@ -38,26 +39,24 @@ class GPTResponder:
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
             # print(f'{datetime.datetime.now()} - {GPTResponder.generate_response_from_transcript_no_check.__name__}')
-            multiturn_prompt_content = self.conversation.get_merged_conversation(
-                length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
-            multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
-            # print(f'Multiturn prompt for ChatGPT: {multiturn_prompt_api_message}')
-            # Multi turn response is only effective when continuous mode is off.
-            # In continuous mode, there are far too many responses from LLM,
-            # they confuse the LLM if that many responses are replayed back to LLM.
-            # print(f'{datetime.datetime.now()} - Request response')
-            multi_turn_response = openai.ChatCompletion.create(
-                    model=self.model,
-                    messages=multiturn_prompt_api_message,
-                    temperature=0.0
-            )
-            # pprint.pprint(multi_turn_response)
-            # print(f'{datetime.datetime.now()} - Got response')
-
-            # print('-------- Multi Turn --------')
-            # pprint.pprint(f'message={multiturn_prompt_api_message}', width=120)
-            # pprint.pprint(f'response={multi_turn_response}', width=120)
-            # print('-------- -------- -------- -------- -------- --------')
+            with duration.Duration(name='OpenAI Chat Completion', screen=True):
+                multiturn_prompt_content = self.conversation.get_merged_conversation(
+                    length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
+                multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
+                # print(f'Multiturn prompt for ChatGPT: {multiturn_prompt_api_message}')
+                # Multi turn response is only effective when continuous mode is off.
+                # In continuous mode, there are far too many responses from LLM,
+                # they confuse the LLM if that many responses are replayed back to LLM.
+                # print(f'{datetime.datetime.now()} - Request response')
+                # self._pretty_print_openai_request(multiturn_prompt_api_message)
+                multi_turn_response = openai.ChatCompletion.create(
+                        model=self.model,
+                        messages=multiturn_prompt_api_message,
+                        temperature=0.0,
+                        request_timeout=10
+                )
+                # pprint.pprint(f'openai response: {multi_turn_response}', width=120)
+                # print(f'{datetime.datetime.now()} - Got response')
 
         except Exception as exception:
             print(exception)
@@ -112,7 +111,7 @@ class GPTResponder:
             self.response = response
             self.conversation.update_conversation(persona=persona,
                                                   text=response,
-                                                  time_spoken=datetime.datetime.now())
+                                                  time_spoken=datetime.datetime.utcnow())
 
     def respond_to_transcriber(self, transcriber):
         """Thread method to continously update the transcript
@@ -123,7 +122,6 @@ class GPTResponder:
                 start_time = time.time()
 
                 transcriber.transcript_changed_event.clear()
-                response = ''
 
                 # Do processing only if LLM transcription is enabled
                 if not self.gl_vars.freeze_state[0]:
@@ -145,6 +143,17 @@ class GPTResponder:
         """
         root_logger.info(GPTResponder.update_response_interval.__name__)
         self.response_interval = interval
+
+    def _pretty_print_openai_request(self, message: str):
+        """Format the openAI request in a nice print format"""
+        print('[')
+        for item in message:
+            print('  {')
+            print(f'    Role: {item["role"]}')
+            print(f'    Content: {item["content"]}')
+            print('  }')
+
+        print(']')
 
 
 if __name__ == "__main__":

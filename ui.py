@@ -13,7 +13,7 @@ import constants
 
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
-last_transcript_ui_update_time: datetime.datetime = datetime.datetime.now()
+last_transcript_ui_update_time: datetime.datetime = datetime.datetime.utcnow()
 global_vars_module: GlobalVars.TranscriptionGlobals = None
 
 
@@ -120,7 +120,7 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
         transcript_string = transcriber.get_transcript()
         write_in_textbox(textbox, transcript_string)
         textbox.see("end")
-        last_transcript_ui_update_time = datetime.datetime.now()
+        last_transcript_ui_update_time = datetime.datetime.utcnow()
 
     textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,
                   update_transcript_ui, transcriber, textbox)
