@@ -3,6 +3,22 @@
 """Library for performing speech recognition, with support for several
    engines and APIs, online and offline."""
 
+# recognize_sphinx
+# recognize_google
+# recognize_google_cloud
+# recognize_wit                     https://wit.ai/
+# recognize_azure
+# recognize_bing
+# recognize_lex Amazon Lex API
+# recognize_houndify                https://www.houndify.com/signup
+# recognize_amazon                  https://aws.amazon.com/transcribe/
+# recognize_assemblyai              https://www.assemblyai.com/
+# recognize_ibm                     https://console.ng.bluemix.net/registration
+# recognize_tensorflow              local
+# recognize_whisper                 local
+# recognize_vosk                    local
+# recognize_api                     https://api.api.ai/v1/query - deprecated
+
 import io
 import os
 import tempfile
