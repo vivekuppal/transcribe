@@ -2,11 +2,16 @@ import datetime
 import json
 from deepgram import Deepgram
 
-
+# Create Deepgram API key at https://console.deepgram.com/signup?jump=keys
 DEEPGRAM_API_KEY = 'API_KEY'
+# Path to a .wav file for transcription
 PATH_TO_FILE = 'PATH_TO_WAV_FILE'
 
 
+# On some windows machines using the deepgram API gives an error with SSL certificates.
+# urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1002)>
+# This has to do with expiration of ISRG root cert that somehow windows is not able to resolve correctly.
+# This issue needs to have a resolutionn
 def main():
     # Initializes the Deepgram SDK
     deepgram = Deepgram(DEEPGRAM_API_KEY)
