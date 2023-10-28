@@ -5,6 +5,11 @@ Transcribe is a live audio, video transcription tool that provides real-time tra
 
 ![Screenshot](assets/Screenshot.png)
 
+## ![Alt text](assets/on-demand-service-48.png) On Demand Features ![Alt text](assets/on-demand-service-48.png) ##
+We build on demand features for a fee.
+
+Create an issue in the repo to request on demand features.
+
 ## Features ##
 - [Response Customization](./docs/ResponseCustomization.md)
 - [Audio Customization](./docs/AudioCustomization.md)
@@ -30,7 +35,7 @@ Follow below steps to run transcribe on your local machine.
 
 Steps to install FFmpeg on your system.
 
-First, install Chocolatey, a package manager for Windows. 
+First, install Chocolatey, a package manager for Windows.
 
 Open PowerShell as Administrator and run the following command:
 ```
