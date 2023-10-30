@@ -1,4 +1,4 @@
-import queue
+import threading
 import datetime
 import pyperclip
 import tkinter as tk
@@ -65,12 +65,25 @@ class ui_callbacks:
         """Get response from LLM right away
            Update the Response UI with the response
         """
-        # print(f'{datetime.datetime.now()}: Get the response from LLM now')
+        if self.global_vars.update_response_now:
+            # We are already in the middle of getting a response
+            return
+        # We need a separate thread to ensure UI is responsive as responses are
+        # streamed back. Without the thread UI appears stuck as we stream the
+        # responses back
+        response_ui_thread = threading.Thread(target=self.update_response_ui_now_threaded,
+                                              name='UpdateResponseUINow')
+        response_ui_thread.daemon = True
+        response_ui_thread.start()
+
+    def update_response_ui_now_threaded(self):
+        self.global_vars.update_response_now = True
         response_string = self.global_vars.responder.generate_response_from_transcript_no_check()
+        self.global_vars.update_response_now = False
         self.global_vars.response_textbox.configure(state="normal")
         write_in_textbox(self.global_vars.response_textbox, response_string)
         self.global_vars.response_textbox.configure(state="disabled")
-        # print(f'{datetime.datetime.now()}: Complete response from LLM now')
+        self.global_vars.response_textbox.see("end")
 
     def update_response_ui_and_read_now(self):
         """Get response from LLM right away
@@ -136,12 +149,20 @@ def update_response_ui(responder: GPTResponder,
           textbox: textbox to be updated
           text: updated text
     """
-    if not freeze_state[0]:
+    global global_vars_module
+
+    if global_vars_module is None:
+        global_vars_module = GlobalVars.TranscriptionGlobals()
+
+    # not freeze_state[0] --> This is continous response mode from LLM
+    # global_vars_module.update_response_now --> Get Response now from LLM
+    if not freeze_state[0] or global_vars_module.update_response_now:
         response = responder.response
 
         textbox.configure(state="normal")
         write_in_textbox(textbox, response)
         textbox.configure(state="disabled")
+        textbox.see("end")
 
         update_interval = int(update_interval_slider.get())
         responder.update_response_interval(update_interval)

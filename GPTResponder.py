@@ -21,6 +21,7 @@ class GPTResponder:
                  save_to_file: bool = False,
                  file_name: str = 'response.txt'):
         root_logger.info(GPTResponder.__name__)
+        # This var is used by UI to populate the response textbox
         self.response = prompts.INITIAL_RESPONSE
         self.response_interval = 2
         self.gl_vars = GlobalVars.TranscriptionGlobals()
@@ -53,10 +54,25 @@ class GPTResponder:
                         model=self.model,
                         messages=multiturn_prompt_api_message,
                         temperature=0.0,
-                        request_timeout=10
+                        request_timeout=10,
+                        stream=True
                 )
                 # pprint.pprint(f'openai response: {multi_turn_response}', width=120)
                 # print(f'{datetime.datetime.now()} - Got response')
+
+                # Update conversation with an empty response. This response will be updated
+                # by subsequent updates from the streaming response
+                self.update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                         response="", pop=False)
+                collected_messages = ""
+                for chunk in multi_turn_response:
+                    chunk_message = chunk['choices'][0]['delta']  # extract the message
+                    if "content" in chunk_message:
+                        message_text = chunk_message['content']
+                        collected_messages += message_text
+                        # print(f"{message_text}", end="")
+                        self.update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                                 response=collected_messages, pop=True)
 
         except Exception as exception:
             print(exception)
@@ -64,16 +80,8 @@ class GPTResponder:
             root_logger.exception(exception)
             return prompts.INITIAL_RESPONSE
 
-        multi_turn_response_content = multi_turn_response.choices[0].message.content
-        try:
-            # pprint.pprint(f'Multi turn response: {multi_turn_response_content}')
-            processed_multi_turn_response = self.process_response(multi_turn_response_content)
-            self.update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                     response=processed_multi_turn_response)
-        except Exception as exception:
-            root_logger.error('Error parsing response from LLM.')
-            root_logger.exception(exception)
-            return prompts.INITIAL_RESPONSE
+        # print(f'Multi_turn_response: {multi_turn_response}')
+        processed_multi_turn_response = collected_messages
 
         if self.save_response_to_file:
             with open(file=self.response_file, mode="a", encoding='utf-8') as f:
@@ -96,7 +104,7 @@ class GPTResponder:
 
         return response
 
-    def generate_response_from_transcript(self, transcript):
+    def generate_response_from_transcript(self):
         """Ping OpenAI LLM model to get response from the Assistant
         """
         root_logger.info(GPTResponder.generate_response_from_transcript.__name__)
@@ -105,13 +113,14 @@ class GPTResponder:
 
         return self.generate_response_from_transcript_no_check()
 
-    def update_conversation(self, response, persona):
+    def update_conversation(self, response, persona, pop=False):
         root_logger.info(GPTResponder.update_conversation.__name__)
         if response != '':
             self.response = response
             self.conversation.update_conversation(persona=persona,
                                                   text=response,
-                                                  time_spoken=datetime.datetime.utcnow())
+                                                  time_spoken=datetime.datetime.utcnow(),
+                                                  pop=pop)
 
     def respond_to_transcriber(self, transcriber):
         """Thread method to continously update the transcript
@@ -125,9 +134,7 @@ class GPTResponder:
 
                 # Do processing only if LLM transcription is enabled
                 if not self.gl_vars.freeze_state[0]:
-                    transcript_string = transcriber.get_transcript(
-                        length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
-                    self.generate_response_from_transcript(transcript_string)
+                    self.generate_response_from_transcript()
 
                 end_time = time.time()  # Measure end time
                 execution_time = end_time - start_time  # Calculate time to execute the function
