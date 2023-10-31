@@ -48,6 +48,9 @@ class Conversation:
         time_spoken: Time at which conversation happened, this is typically reported in local time
         """
         transcript = self.transcript_data[persona]
+        # if (persona.lower() == 'assistant'):
+        #     print(f'Assistant Transcript length to begin with: {len(transcript)}')
+        #     print(f'append: {text}')
 
         # For persona you, we populate one item from parameters.yaml.
         # Hence do not delete the first item for persona == You
@@ -60,6 +63,8 @@ class Conversation:
             transcript.pop()
 
         transcript.append((f"{persona}: [{text}]\n\n", time_spoken))
+        # if (persona.lower() == 'assistant'):
+        #    print(f'Assistant Transcript length after completion: {len(transcript)}')
         self.last_update = datetime.datetime.utcnow()
 
     def get_conversation(self,
@@ -99,6 +104,7 @@ class Conversation:
         sorted_transcript = sorted_transcript[-length:]
         sorted_transcript.insert(0, self.transcript_data[constants.PERSONA_YOU][0])
         sorted_transcript.insert(0, self.transcript_data[constants.PERSONA_SYSTEM][0])
+        # print(f'{datetime.datetime.now()}: Sorted transcript')
         # self._pretty_print_transcript(sorted_transcript)
 
         return sorted_transcript
