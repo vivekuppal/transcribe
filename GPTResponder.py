@@ -44,10 +44,9 @@ class GPTResponder:
                 multiturn_prompt_content = self.conversation.get_merged_conversation(
                     length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
                 multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
-                # print(f'Multiturn prompt for ChatGPT: {multiturn_prompt_api_message}')
-                # Multi turn response is only effective when continuous mode is off.
-                # In continuous mode, there are far too many responses from LLM,
-                # they confuse the LLM if that many responses are replayed back to LLM.
+                # Multi turn response is very effective when continuous mode is off.
+                # In continuous mode, there are far too many responses from LLM.
+                # They can confuse the LLM if that many responses are replayed back to LLM.
                 # print(f'{datetime.datetime.now()} - Request response')
                 # self._pretty_print_openai_request(multiturn_prompt_api_message)
                 multi_turn_response = openai.ChatCompletion.create(
@@ -62,8 +61,8 @@ class GPTResponder:
 
                 # Update conversation with an empty response. This response will be updated
                 # by subsequent updates from the streaming response
-                self.update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                         response="", pop=False)
+                self._update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                          response="  ", pop=False)
                 collected_messages = ""
                 for chunk in multi_turn_response:
                     chunk_message = chunk['choices'][0]['delta']  # extract the message
@@ -71,8 +70,8 @@ class GPTResponder:
                         message_text = chunk_message['content']
                         collected_messages += message_text
                         # print(f"{message_text}", end="")
-                        self.update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                                 response=collected_messages, pop=True)
+                        self._update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                                  response=collected_messages, pop=True)
 
         except Exception as exception:
             print(exception)
@@ -80,7 +79,6 @@ class GPTResponder:
             root_logger.exception(exception)
             return prompts.INITIAL_RESPONSE
 
-        # print(f'Multi_turn_response: {multi_turn_response}')
         processed_multi_turn_response = collected_messages
 
         if self.save_response_to_file:
@@ -113,8 +111,9 @@ class GPTResponder:
 
         return self.generate_response_from_transcript_no_check()
 
-    def update_conversation(self, response, persona, pop=False):
-        root_logger.info(GPTResponder.update_conversation.__name__)
+    def _update_conversation(self, response, persona, pop=False):
+        """Update the internaal conversation state"""
+        root_logger.info(GPTResponder._update_conversation.__name__)
         if response != '':
             self.response = response
             self.conversation.update_conversation(persona=persona,
