@@ -74,6 +74,7 @@ class GPTResponder:
                                                   response=collected_messages, pop=True)
 
         except Exception as exception:
+            print('Error when attempting to get a response from LLM.')
             print(exception)
             root_logger.error('Error when attempting to get a response from LLM.')
             root_logger.exception(exception)

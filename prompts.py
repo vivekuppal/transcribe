@@ -1,40 +1,7 @@
 # import datetime
 # import pprint
-import configuration
 
 INITIAL_RESPONSE = '👋 Welcome to Transcribe 🤝'
-
-
-def create_prompt(transcript):
-    config = configuration.Config().data
-    preamble = config["OpenAI"]["default_prompt_preamble"]
-    epilogue = config["OpenAI"]["default_prompt_epilogue"]
-    return f'{preamble} \
- \
-{transcript}.\
-{epilogue}'
-
-
-def create_single_turn_prompt_message(transcript: str) -> list:
-    """Create message list to be sent to LLM.
-       Creates a single item in the list in the format
-            [{
-                role: system
-                content: <Prompt Message>
-            }]
-       The single message contains everything including system prompt and user input
-    """
-    config = configuration.Config().data
-    response_lang = config["OpenAI"]["response_lang"]
-    preamble = config["OpenAI"]["default_prompt_preamble"]
-    epilogue = config["OpenAI"]["default_prompt_epilogue"]
-    message = f'{preamble} \
- \
-{transcript}.\
-{epilogue} Respond exclusively in {response_lang}.'
-
-    prompt_api_message = [{"role": "system", "content": message}]
-    return prompt_api_message
 
 
 def create_multiturn_prompt(convo: list[tuple]) -> list[dict[str, str]]:

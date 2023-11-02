@@ -57,6 +57,7 @@ class WhisperTranscriber:
             result = self.audio_model.transcribe(wav_file_path,
                                                  fp16=torch.cuda.is_available(), language=self.lang)
         except Exception as exception:
+            print('Encountered error in get_transcription')
             print(exception)
             return ''
         # print('--------------------------------------------------------------------------------------------')
