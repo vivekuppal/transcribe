@@ -41,6 +41,8 @@ class GPTResponder:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
             # print(f'{datetime.datetime.now()} - {GPTResponder.generate_response_from_transcript_no_check.__name__}')
             with duration.Duration(name='OpenAI Chat Completion', screen=False):
+                timeout: int = self.config['OpenAI']['request_timeout_seconds']
+                temperature: float = self.config['OpenAI']['temperature']
                 multiturn_prompt_content = self.conversation.get_merged_conversation(
                     length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
                 multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
@@ -52,8 +54,8 @@ class GPTResponder:
                 multi_turn_response = openai.ChatCompletion.create(
                         model=self.model,
                         messages=multiturn_prompt_api_message,
-                        temperature=0.0,
-                        request_timeout=10,
+                        temperature=temperature,
+                        request_timeout=timeout,
                         stream=True
                 )
                 # pprint.pprint(f'openai response: {multi_turn_response}', width=120)
@@ -74,6 +76,7 @@ class GPTResponder:
                                                   response=collected_messages, pop=True)
 
         except Exception as exception:
+            print('Error when attempting to get a response from LLM.')
             print(exception)
             root_logger.error('Error when attempting to get a response from LLM.')
             root_logger.exception(exception)
