@@ -14,6 +14,12 @@ OpenAI:
 # https://platform.openai.com/docs/guides/speech-to-text/supported-languages
   response_lang: English
 
+# Request timeout for any requests made to openAI API
+  request_timeout_seconds: 10
+
+# Temperature parameter for OpenAI chat completion API
+  temperature: 0.0
+
 # These are used for single turn responses only. These will go away at some point of time
   default_prompt_preamble: "You are a casual pal, genuinely interested in the conversation at hand. A poor transcription of conversation is given below."
   default_prompt_epilogue: "Please respond, to the conversation in detail. Confidently give a straightforward response to the speaker, even if you don't understand them. Give your response in square brackets. DO NOT ask to repeat, and DO NOT ask for clarification. Aavoid asking questions as much as possible. Just answer the speaker directly."
