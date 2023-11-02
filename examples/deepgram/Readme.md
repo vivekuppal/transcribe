@@ -1,5 +1,7 @@
 ## Usage ##
 
+Sample program for Deeepgram Speech to Text API
+
 Requirements
 - Python 3.11 or higher
 - Create a Deepgram API key at https://console.deepgram.com/signup?jump=keys
@@ -17,11 +19,11 @@ PATH_TO_FILE = '<PATH_TO_WAV_FILE>'
 python stt.py
 ```
 
-
-
 ## Troubleshooting (Windows Only) ##
 
-### Windows Specific SSL Error ###
+### SSL Certificate Validation Error (Windows only) ###
+On windows SSL Certificate validation error is observed on some systems.
+
 ```
 [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1002)
 ```
@@ -33,20 +35,22 @@ Remove the certificate `DST Root CA X3` from these certificate stores on windows
     Current User -> Intermediate Certification Authorities -> Certificates
 	Local Computer -> Trusted Root Certificate Authorities -> Certificates
 ```
+It is possible this certificate exists in some other stores as well.
 
 ### Are you impacted by this problem ###
 
-Execute the file `test.py` in this directory.
-If you are impacted by this issue, it will print details of the certificate.
+Execute the file `test_cert_issue.py` in this directory.
+If the machine is potentially impacted by this issue, details of the certificate will be shown on the screen.
 
-If you are impacted by this issue, you will see the below output.
+If the machine is not impacted by this issue, below output will be displayed.
 ```
  C:\deep>python test.py
 Determining if you are potentially impacted by the expired DST certificate.
 The problematic certificate is not in the certificate stores.
 ```
 
-Using the Deepgram API on windows can be a significant challenge because of SSL errors.
+## Details ##
+Some windows machines display SSL error when using the Deepgram API on windows.
 
 The sample code below produces SSL errors 
 
@@ -71,7 +75,7 @@ def main():
 main()
 ```
 
-SSL Error Produced by this code
+SSL Error Produced by above code
 ```
 [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1002)
 Traceback (most recent call last):
@@ -141,3 +145,10 @@ Traceback (most recent call last):
     raise URLError(err)
 urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate has expired (_ssl.c:1002)>
 ```
+The primary issue is related to the expiration of DST Root CA X3. See the details of this issue at https://letsencrypt.org/docs/dst-root-ca-x3-expiration-september-2021/ . 
+
+Deepgram API URL which caused the error in this case - https://api.deepgram.com/v1/listen?punctuate=true . 
+
+The remediation is to remove the `DST Root CA X3` certificate from all certificate stores where it exists.
+
+![Screenshot](./DSTRootCert.png)
