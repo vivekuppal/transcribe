@@ -41,7 +41,8 @@ def initiate_app_threads(global_vars: GlobalVars,
     global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
                                                global_vars.speaker_audio_recorder.source,
                                                model,
-                                               convo=global_vars.convo)
+                                               convo=global_vars.convo,
+                                               config=config)
     global_vars.audio_player = AudioPlayer(convo=global_vars.convo)
     transcribe_thread = threading.Thread(target=global_vars.transcriber.transcribe_audio_queue,
                                          name='Transcribe',

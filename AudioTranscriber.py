@@ -9,7 +9,6 @@ import wave
 import tempfile
 import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
-import configuration
 import conversation
 import constants
 import app_logging as al
@@ -27,7 +26,9 @@ AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45  # Duration of audio (seconds) after w
 
 
 class AudioTranscriber:
-    def __init__(self, mic_source, speaker_source, model, convo: conversation.Conversation):
+    def __init__(self, mic_source, speaker_source, model,
+                 convo: conversation.Conversation,
+                 config: dict):
         root_logger.info(AudioTranscriber.__name__)
         # Transcript_data should be replaced with the conversation object.
         # We do not need to store transcription in 2 different places.
@@ -37,7 +38,7 @@ class AudioTranscriber:
         # Same mutex is used for all audio sources. In case locking becomes an issue, can consider
         # using separate mutex for each audio source
         self.mutex = threading.Lock()
-        self.config = configuration.Config().data
+        self.config = config
         self.clear_transcript_periodically: bool = \
             self.config['General']['clear_transcript_periodically']
         self.clear_transcript_interval_seconds: int = \
