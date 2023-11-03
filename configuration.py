@@ -72,6 +72,3 @@ class Config(Singleton.Singleton):
         """Name of the yaml file with default configuration"""
         return self._default_config_filename
 
-    def get_data(self) -> dict:
-        """Get all configuration data read from yaml file"""
-        return self._default_data

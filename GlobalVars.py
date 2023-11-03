@@ -24,11 +24,11 @@ class TranscriptionGlobals(Singleton.Singleton):
     transcriber: AudioTranscriber = None
     # Global for responses from openAI API
     responder = None
-    # Global for determining whether to seek responses from openAI API
-    freeze_state: list = None
     freeze_button: ctk.CTkButton = None
     # Update_response_now is true when we are waiting for a one time immediate response to query
     update_response_now: bool = False
+    # Read response in voice
+    read_response: bool = False
     editmenu: tk.Menu = None
     api_key: str = None
     filemenu: tk.Menu = None

@@ -2,11 +2,9 @@ import datetime
 import time
 # import pprint
 import openai
-import GlobalVars
 import prompts
 import conversation
 import constants
-import configuration
 import app_logging as al
 import duration
 
@@ -17,17 +15,21 @@ root_logger = al.get_logger()
 class GPTResponder:
     """Handles all interactions with openAI LLM / ChatGPT
     """
-    def __init__(self, convo: conversation.Conversation,
+    # By default we do not ping LLM to get data
+    enabled: bool = False
+
+    def __init__(self,
+                 config: dict,
+                 convo: conversation.Conversation,
                  save_to_file: bool = False,
                  file_name: str = 'response.txt'):
         root_logger.info(GPTResponder.__name__)
         # This var is used by UI to populate the response textbox
         self.response = prompts.INITIAL_RESPONSE
         self.response_interval = 2
-        self.gl_vars = GlobalVars.TranscriptionGlobals()
-        openai.api_key = self.gl_vars.api_key
         self.conversation = convo
-        self.config = configuration.Config().data
+        self.config = config
+        openai.api_key = self.config['OpenAI']['api_key']
         self.model = self.config['OpenAI']['ai_model']
         self.save_response_to_file = save_to_file
         self.response_file = file_name
@@ -109,7 +111,8 @@ class GPTResponder:
         """Ping OpenAI LLM model to get response from the Assistant
         """
         root_logger.info(GPTResponder.generate_response_from_transcript.__name__)
-        if self.gl_vars.freeze_state[0]:
+
+        if not self.enabled:
             return ''
 
         return self.generate_response_from_transcript_no_check()
@@ -135,7 +138,7 @@ class GPTResponder:
                 transcriber.transcript_changed_event.clear()
 
                 # Do processing only if LLM transcription is enabled
-                if not self.gl_vars.freeze_state[0]:
+                if self.enabled:
                     self.generate_response_from_transcript()
 
                 end_time = time.time()  # Measure end time

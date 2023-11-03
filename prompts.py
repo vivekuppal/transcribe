@@ -1,4 +1,3 @@
-# import datetime
 # import pprint
 
 INITIAL_RESPONSE = '👋 Welcome to Transcribe 🤝'
