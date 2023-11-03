@@ -10,11 +10,11 @@ import customtkinter as ctk
 from AudioTranscriber import AudioTranscriber
 from GPTResponder import GPTResponder
 import AudioRecorder as ar
-from audio_player import AudioPlayer
 import TranscriberModels
 import interactions
 import ui
 import GlobalVars
+from audio_player import AudioPlayer
 import configuration
 import conversation
 import app_logging
@@ -51,9 +51,11 @@ def initiate_app_threads(global_vars: GlobalVars,
 
     save_llm_response_to_file: bool = config['General']['save_llm_response_to_file']
     llm_response_file = config['General']['llm_response_file']
-    global_vars.responder = GPTResponder(convo=global_vars.convo,
+    global_vars.responder = GPTResponder(config=config,
+                                         convo=global_vars.convo,
                                          save_to_file=save_llm_response_to_file,
                                          file_name=llm_response_file)
+    global_vars.responder.enabled = False
 
     respond_thread = threading.Thread(target=global_vars.responder.respond_to_transcriber,
                                       name='Respond',
@@ -253,7 +255,7 @@ def main():
     time.sleep(2)
 
     global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
-    global_vars.freeze_state = [True]
+
     global_vars.convo = conversation.Conversation()
 
     # disable speaker/microphone on startup
@@ -285,8 +287,7 @@ def main():
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,
-                          update_interval_slider_label, update_interval_slider,
-                          global_vars.freeze_state)
+                          update_interval_slider_label, update_interval_slider)
 
     root.mainloop()
     log_listener.stop()

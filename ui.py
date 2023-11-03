@@ -46,9 +46,9 @@ class ui_callbacks:
     def freeze_unfreeze(self):
         """Respond to start / stop of seeking responses from openAI API"""
         root_logger.info(ui_callbacks.freeze_unfreeze.__name__)
-        self.global_vars.freeze_state[0] = not self.global_vars.freeze_state[0]  # Invert the state
+        self.global_vars.responder.enabled = not self.global_vars.responder.enabled # Invert the state
         self.global_vars.freeze_button.configure(
-            text="Suggest Responses Continuously" if self.global_vars.freeze_state[0] else "Do Not Suggest Responses Continuously"
+            text="Suggest Responses Continuously" if not self.global_vars.responder.enabled else "Do Not Suggest Responses Continuously"
             )
 
     # to enable/disable speaker/microphone when args are given or button is pressed
@@ -144,8 +144,7 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
 def update_response_ui(responder: GPTResponder,
                        textbox: ctk.CTkTextbox,
                        update_interval_slider_label: ctk.CTkLabel,
-                       update_interval_slider: ctk.CTkSlider,
-                       freeze_state):
+                       update_interval_slider: ctk.CTkSlider):
     """Update the text of response textbox with the given text
         Args:
           textbox: textbox to be updated
@@ -156,9 +155,9 @@ def update_response_ui(responder: GPTResponder,
     if global_vars_module is None:
         global_vars_module = GlobalVars.TranscriptionGlobals()
 
-    # not freeze_state[0] --> This is continous response mode from LLM
+    # global_vars_module.responder.enabled --> This is continous response mode from LLM
     # global_vars_module.update_response_now --> Get Response now from LLM
-    if not freeze_state[0] or global_vars_module.update_response_now:
+    if global_vars_module.responder.enabled or global_vars_module.update_response_now:
         response = responder.response
 
         textbox.configure(state="normal")
@@ -172,8 +171,7 @@ def update_response_ui(responder: GPTResponder,
                                                f'{update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
-                  update_interval_slider_label, update_interval_slider,
-                  freeze_state)
+                  update_interval_slider_label, update_interval_slider)
 
 
 def create_ui_components(root):
