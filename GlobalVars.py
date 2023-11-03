@@ -29,6 +29,8 @@ class TranscriptionGlobals(Singleton.Singleton):
     freeze_button: ctk.CTkButton = None
     # Update_response_now is true when we are waiting for a one time immediate response to query
     update_response_now: bool = False
+    # Read response in voice
+    read_response: bool = False
     editmenu: tk.Menu = None
     api_key: str = None
     filemenu: tk.Menu = None

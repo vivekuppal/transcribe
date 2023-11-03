@@ -11,6 +11,7 @@ import gtts
 import app_logging as al
 import conversation
 import constants
+import GlobalVars
 
 
 root_logger = al.get_logger()
@@ -19,11 +20,13 @@ root_logger = al.get_logger()
 class AudioPlayer:
     """Play text to audio
     """
+
     def __init__(self, convo: conversation):
         root_logger.info(AudioPlayer.__name__)
         self.speech_text_available = threading.Event()
         self.conversation = convo
         self.temp_dir = tempfile.gettempdir()
+        self.global_vars = GlobalVars.TranscriptionGlobals()
 
     def play_audio(self, speech: str):
         """Play text to audio.
@@ -48,7 +51,7 @@ class AudioPlayer:
         """Play text to audio based on signaling of event
         """
         while True:
-            if self.speech_text_available.is_set():
+            if self.speech_text_available.is_set() and self.global_vars.read_response:
                 self.speech_text_available.clear()
                 speech = self.conversation.get_conversation(
                     sources=[constants.PERSONA_ASSISTANT], length=1)
@@ -61,4 +64,5 @@ class AudioPlayer:
                 # Remove Square brackets
                 final_speech = final_speech[1:-1]
                 self.play_audio(speech=final_speech)
+                self.global_vars.read_response = False
             time.sleep(0.1)

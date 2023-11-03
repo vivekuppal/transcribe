@@ -1,11 +1,12 @@
 import threading
+import time
 import datetime
-import pyperclip
 import tkinter as tk
+import pyperclip
+import customtkinter as ctk
 import AudioTranscriber
 import prompts
 from language import LANGUAGES_DICT
-import customtkinter as ctk
 import GlobalVars
 import GPTResponder
 import app_logging as al
@@ -80,6 +81,9 @@ class ui_callbacks:
         self.global_vars.update_response_now = True
         response_string = self.global_vars.responder.generate_response_from_transcript_no_check()
         self.global_vars.update_response_now = False
+        # Set event to play the recording audio if required
+        if self.global_vars.read_response:
+            self.global_vars.audio_player.speech_text_available.set()
         self.global_vars.response_textbox.configure(state="normal")
         write_in_textbox(self.global_vars.response_textbox, response_string)
         self.global_vars.response_textbox.configure(state="disabled")
@@ -90,10 +94,8 @@ class ui_callbacks:
         Update the Response UI with the response
         Read the response
         """
+        self.global_vars.read_response = True
         self.update_response_ui_now()
-
-        # Set event to play the recording audio
-        self.global_vars.audio_player.speech_text_available.set()
 
     def set_transcript_state(self):
         """Enables, disables transcription.

@@ -152,3 +152,5 @@ Deepgram API URL which caused the error in this case - https://api.deepgram.com/
 The remediation is to remove the `DST Root CA X3` certificate from all certificate stores where it exists.
 
 ![Screenshot](./DSTRootCert.png)
+
+There are certain solutions on the web related to certifi, certifi-win-32, pip-system-certs. I tried those solutions but they did not help in this case.
