@@ -30,7 +30,8 @@ class TranscriptionGlobals(Singleton.Singleton):
     # Read response in voice
     read_response: bool = False
     editmenu: tk.Menu = None
-    api_key: str = None
+    openai_api_key: str = None
+    deepgram_api_key: str = None
     filemenu: tk.Menu = None
     response_textbox: ctk.CTkTextbox = None
 
@@ -47,7 +48,7 @@ class TranscriptionGlobals(Singleton.Singleton):
             self.user_audio_recorder = AudioRecorder.MicRecorder()
         if self.speaker_audio_recorder is None:
             self.speaker_audio_recorder = AudioRecorder.SpeakerRecorder()
-        if self.api_key is None:
-            self.api_key = key
+        if self.openai_api_key is None:
+            self.openai_api_key = key
 
         self._initialized = True

@@ -114,7 +114,7 @@ def create_args() -> argparse.Namespace:
     cmd_args.add_argument('-t', '--transcribe', action='store', default=None,
                           help='Transcribe the given audio file to generate text.\
                             \nThis option respects the -m (model) option.\
-                            \nOutput is produced in transcription.txt or file specified using the -o option.')
+                            \nOutput is produced in transcription.txt or file specified using the -o option.')  # noqa: E501  pylint: disable=C0115
     cmd_args.add_argument('-o', '--output_file', action='store', default=None,
                           help='Generate output in this file.\
                             \nThis option is valid only for the -t (transcribe) option.')
@@ -126,27 +126,27 @@ def create_args() -> argparse.Namespace:
         '\ntiny multi-lingual model has to be downloaded from the link   '
         'https://drive.google.com/file/d/1M4AFutTmQROaE9xk2jPc5Y4oFRibHhEh/view?usp=drive_link'
         '\nbase english model has to be downloaded from the link         '
-        'https://openaipublic.azureedge.net/main/whisper/models/25a8566e1d0c1e2231d1c762132cd20e0f96a85d16145c3a00adf5d1ac670ead/base.en.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/25a8566e1d0c1e2231d1c762132cd20e0f96a85d16145c3a00adf5d1ac670ead/base.en.pt'  # noqa: E501  pylint: disable=C0301
         '\nbase multi-lingual model has to be downloaded from the link   '
-        'https://openaipublic.azureedge.net/main/whisper/models/ed3a0b6b1c0edf879ad9b11b1af5a0e6ab5db9205f891f668f8b0e6c6326e34e/base.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/ed3a0b6b1c0edf879ad9b11b1af5a0e6ab5db9205f891f668f8b0e6c6326e34e/base.pt'  # noqa: E501  pylint: disable=C0115
         '\nsmall english model has to be downloaded from the link        '
-        'https://openaipublic.azureedge.net/main/whisper/models/f953ad0fd29cacd07d5a9eda5624af0f6bcf2258be67c92b79389873d91e0872/small.en.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/f953ad0fd29cacd07d5a9eda5624af0f6bcf2258be67c92b79389873d91e0872/small.en.pt'  # noqa: E501  pylint: disable=C0115
         '\nsmall multi-lingual model has to be downloaded from the link  '
-        'https://openaipublic.azureedge.net/main/whisper/models/9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794/small.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794/small.pt'  # noqa: E501  pylint: disable=C0115
         '\n\nThe models below require higher computing power: \n\n'
         '\nmedium english model has to be downloaded from the link       '
-        'https://openaipublic.azureedge.net/main/whisper/models/d7440d1dc186f76616474e0ff0b3b6b879abc9d1a4926b7adfa41db2d497ab4f/medium.en.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/d7440d1dc186f76616474e0ff0b3b6b879abc9d1a4926b7adfa41db2d497ab4f/medium.en.pt'  # noqa: E501  pylint: disable=C0115
         '\nmedium multi-lingual model has to be downloaded from the link '
-        'https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge model has to be downloaded from the link                '
-        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge-v1 model has to be downloaded from the link             '
-        'https://openaipublic.azureedge.net/main/whisper/models/e4b87e7e0bf463eb8e6956e646f1e277e901512310def2c24bf0e11bd3c28e9a/large-v1.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/e4b87e7e0bf463eb8e6956e646f1e277e901512310def2c24bf0e11bd3c28e9a/large-v1.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge-v2 model has to be downloaded from the link             '
-        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')
+        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')  # noqa: E501  pylint: disable=C0115
     cmd_args.add_argument('-l', '--list_devices', action='store_true',
-                          help='List all audio drivers and audio devices on this machine. \
-                            \nUse this list index to select the microphone, speaker device for transcription.')
+                          help='List all audio drivers and audio devices on this machine.'
+                          '\nUse this list index to select the microphone, speaker device for transcription.')
     cmd_args.add_argument('-mi', '--mic_device_index', action='store', default=None, type=int,
                           help='Device index of the microphone for capturing sound.'
                           '\nDevice index can be obtained using the -l option.')
@@ -208,10 +208,10 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
 
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
     if args.api_key is not None:
-        api_key: bool = args.api_key
+        openai_api_key: bool = args.api_key
     else:
-        api_key: bool = config['OpenAI']['api_key']
-    global_vars.api_key = api_key
+        openai_api_key: bool = config['OpenAI']['api_key']
+    global_vars.openai_api_key = openai_api_key
 
 
 def main():
@@ -284,7 +284,7 @@ def main():
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
     update_interval_slider_label.configure(text=label_text)
-    lang_combobox.configure(command=model.change_lang)
+    lang_combobox.configure(command=model.set_lang)
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,

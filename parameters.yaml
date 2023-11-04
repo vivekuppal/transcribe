@@ -53,6 +53,9 @@ OpenAI:
       # content: "Hello, V. You are awesome. I am doing very well and looking forward to discussion about Agile coaching."
       content: Hello, V. You are awesome. I am doing very well and looking forward to some light hearted banter with you.
 
+Deepgram:
+  api_key: 'API_KEY'
+
 General:
   log_file: 'Transcribe.log'
   # These two parameters are used together.

@@ -25,7 +25,8 @@ SEGMENT_PRUNE_THRESHOLD = 6  # Attempt to prune after these number of segments i
 AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45  # Duration of audio (seconds) after which force pruning
 
 
-class AudioTranscriber:
+# TODO: Deep Step 2, model should be a common base class
+class AudioTranscriber:   # pylint: disable=C0115, R0902
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
                  config: dict):
@@ -34,7 +35,7 @@ class AudioTranscriber:
         # We do not need to store transcription in 2 different places.
         # self.transcript_data = {"You": [], "Speaker": []}
         self.transcript_changed_event = threading.Event()
-        self.audio_model = model
+        self.stt_model = model
         # Same mutex is used for all audio sources. In case locking becomes an issue, can consider
         # using separate mutex for each audio source
         self.mutex = threading.Lock()
@@ -91,8 +92,8 @@ class AudioTranscriber:
         root_logger.info(AudioTranscriber.transcribe_audio_queue)
         while True:
             who_spoke, data, time_spoken = audio_queue.get()
-            root_logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} - Time Spoken: '
-                             f'{time_spoken} by : {who_spoke}, queue_backlog - '
+            root_logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} '
+                             f'- Time Spoken: {time_spoken} by : {who_spoke}, queue_backlog - '
                              f'{audio_queue.qsize()}')
             self.update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
             source_info = self.audio_sources[who_spoke]
@@ -105,7 +106,16 @@ class AudioTranscriber:
                 if self.transcribe:
                     with duration.Duration('Transcription (Speech to Text)'):
                         root_logger.info(f'{datetime.datetime.now()} - Begin transcription')
-                        results = self.audio_model.get_transcription(path)
+                        results = self.stt_model.get_transcription(path)
+                        # TODO: deep Step - Post processing of results should be part of the
+                        # transcriber. All transcribers should return results in a somewhat
+                        # similar manner, so latency calculations can be done correctly for
+                        # the Transcriber
+                        # OR
+                        # Latency calculations should also be part of the transcription service
+                        # Potentially the methods process_results, _check_for_latency,
+                        # _prune_for_latency should be part of model class ????
+                        # This method only needs the text output from the transcriber model
                         text = self.process_results(results)
                         prune, prune_id, original_data_size, prune_percent = self._check_for_latency(results, who_spoke)
                         if prune:
@@ -117,7 +127,7 @@ class AudioTranscriber:
                                                     time_spoken=time_spoken,
                                                     file_path=path)
 
-                        root_logger.info(f'{datetime.datetime.utcnow()} = Transcription text: {text}')
+                        root_logger.info(f'{datetime.datetime.utcnow()} = Transcribed text: {text}')
                         root_logger.info(f'{datetime.datetime.utcnow()} - End transcription')
 
             except Exception as exception:
@@ -146,7 +156,7 @@ class AudioTranscriber:
         len_speech = float(results["segments"][len_segments-1]['end'])
         root_logger.info(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
         if len_segments > SEGMENT_PRUNE_THRESHOLD:
-            root_logger.info(f'Attempt Prune for excess segments: {len_segments - SEGMENT_PRUNE_THRESHOLD}.')
+            root_logger.info(f'Attempt Prune segments: {len_segments - SEGMENT_PRUNE_THRESHOLD}.')
         else:
             return (False, 0, 0, 0)
 
@@ -168,7 +178,8 @@ class AudioTranscriber:
                 prune_segment_id = int(rev_segment['id'])
                 prune_seconds = float(rev_segment['end'])
                 prune_percent = prune_seconds / original_duration
-                root_logger.info(f'Prune till segment id : {prune_segment_id}. Prune duration: {prune_seconds}.')
+                root_logger.info(f'Prune till segment id : {prune_segment_id}.'
+                                 f' Prune duration: {prune_seconds}.')
                 root_logger.info(f'Prune {prune_percent}% of data.')
                 break
 
@@ -189,7 +200,8 @@ class AudioTranscriber:
                     if float(segment['end']) > prune_seconds:
                         prune_segment_id = int(segment['id'])
                         prune_percent = prune_seconds / original_duration
-                        root_logger.info(f'Prune till segment id : {prune_segment_id}. Prune duration: {prune_seconds}.')
+                        root_logger.info(f'Prune till segment id : {prune_segment_id}.'
+                                         f' Prune duration: {prune_seconds}.')
                         root_logger.info(f'Prune {prune_percent}% of data.')
                         break
 
@@ -211,8 +223,9 @@ class AudioTranscriber:
         with source_info["mutex"]:
             # Concurrency check
             if len(source_info["last_sample"]) != original_data_size:
-                root_logger.info(f'Aborting pruning. Data Size has changed from {original_data_size}'
-                                 f' to {len(source_info["last_sample"])}')
+                root_logger.info(f'Aborting pruning. Data Size has changed from '
+                                 f'{original_data_size} to '
+                                 f'{len(source_info["last_sample"])}')
                 return
 
             # Open the wav file
@@ -227,13 +240,13 @@ class AudioTranscriber:
 
                 with io.BytesIO() as temp_wav_file:
                     with wave.open(temp_wav_file, "wb") as wav_writer:
-                        wav_writer.setnchannels(wavfile.getnchannels())
-                        wav_writer.setsampwidth(wavfile.getsampwidth())
-                        wav_writer.setframerate(wavfile.getframerate())
+                        wav_writer.setnchannels(wavfile.getnchannels())  # pylint: disable=E1101
+                        wav_writer.setsampwidth(wavfile.getsampwidth())  # pylint: disable=E1101
+                        wav_writer.setframerate(wavfile.getframerate())  # pylint: disable=E1101
                         wavfile.setpos(save_frames)
                         data = wavfile.readframes(num_frames - int(save_frames))
                         new_data = new_data + data
-                        wav_writer.writeframes(data)
+                        wav_writer.writeframes(data)  # pylint: disable=E1101
 
             source_info["last_sample"] = new_data
 
@@ -316,11 +329,11 @@ class AudioTranscriber:
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
         with wave.open(temp_file_name, 'wb') as wf:
             # print(f'{datetime.datetime.now()} - Writing speaker data into file: {temp_file_name}')
-            wf.setnchannels(self.audio_sources["Speaker"]["channels"])
+            wf.setnchannels(self.audio_sources["Speaker"]["channels"])    # pylint: disable=E1101
             p = pyaudio.PyAudio()
-            wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
-            wf.setframerate(self.audio_sources["Speaker"]["sample_rate"])
-            wf.writeframes(data)
+            wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))    # pylint: disable=E1101
+            wf.setframerate(self.audio_sources["Speaker"]["sample_rate"])    # pylint: disable=E1101
+            wf.writeframes(data)    # pylint: disable=E1101
             # print(f'datasize: {len(data)}')
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
 
@@ -353,7 +366,8 @@ class AudioTranscriber:
             constants.PERSONA_YOU,
             constants.PERSONA_SPEAKER
             ]
-        convo_object_return_value = self.conversation.get_conversation(sources=sources, length=length)
+        convo_object_return_value = self.conversation.get_conversation(
+            sources=sources, length=length)
         return convo_object_return_value
 
     def clear_transcript_data_loop(self, audio_queue: queue.Queue):
