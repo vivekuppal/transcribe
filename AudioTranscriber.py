@@ -104,7 +104,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 os.close(file_descritor)
                 source_info["process_data_func"](source_info["last_sample"], path)
                 if self.transcribe:
-                    with duration.Duration('Transcription (Speech to Text)', screen=True):
+                    with duration.Duration('Transcription (Speech to Text)'):
                         root_logger.info(f'{datetime.datetime.now()} - Begin transcription')
                         response = self.stt_model.get_transcription(path)
                         text = self.stt_model.process_response(response)
@@ -307,7 +307,11 @@ class WhisperTranscriber(AudioTranscriber):
           prune_percent: float: % of audio clip (by size) to be pruned
         """
         root_logger.info(WhisperTranscriber.check_for_latency)
-        len_segments = len(results["segments"])
+        try:
+            len_segments = len(results["segments"])
+        except KeyError:
+            return (False, 0, 0)
+
         if len_segments == 0:
             return (False, 0, 0)
 

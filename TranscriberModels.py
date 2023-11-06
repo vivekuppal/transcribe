@@ -50,7 +50,6 @@ class STTModelInterface:
     """Interface all Speech To Text Models adhere to
     """
 
-    # TODO: Need to decide other parameters for get_transcription method
     @abstractmethod
     def get_transcription(self, wav_file_path: str):
         """Get transcription from the provided audio file

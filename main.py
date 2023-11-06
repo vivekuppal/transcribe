@@ -96,6 +96,11 @@ def create_args() -> argparse.Namespace:
                           \nThis option requires an API KEY and will consume Open AI credits.')
     cmd_args.add_argument('-e', '--experimental', action='store_true',
                           help='Experimental command line argument. Behavior is undefined.')
+    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper',
+                          choices=['whisper', 'deepgram'],
+                          help='Specify the Speech to text Engine.'
+                          '\nLocal STT models tend to perform best for response times.'
+                          '\nAPI based STT models tend to perform best for accuracy.')
     cmd_args.add_argument('-k', '--api_key', action='store', default=None,
                           help='API Key for accessing OpenAI APIs. This is an optional parameter.\
                             \nWithout the API Key only transcription works.\
@@ -210,6 +215,7 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
 def create_transcriber(
         name: str,
         config: dict,
+        api: bool,
         global_vars: GlobalVars.TranscriptionGlobals):
     """Creates a transcriber object based on input parameters
     """
@@ -228,7 +234,7 @@ def create_transcriber(
             model,
             convo=global_vars.convo,
             config=config)
-    elif name.lower() == 'whisper':
+    elif name.lower() == 'whisper' and not api:
         stt_model_config: dict = {
             "api_key": config["OpenAI"]["api_key"]
         }
@@ -242,7 +248,7 @@ def create_transcriber(
             model,
             convo=global_vars.convo,
             config=config)
-    elif name.lower() == 'whisper-api':
+    elif name.lower() == 'whisper' and api:
         stt_model_config: dict = {
             "api_key": config["OpenAI"]["api_key"]
         }
@@ -255,6 +261,8 @@ def create_transcriber(
             model,
             convo=global_vars.convo,
             config=config)
+    else:
+        raise ValueError(f'Unknown transcriber: {name}')
 
 
 def main():
@@ -270,12 +278,17 @@ def main():
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
     global_vars = GlobalVars.TranscriptionGlobals()
 
-    # TODO: After recent changes do we need 2 calls to GlobalVars.TranscriptionGlobals
-    global_vars = GlobalVars.TranscriptionGlobals()
     global_vars.convo = conversation.Conversation()
 
-    create_transcriber(name='whisper', config=config, global_vars=global_vars)
+    create_transcriber(name=args.speech_to_text,
+                       config=config,
+                       api=args.api,
+                       global_vars=global_vars)
 
+    # Transcriber needs to be created before handling batch tasks which include batch
+    # transcription. This order of initialization results in initialization of Mic, Speaker
+    # as well which is not necessary for some batch tasks.
+    # This does not have any side effects.
     handle_args_batch_tasks(args, global_vars)
 
     # Initiate logging
