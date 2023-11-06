@@ -22,7 +22,7 @@ import duration
 # pylint: disable=logging-fstring-interpolation
 PHRASE_TIMEOUT = 3.05
 root_logger = al.get_logger()
-SEGMENT_PRUNE_THRESHOLD = 6  # Attempt to prune after these number of segments in transcription
+WHISPER_SEGMENT_PRUNE_THRESHOLD = 6  # Attempt to prune after these number of segments in transcription
 AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45  # Duration of audio (seconds) after which force pruning
 
 
@@ -140,7 +140,6 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                                                    prune_percent=prune_percent,
                                                    results=results,
                                                    prune_id=prune_id,
-                                                   time_spoken=time_spoken,
                                                    file_path=path)
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
@@ -163,7 +162,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
 
     @abstractmethod
     def prune_for_latency(self, who_spoke: str, original_data_size: int,
-                          results: dict, prune_id: int, time_spoken: str,
+                          results: dict, prune_id: int,
                           file_path: str, prune_percent: int) -> tuple[str, str]:
         """Very long audio clips can result in latency of transcription.
         Prune long audio clips based on number of segments, audio duration.
@@ -317,8 +316,8 @@ class WhisperTranscriber(AudioTranscriber):
 
         len_speech = float(results["segments"][len_segments-1]['end'])
         root_logger.info(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
-        if len_segments > SEGMENT_PRUNE_THRESHOLD:
-            root_logger.info(f'Attempt Prune segments: {len_segments - SEGMENT_PRUNE_THRESHOLD}.')
+        if len_segments > WHISPER_SEGMENT_PRUNE_THRESHOLD:
+            root_logger.info(f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.')
         else:
             return (False, 0, 0)
 
@@ -347,7 +346,7 @@ class WhisperTranscriber(AudioTranscriber):
 
         if prune_percent == 0:
             root_logger.info(f'Total segments ({len_segments}) is more than prune threshold'
-                             f' ({SEGMENT_PRUNE_THRESHOLD}), but could not find segment endings. ')
+                             f' ({WHISPER_SEGMENT_PRUNE_THRESHOLD}), but could not find segment endings.')
 
             # Attempt to determine prune percent based on audio duration
             if original_duration > AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS:
@@ -369,7 +368,7 @@ class WhisperTranscriber(AudioTranscriber):
         return True, prune_segment_id, prune_percent
 
     def prune_for_latency(self, who_spoke: str, original_data_size: int,
-                          results: dict, prune_id: int, time_spoken: str,
+                          results: dict, prune_id: int,
                           file_path: str, prune_percent: int):
         """Prune Audio clip to a smaller size based on size.
         Adjusts the application context based on pruning to reflect pruning.
@@ -429,7 +428,7 @@ class WhisperTranscriber(AudioTranscriber):
         return first_string, second_string
 
 
-PARAGRAPH_PRUNE_THRESHOLD = 2  # Prune anything more than 2 paragraphs
+DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD = 2  # Prune anything more than 2 paragraphs
 
 
 class DeepgramTranscriber(AudioTranscriber):
@@ -469,16 +468,16 @@ class DeepgramTranscriber(AudioTranscriber):
         #    # print(f'Paragraph: {i}, {len_sentences} sentences.')
         #    i += 1
 
-        if num_paragraphs > PARAGRAPH_PRUNE_THRESHOLD:
+        if num_paragraphs > DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD:
             # Keep the last 2 paragraphs. Prune everything else
-            num_paragraphs_to_keep = PARAGRAPH_PRUNE_THRESHOLD
+            num_paragraphs_to_keep = DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD
         else:
-            # print(f'Number of paras {num_paragraphs} less than or equal to threshold {PARAGRAPH_PRUNE_THRESHOLD}. Skip pruning.')
+            # print(f'Number of paras {num_paragraphs} less than or equal to threshold {DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD}. Skip pruning.')
             return [False, 0, 0]
 
         # determine prune percent based on how much speech we need to keep
         # First paragraph we will keep is
-        beginning_para = para_list[-PARAGRAPH_PRUNE_THRESHOLD]
+        beginning_para = para_list[-DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD]
         start_time = float(beginning_para["sentences"][0]["start"])
         # print(f"First para to keep, start time: {start_time}. Para text: {beginning_para['sentences'][0]['text']}.")
         prune_percent = start_time / speech_duration
@@ -488,7 +487,7 @@ class DeepgramTranscriber(AudioTranscriber):
         return [True, num_paragraphs_to_keep, prune_percent]
 
     def prune_for_latency(self, who_spoke: str, original_data_size: int,
-                          results: dict, prune_id: int, time_spoken: str,
+                          results: dict, prune_id: int,
                           file_path: str, prune_percent: int):
         """Prune Audio clip to a smaller size based on size.
         Adjusts the application context based on pruning to reflect pruning.

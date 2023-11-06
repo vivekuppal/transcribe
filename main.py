@@ -120,7 +120,7 @@ def create_args() -> argparse.Namespace:
     cmd_args.add_argument('-m', '--model', action='store', choices=[
         'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large'],
         default='tiny',
-        help='Specify the LLM to use for transcription.'
+        help='Specify the OpenAI Transcription model file to use.'
         '\nBy default tiny english model is part of the install.'
         '\ntiny multi-lingual model has to be downloaded from the link   '
         'https://drive.google.com/file/d/1M4AFutTmQROaE9xk2jPc5Y4oFRibHhEh/view?usp=drive_link'
@@ -181,7 +181,7 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.Tr
                   f'{utilities.naturalsize(os.path.getsize(args.transcribe))}.')
             print(f'Text output will be produced in {output_file}.')
             results = global_vars.transcriber.stt_model.get_transcription(args.transcribe)
-            # TODO: This needs to be improved to make the output more palatable to human reading
+            # This can be improved to make the output more palatable to human reading
             text = global_vars.transcriber.stt_model.process_response(results)
             if results is not None and len(text) > 0:
                 with open(output_file, encoding='utf-8', mode='w') as f:
@@ -209,6 +209,12 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
         openai_api_key: bool = args.api_key
     else:
         openai_api_key: bool = config['OpenAI']['api_key']
+
+    if args.model is not None:
+        config['OpenAI']['local_transcripton_model_file'] = args.model
+    else:
+        config['OpenAI']['local_transcripton_model_file'] = 'tiny'
+
     global_vars.openai_api_key = openai_api_key
 
 

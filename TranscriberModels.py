@@ -10,23 +10,11 @@ import torch
 
 
 class STTEnum(Enum):
-    """Different supported Speech To Text Models
+    """Supported Speech To Text Models
     """
     WHISPER_LOCAL = 1
     WHISPER_API = 2
     DEEPGRAM_API = 3
-
-
-# This should be a factory method instead
-# def get_model(use_api: bool, model: str = None):
-#    if use_api:
-#        return APIWhisperSTTModel()
-#    if model.lower() == 'deepgram':
-#        return DeepgramSTTModel()
-
-#    model_cleaned = model if model else 'tiny'
-#    print(f'[INFO] Using local model: {model_cleaned}')
-#    return WhisperSTTModel(model=model_cleaned)
 
 
 class STTModelFactory:
@@ -34,11 +22,15 @@ class STTModelFactory:
     """
     def get_stt_model_instance(self, stt_model: STTEnum, config: dict):
         """Get the appropriate STT model class instance
+        Args:
+          stt_model: Speech to Text Model
+          config: dict: Used to pass all configuration parameters
+          model_file: str: OpenAI Transcription model for local transcription
         """
         if stt_model == STTEnum.WHISPER_LOCAL:
             # How do we get a different model for whisper, tiny vs base vs medium
             # Model value is derived from command line args
-            return WhisperSTTModel(config=config, model='tiny')
+            return WhisperSTTModel(config=config)
         elif stt_model == STTEnum.WHISPER_API:
             return APIWhisperSTTModel(config=config)
         elif stt_model == STTEnum.DEEPGRAM_API:
@@ -58,7 +50,7 @@ class STTModelInterface:
 
     @abstractmethod
     def process_response(self, response) -> str:
-        """Get transcription from the provided audio file
+        """Extract transcription from the response of the specific STT Model
         """
         pass
 
@@ -66,7 +58,8 @@ class STTModelInterface:
 class WhisperSTTModel:
     """Speech to Text using the Whisper Local model
     """
-    def __init__(self, config: dict, model: str = 'tiny'):
+    def __init__(self, config: dict):
+        model = config['OpenAI']['local_transcripton_model_file']
         self.lang = 'en'
         model_filename = model + ".en.pt"
         self.model = model
@@ -100,8 +93,11 @@ class WhisperSTTModel:
         self.model_filename = os.path.join(os.getcwd(), model_filename)
         self.audio_model = whisper.load_model(self.model_filename)
         print(f'[INFO] Whisper using GPU: {str(torch.cuda.is_available())}')
+        openai.api_key = config["api_key"]
 
     def get_transcription(self, wav_file_path) -> dict:
+        """Get transcription from the provided audio file
+        """
         try:
             result = self.audio_model.transcribe(wav_file_path,
                                                  fp16=torch.cuda.is_available(), language=self.lang)
@@ -163,7 +159,7 @@ class APIWhisperSTTModel:
         self.lang = lang
 
     def get_transcription(self, wav_file_path) -> dict:
-        """Get text using STT
+        """Get transcription from the provided audio file
         """
         try:
             with open(wav_file_path, "rb") as audio_file:

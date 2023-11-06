@@ -20,7 +20,7 @@ Create an issue in the repo to request on demand features.
 - [Application Configuration](./docs/AppConfig.md)
 
 ## Developer Guide ##
-[Developer Guide](./docs/ResponseCustomization.md)
+[Developer Guide](./docs/DeveloperGuide.md)
 
 ## 🆕 Getting Started 🥇
 
