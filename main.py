@@ -7,7 +7,7 @@ import time
 import subprocess
 import yaml
 import customtkinter as ctk
-from AudioTranscriber import AudioTranscriber
+import AudioTranscriber
 from GPTResponder import GPTResponder
 import AudioRecorder as ar
 import TranscriberModels
@@ -34,15 +34,9 @@ def save_api_key(args: argparse.Namespace):
 
 
 def initiate_app_threads(global_vars: GlobalVars,
-                         config: dict,
-                         model: TranscriberModels.APIWhisperTranscriber | TranscriberModels.WhisperTranscriber):
+                         config: dict):
     """Start all threads required for the application"""
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
-    global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
-                                               global_vars.speaker_audio_recorder.source,
-                                               model,
-                                               convo=global_vars.convo,
-                                               config=config)
     global_vars.audio_player = AudioPlayer(convo=global_vars.convo)
     transcribe_thread = threading.Thread(target=global_vars.transcriber.transcribe_audio_queue,
                                          name='Transcribe',
@@ -161,7 +155,7 @@ def create_args() -> argparse.Namespace:
     return args
 
 
-def handle_args_batch_tasks(args: argparse.Namespace):
+def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.TranscriptionGlobals):
     """Handle batch tasks, after which the program will exit."""
     interactions.params(args)
 
@@ -177,21 +171,20 @@ def handle_args_batch_tasks(args: argparse.Namespace):
     if args.transcribe is not None:
         with duration.Duration(name='Transcription', log=False, screen=True):
             output_file = args.output_file if args.output_file is not None else "transcription.txt"
-            model = TranscriberModels.get_model(args.api, model=args.model)
             print(f'Converting the audio file {args.transcribe} to text.')
             print(f'{args.transcribe} file size '
                   f'{utilities.naturalsize(os.path.getsize(args.transcribe))}.')
             print(f'Text output will be produced in {output_file}.')
-            results = model.get_transcription(args.transcribe)
-            if results is not None and len(results) > 0:
+            results = global_vars.transcriber.stt_model.get_transcription(args.transcribe)
+            # TODO: This needs to be improved to make the output more palatable to human reading
+            text = global_vars.transcriber.stt_model.process_response(results)
+            if results is not None and len(text) > 0:
                 with open(output_file, encoding='utf-8', mode='w') as f:
-                    for segment in results['segments']:
-                        f.write(f"{segment['start']} - {segment['end']}s: {segment['text']}\n")
-
+                    f.write(f"{text}\n")
                 print('Complete!')
             else:
                 print('Error during Transcription!')
-                print('Please ensure {args.transcribe} is an audio file.')
+                print(f'Please ensure {args.transcribe} is an audio file.')
                 sys.exit(1)
         sys.exit(0)
 
@@ -214,29 +207,81 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
     global_vars.openai_api_key = openai_api_key
 
 
+def create_transcriber(
+        name: str,
+        config: dict,
+        global_vars: GlobalVars.TranscriptionGlobals):
+    """Creates a transcriber object based on input parameters
+    """
+    model_factory = TranscriberModels.STTModelFactory()
+
+    if name.lower() == 'deepgram':
+        stt_model_config: dict = {
+            "api_key": config["Deepgram"]["api_key"]
+        }
+        model = model_factory.get_stt_model_instance(
+            stt_model=TranscriberModels.STTEnum.DEEPGRAM_API,
+            config=stt_model_config)
+        global_vars.transcriber = AudioTranscriber.DeepgramTranscriber(
+            global_vars.user_audio_recorder.source,
+            global_vars.speaker_audio_recorder.source,
+            model,
+            convo=global_vars.convo,
+            config=config)
+    elif name.lower() == 'whisper':
+        stt_model_config: dict = {
+            "api_key": config["OpenAI"]["api_key"]
+        }
+        # TODO: get tiny vs base vs medium model names
+        model = model_factory.get_stt_model_instance(
+            stt_model=TranscriberModels.STTEnum.WHISPER_LOCAL,
+            config=stt_model_config)
+        global_vars.transcriber = AudioTranscriber.WhisperTranscriber(
+            global_vars.user_audio_recorder.source,
+            global_vars.speaker_audio_recorder.source,
+            model,
+            convo=global_vars.convo,
+            config=config)
+    elif name.lower() == 'whisper-api':
+        stt_model_config: dict = {
+            "api_key": config["OpenAI"]["api_key"]
+        }
+        model = model_factory.get_stt_model_instance(
+            stt_model=TranscriberModels.STTEnum.WHISPER_API,
+            config=stt_model_config)
+        global_vars.transcriber = AudioTranscriber.WhisperTranscriber(
+            global_vars.user_audio_recorder.source,
+            global_vars.speaker_audio_recorder.source,
+            model,
+            convo=global_vars.convo,
+            config=config)
+
+
 def main():
     """Primary method to run transcribe
     """
     args = create_args()
 
-    # Initiate config
     config = configuration.Config().data
-    handle_args_batch_tasks(args)
+
+    start_ffmpeg()
 
     # Initiate global variables
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
     global_vars = GlobalVars.TranscriptionGlobals()
 
-    global_vars = GlobalVars.TranscriptionGlobals(key=config["OpenAI"]["api_key"])
+    # TODO: After recent changes do we need 2 calls to GlobalVars.TranscriptionGlobals
+    global_vars = GlobalVars.TranscriptionGlobals()
+    global_vars.convo = conversation.Conversation()
+
+    create_transcriber(name='whisper', config=config, global_vars=global_vars)
+
+    handle_args_batch_tasks(args, global_vars)
 
     # Initiate logging
     log_listener = app_logging.initiate_log(config=config)
 
     handle_args(args, global_vars, config)
-
-    start_ffmpeg()
-
-    model = TranscriberModels.get_model(args.api, model=args.model)
 
     root = ctk.CTk()
     ui_cb = ui.ui_callbacks()
@@ -257,8 +302,6 @@ def main():
 
     global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
 
-    global_vars.convo = conversation.Conversation()
-
     # disable speaker/microphone on startup
     if args.disable_speaker:
         print('[INFO] Disabling Speaker')
@@ -268,7 +311,7 @@ def main():
         print('[INFO] Disabling Microphone')
         ui_cb.enable_disable_microphone(global_vars.editmenu)
 
-    initiate_app_threads(global_vars=global_vars, config=config, model=model)
+    initiate_app_threads(global_vars=global_vars, config=config)
 
     print("READY")
 
@@ -284,7 +327,7 @@ def main():
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
     update_interval_slider_label.configure(text=label_text)
-    lang_combobox.configure(command=model.set_lang)
+    lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,

@@ -1,29 +1,73 @@
 import sys
 import os
 import json
+from enum import Enum
+from abc import abstractmethod
 import openai
 import whisper
 import torch
-import GlobalVars
 # import pprint
 
 
-# TODO: Deep Step - STT_Model should be a common base class
+class STTEnum(Enum):
+    """Different supported Speech To Text Models
+    """
+    WHISPER_LOCAL = 1
+    WHISPER_API = 2
+    DEEPGRAM_API = 3
+
 
 # This should be a factory method instead
-def get_model(use_api: bool, model: str = None):
-    if use_api:
-        return APIWhisperTranscriber()
-    if model.lower() == 'deepgram':
-        return DeepgramTranscriber()
+# def get_model(use_api: bool, model: str = None):
+#    if use_api:
+#        return APIWhisperSTTModel()
+#    if model.lower() == 'deepgram':
+#        return DeepgramSTTModel()
 
-    model_cleaned = model if model else 'tiny'
-    print(f'[INFO] Using local model: {model_cleaned}')
-    return WhisperTranscriber(model=model_cleaned)
+#    model_cleaned = model if model else 'tiny'
+#    print(f'[INFO] Using local model: {model_cleaned}')
+#    return WhisperSTTModel(model=model_cleaned)
 
 
-class WhisperTranscriber:
-    def __init__(self, model: str = 'tiny'):
+class STTModelFactory:
+    """Factory class to get the appropriate STT Model
+    """
+    def get_stt_model_instance(self, stt_model: STTEnum, config: dict):
+        """Get the appropriate STT model class instance
+        """
+        if stt_model == STTEnum.WHISPER_LOCAL:
+            # How do we get a different model for whisper, tiny vs base vs medium
+            # Model value is derived from command line args
+            return WhisperSTTModel(config=config, model='tiny')
+        elif stt_model == STTEnum.WHISPER_API:
+            return APIWhisperSTTModel(config=config)
+        elif stt_model == STTEnum.DEEPGRAM_API:
+            return DeepgramSTTModel(config=config)
+        raise ValueError("Unknown SPeech to Text Model Type")
+
+
+class STTModelInterface:
+    """Interface all Speech To Text Models adhere to
+    """
+
+    # TODO: Need to decide other parameters for get_transcription method
+    @abstractmethod
+    def get_transcription(self, wav_file_path: str):
+        """Get transcription from the provided audio file
+        """
+        pass
+
+    @abstractmethod
+    def process_response(self, response) -> str:
+        """Get transcription from the provided audio file
+        """
+        pass
+
+
+class WhisperSTTModel:
+    """Speech to Text using the Whisper Local model
+    """
+    def __init__(self, config: dict, model: str = 'tiny'):
         self.lang = 'en'
         model_filename = model + ".en.pt"
         self.model = model
@@ -86,15 +130,32 @@ class WhisperTranscriber:
         else:
             self.audio_model = whisper.load_model(os.path.join(os.getcwd(), self.model + '.pt'))
 
+    def process_response(self, response):
+        """
+        Returns transcription from the response of transcription.
+        """
+        # results['text'] = transcription text
+        # results['language'] = language of transcription
+        # results['segments'] = list of segments.
+        # Each segment is a dict
+        #
+        # pprint.pprint(results)
+        return response['text'].strip()
 
-class APIWhisperTranscriber:
-    def __init__(self):
-        print('[INFO] Using Open AI API for transcription.')
-        openai.api_key = GlobalVars.TranscriptionGlobals().openai_api_key
+
+class APIWhisperSTTModel:
+    """Speech to Text using the Whisper API
+    """
+    def __init__(self, config: dict):
+        # Check for api_key
+        if config["api_key"] is None:
+            raise Exception("Attempt to create Open AI Whisper STT Model without an api key.")  # pylint: disable=W0719
+        print('[INFO] Using Open AI Whisper API for transcription.')
+        openai.api_key = config["api_key"]
         # lang parameter is not required for API invocation. This exists solely
         # to support --api option from command line.
-        # A better solution is to create a base class for APIWhisperTranscriber,
-        # WhisperTranscriber and create set_lang method there and remove it from
+        # A better solution is to create a base class for APIWhisperSTTModel,
+        # WhisperSTTModel and create set_lang method there and remove it from
         # this class
         self.lang = 'en'
 
@@ -114,22 +175,39 @@ class APIWhisperTranscriber:
 
         return result
 
+    def process_response(self, response):
+        """
+        Returns transcription from the response of transcription.
+        """
+        # results['text'] = transcription text
+        # results['language'] = language of transcription
+        # results['segments'] = list of segments.
+        # Each segment is a dict
+        #
+        # pprint.pprint(results)
+        return response['text'].strip()
 
-class DeepgramTranscriber:
-    def __init__(self):
-        from deepgram import Deepgram  # noqa:E402  pylint: disable=C0413,C0411
 
-        self.lang = 'en'
+class DeepgramSTTModel(STTModelInterface):
+    """Speech to Text using the Deepgram API.
+    It primarily deals with interacting with the Deepgram API.
+    """
+    def __init__(self, config: dict):
+        from deepgram import Deepgram  # noqa:E402  pylint: disable=C0415,C0411
+
+        # Check for api_key
+        if config["api_key"] is None:
+            raise Exception("Attempt to create Deepgram STT Model without an api key.")  # pylint: disable=W0719
+        self.lang = 'en-US'
 
         print('[INFO] Using Deepgram API for transcription.')
-        self.model = Deepgram(GlobalVars.TranscriptionGlobals().deepgram_api_key)
+        self.model = Deepgram(config["api_key"])
 
     def set_lang(self, lang: str):
         """Set STT Language"""
         self.lang = lang
 
-    # TODO: deep, not sure if the return type is a dict or is it something else
-    def get_transcription(self, wav_file_path) -> dict:
+    def get_transcription(self, wav_file_path: str):
         """Get text using STT
         """
         try:
@@ -144,9 +222,18 @@ class DeepgramTranscriber:
                     'paragraphs': True
                     }
                 response = self.model.transcription.sync_prerecorded(source, options=options)
-                print(json.dumps(response, indent=4))
+                with open('deep.json', mode='a', encoding='utf-8') as deep_log:
+                    deep_log.write(json.dumps(response, indent=4))
+
                 return response
         except Exception as exception:
             print(exception)
 
         return None
+
+    def process_response(self, response) -> str:
+        # result is of type PrerecordedTranscriptionResponse
+        # convert result to the appropriate dict format
+        text = response["results"]["channels"][0]["alternatives"][0]["transcript"]
+        # print(f'Transcript: {text}')
+        return text
