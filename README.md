@@ -6,7 +6,7 @@ Transcribe is a live audio, video transcription tool that provides real-time tra
 ![Screenshot](assets/Screenshot.png)
 
 ## ![Alt text](assets/on-demand-service-48.png) On Demand Features ![Alt text](assets/on-demand-service-48.png) ##
-We build on demand features for a fee.
+We develop mutually beneficial on demand features.
 
 Create an issue in the repo to request on demand features.
 
