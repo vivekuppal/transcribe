@@ -120,7 +120,7 @@ def create_args() -> argparse.Namespace:
     cmd_args.add_argument('-m', '--model', action='store', choices=[
         'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large'],
         default='tiny',
-        help='Specify the OpenAI Transcription model file to use.'
+        help='Specify the OpenAI Local Transcription model file to use.'
         '\nBy default tiny english model is part of the install.'
         '\ntiny multi-lingual model has to be downloaded from the link   '
         'https://drive.google.com/file/d/1M4AFutTmQROaE9xk2jPc5Y4oFRibHhEh/view?usp=drive_link'
@@ -181,7 +181,7 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.Tr
                   f'{utilities.naturalsize(os.path.getsize(args.transcribe))}.')
             print(f'Text output will be produced in {output_file}.')
             results = global_vars.transcriber.stt_model.get_transcription(args.transcribe)
-            # This can be improved to make the output more palatable to human reading
+            # process_response can be improved to make the output more palatable to human reading
             text = global_vars.transcriber.stt_model.process_response(results)
             if results is not None and len(text) > 0:
                 with open(output_file, encoding='utf-8', mode='w') as f:
@@ -206,16 +206,12 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
 
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
     if args.api_key is not None:
-        openai_api_key: bool = args.api_key
-    else:
-        openai_api_key: bool = config['OpenAI']['api_key']
+        config['OpenAI']['api_key'] = args.api_key
 
     if args.model is not None:
         config['OpenAI']['local_transcripton_model_file'] = args.model
     else:
         config['OpenAI']['local_transcripton_model_file'] = 'tiny'
-
-    global_vars.openai_api_key = openai_api_key
 
 
 def create_transcriber(
@@ -229,7 +225,7 @@ def create_transcriber(
 
     if name.lower() == 'deepgram':
         stt_model_config: dict = {
-            "api_key": config["Deepgram"]["api_key"]
+            'api_key': config['Deepgram']['api_key']
         }
         model = model_factory.get_stt_model_instance(
             stt_model=TranscriberModels.STTEnum.DEEPGRAM_API,
@@ -242,8 +238,8 @@ def create_transcriber(
             config=config)
     elif name.lower() == 'whisper' and not api:
         stt_model_config: dict = {
-            "api_key": config["OpenAI"]["api_key"],
-            "local_transcripton_model_file": config["OpenAI"]["local_transcripton_model_file"],
+            'api_key': config['OpenAI']['api_key'],
+            'local_transcripton_model_file': config['OpenAI']['local_transcripton_model_file'],
         }
         # TODO: get tiny vs base vs medium model names
         model = model_factory.get_stt_model_instance(
@@ -257,7 +253,7 @@ def create_transcriber(
             config=config)
     elif name.lower() == 'whisper' and api:
         stt_model_config: dict = {
-            "api_key": config["OpenAI"]["api_key"]
+            'api_key': config['OpenAI']['api_key']
         }
         model = model_factory.get_stt_model_instance(
             stt_model=TranscriberModels.STTEnum.WHISPER_API,
@@ -284,7 +280,6 @@ def main():
     # Initiate global variables
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
     global_vars = GlobalVars.TranscriptionGlobals()
-
     global_vars.convo = conversation.Conversation()
 
     create_transcriber(name=args.speech_to_text,

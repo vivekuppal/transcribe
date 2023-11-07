@@ -27,6 +27,9 @@ class STTModelFactory:
           config: dict: Used to pass all configuration parameters
           model_file: str: OpenAI Transcription model for local transcription
         """
+        if not isinstance(stt_model, STTEnum):
+            raise TypeError('STTModelFactory: stt_model should be an instance of STTEnum')
+
         if stt_model == STTEnum.WHISPER_LOCAL:
             # How do we get a different model for whisper, tiny vs base vs medium
             # Model value is derived from command line args
@@ -39,7 +42,7 @@ class STTModelFactory:
 
 
 class STTModelInterface:
-    """Interface all Speech To Text Models adhere to
+    """Interface all Speech To Text Models must adhere to
     """
 
     @abstractmethod
@@ -55,7 +58,7 @@ class STTModelInterface:
         pass
 
 
-class WhisperSTTModel:
+class WhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper Local model
     """
     def __init__(self, config: dict):
@@ -102,7 +105,7 @@ class WhisperSTTModel:
             result = self.audio_model.transcribe(wav_file_path,
                                                  fp16=torch.cuda.is_available(), language=self.lang)
         except Exception as exception:
-            print('Encountered error in get_transcription')
+            print('WhisperSTTModel:get_transcription - Encountered error')
             print(exception)
             return ''
         # print('-----------------------------------------------------------------------------')
@@ -138,7 +141,7 @@ class WhisperSTTModel:
         return response['text'].strip()
 
 
-class APIWhisperSTTModel:
+class APIWhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper API
     """
     def __init__(self, config: dict):
@@ -227,7 +230,7 @@ class DeepgramSTTModel(STTModelInterface):
         return None
 
     def process_response(self, response) -> str:
-        # result is of type PrerecordedTranscriptionResponse
+        # response is of type PrerecordedTranscriptionResponse
         # convert result to the appropriate dict format
         text = response["results"]["channels"][0]["alternatives"][0]["transcript"]
         # print(f'Transcript: {text}')
