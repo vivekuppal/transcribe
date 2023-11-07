@@ -242,7 +242,8 @@ def create_transcriber(
             config=config)
     elif name.lower() == 'whisper' and not api:
         stt_model_config: dict = {
-            "api_key": config["OpenAI"]["api_key"]
+            "api_key": config["OpenAI"]["api_key"],
+            "local_transcripton_model_file": config["OpenAI"]["local_transcripton_model_file"],
         }
         # TODO: get tiny vs base vs medium model names
         model = model_factory.get_stt_model_instance(

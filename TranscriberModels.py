@@ -59,7 +59,7 @@ class WhisperSTTModel:
     """Speech to Text using the Whisper Local model
     """
     def __init__(self, config: dict):
-        model = config['OpenAI']['local_transcripton_model_file']
+        model = config['local_transcripton_model_file']
         self.lang = 'en'
         model_filename = model + ".en.pt"
         self.model = model
