@@ -24,12 +24,18 @@ import duration
 
 def save_api_key(args: argparse.Namespace):
     """Save the API key specified on command line to override parameters file"""
+
     yml = configuration.Config()
-    altered_config: dict = {'OpenAI': {'api_key': args.save_api_key}}
+    with open(yml.config_override_file, mode='r', encoding='utf-8') as file:
+        try:
+            altered_config = yaml.load(stream=file, Loader=yaml.CLoader)
+        except ImportError as err:
+            print(f'Failed to load yaml file: {yml.config_override_file}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+
+    altered_config['OpenAI']['api_key'] = args.save_api_key
     yml.add_override_value(altered_config)
-    # save override file to disk
-    with open(file=yml.config_override_file, mode="w", encoding='utf-8') as file:
-        yaml.dump(altered_config, file, default_flow_style=False)
     print(f'Saved API Key to {yml.config_override_file}')
 
 
