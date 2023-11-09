@@ -5,7 +5,7 @@ import threading
 import io
 import datetime
 from abc import abstractmethod
-# import pprint
+import pprint
 import wave
 import tempfile
 import pyaudiowpatch as pyaudio
@@ -22,8 +22,10 @@ import duration
 # pylint: disable=logging-fstring-interpolation
 PHRASE_TIMEOUT = 3.05
 root_logger = al.get_logger()
-WHISPER_SEGMENT_PRUNE_THRESHOLD = 6  # Attempt to prune after these number of segments in transcription
-AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45  # Duration of audio (seconds) after which force pruning
+# Attempt to prune after these number of segments in transcription
+WHISPER_SEGMENT_PRUNE_THRESHOLD = 6
+# Duration of audio (seconds) after which force pruning
+AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45
 
 
 class AudioTranscriber:   # pylint: disable=C0115, R0902
@@ -104,9 +106,10 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 os.close(file_descritor)
                 source_info["process_data_func"](source_info["last_sample"], path)
                 if self.transcribe:
-                    with duration.Duration('Transcription (Speech to Text)'):
+                    with duration.Duration('Transcription (Speech to Text)', screen=False):
                         root_logger.info(f'{datetime.datetime.now()} - Begin transcription')
                         response = self.stt_model.get_transcription(path)
+                        # pprint.pprint(f'Response from Stt: {response}')
                         text = self.stt_model.process_response(response)
                         # print(f'Transcript: {text}')
                         if text != '':
@@ -118,6 +121,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             except Exception as exception:
                 print(exception)
             finally:
+                # print(f'filesize: {os.path.getsize(path)}')
                 os.unlink(path)
 
             if text != '' and text.lower() != 'you':
@@ -134,7 +138,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         prune, prune_id, prune_percent = self.check_for_latency(results)
         # print(f'Prune: {prune}. prune_id: {prune_id}. prune_percent: {prune_percent}')
         if prune:
-            # print('Attempted to prune.')
+            root_logger.info(f'{datetime.datetime.utcnow()} - Attempted to prune.')
             first, second = self.prune_for_latency(who_spoke=who_spoke,
                                                    original_data_size=original_data_size,
                                                    prune_percent=prune_percent,
@@ -156,7 +160,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         in format of results. It is implemented in each transcriber specific class.
         Return values are
           prune: bool: Whether to prune or not
-          prune_segment_id: int: Prune everything before this segment
+          prune_segment_id: int: Prune everything before this segment / paragraph
           prune_percent: float: % of audio clip (by size) to be pruned
         """
 
@@ -305,20 +309,38 @@ class WhisperTranscriber(AudioTranscriber):
           prune_segment_id: int: Prune everything before this segment
           prune_percent: float: % of audio clip (by size) to be pruned
         """
+
+        # We get a few different type of response objects. We will have to adjust how we prune
+        # based on the type of response object. See the file
+        # venv\Lib\site-packages\openai\util.py
+        # def convert_to_openai_object(
+        # For types of responses
+        # Look into this a little bit further.
+
         root_logger.info(WhisperTranscriber.check_for_latency)
+        root_logger.info('Check for latency')
         try:
             len_segments = len(results["segments"])
         except KeyError:
+            # print(f'Key error in check for latency. {ke}')
+            # print(f'Type of results: {type(results)}')
+            # pprint.pprint(results)
             return (False, 0, 0)
 
         if len_segments == 0:
+            # print('0 segments in the response.')
+            # pprint.pprint(results)
             return (False, 0, 0)
 
         len_speech = float(results["segments"][len_segments-1]['end'])
         root_logger.info(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
+        # print(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
+
         if len_segments > WHISPER_SEGMENT_PRUNE_THRESHOLD:
+            # print(f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.')
             root_logger.info(f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.')
         else:
+            # print(f'Segments: {len_segments}. Skip pruning.')
             return (False, 0, 0)
 
         prune_percent = 0
@@ -375,6 +397,7 @@ class WhisperTranscriber(AudioTranscriber):
         """
         # If original_data_size and current size of data do not match, do nothing
         # print('Prune for latency')
+        root_logger.info(WhisperTranscriber.prune_for_latency.__name__)
         segments = results["segments"]
         root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
         source_info = self.audio_sources[who_spoke]
@@ -409,8 +432,7 @@ class WhisperTranscriber(AudioTranscriber):
 
             source_info["last_sample"] = new_data
 
-        # print(f'Prune convo object until prune id: {prune_id}')
-        # root_logger.info(f'Prune convo object until prune id: {prune_id}')
+        root_logger.info(f'Prune convo object until prune id: {prune_id}')
         try:
             first_string = ''
             second_string = ''
@@ -448,7 +470,7 @@ class DeepgramTranscriber(AudioTranscriber):
             prune_percent: float: % of audio clip (by size) to be pruned
         """
         # check for existence of paragraphs
-        root_logger.info(WhisperTranscriber.check_for_latency)
+        root_logger.info(DeepgramTranscriber.check_for_latency)
         try:
             outer_paragraphs = results["results"]["channels"][0]["alternatives"][0]["paragraphs"]
         except KeyError as ke:
@@ -493,7 +515,7 @@ class DeepgramTranscriber(AudioTranscriber):
         Adjusts the application context based on pruning to reflect pruning.
         """
         # If original_data_size and current size of data do not match, do nothing
-        # print('Prune for latency')
+        root_logger.info(DeepgramTranscriber.prune_for_latency)
         root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
         source_info = self.audio_sources[who_spoke]
 
@@ -540,8 +562,5 @@ class DeepgramTranscriber(AudioTranscriber):
                     second_string += sentence["text"]
         except Exception as ex:
             print(f'Exception while pruning: {ex}')
-
-        # print(f'Pruning, till end of string: {first_string}')
-        # print(f'Start new segment with this string: {second_string}')
 
         return first_string, second_string
