@@ -7,7 +7,7 @@ import time
 import subprocess
 import yaml
 import customtkinter as ctk
-from AudioTranscriber import AudioTranscriber
+import AudioTranscriber
 from GPTResponder import GPTResponder
 import AudioRecorder as ar
 import TranscriberModels
@@ -24,25 +24,25 @@ import duration
 
 def save_api_key(args: argparse.Namespace):
     """Save the API key specified on command line to override parameters file"""
+
     yml = configuration.Config()
-    altered_config: dict = {'OpenAI': {'api_key': args.save_api_key}}
+    with open(yml.config_override_file, mode='r', encoding='utf-8') as file:
+        try:
+            altered_config = yaml.load(stream=file, Loader=yaml.CLoader)
+        except ImportError as err:
+            print(f'Failed to load yaml file: {yml.config_override_file}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+
+    altered_config['OpenAI']['api_key'] = args.save_api_key
     yml.add_override_value(altered_config)
-    # save override file to disk
-    with open(file=yml.config_override_file, mode="w", encoding='utf-8') as file:
-        yaml.dump(altered_config, file, default_flow_style=False)
     print(f'Saved API Key to {yml.config_override_file}')
 
 
 def initiate_app_threads(global_vars: GlobalVars,
-                         config: dict,
-                         model: TranscriberModels.APIWhisperTranscriber | TranscriberModels.WhisperTranscriber):
+                         config: dict):
     """Start all threads required for the application"""
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
-    global_vars.transcriber = AudioTranscriber(global_vars.user_audio_recorder.source,
-                                               global_vars.speaker_audio_recorder.source,
-                                               model,
-                                               convo=global_vars.convo,
-                                               config=config)
     global_vars.audio_player = AudioPlayer(convo=global_vars.convo)
     transcribe_thread = threading.Thread(target=global_vars.transcriber.transcribe_audio_queue,
                                          name='Transcribe',
@@ -102,6 +102,11 @@ def create_args() -> argparse.Namespace:
                           \nThis option requires an API KEY and will consume Open AI credits.')
     cmd_args.add_argument('-e', '--experimental', action='store_true',
                           help='Experimental command line argument. Behavior is undefined.')
+    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper',
+                          choices=['whisper', 'deepgram'],
+                          help='Specify the Speech to text Engine.'
+                          '\nLocal STT models tend to perform best for response times.'
+                          '\nAPI based STT models tend to perform best for accuracy.')
     cmd_args.add_argument('-k', '--api_key', action='store', default=None,
                           help='API Key for accessing OpenAI APIs. This is an optional parameter.\
                             \nWithout the API Key only transcription works.\
@@ -114,39 +119,39 @@ def create_args() -> argparse.Namespace:
     cmd_args.add_argument('-t', '--transcribe', action='store', default=None,
                           help='Transcribe the given audio file to generate text.\
                             \nThis option respects the -m (model) option.\
-                            \nOutput is produced in transcription.txt or file specified using the -o option.')
+                            \nOutput is produced in transcription.txt or file specified using the -o option.')  # noqa: E501  pylint: disable=C0115
     cmd_args.add_argument('-o', '--output_file', action='store', default=None,
                           help='Generate output in this file.\
                             \nThis option is valid only for the -t (transcribe) option.')
     cmd_args.add_argument('-m', '--model', action='store', choices=[
         'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large'],
         default='tiny',
-        help='Specify the LLM to use for transcription.'
+        help='Specify the OpenAI Local Transcription model file to use.'
         '\nBy default tiny english model is part of the install.'
         '\ntiny multi-lingual model has to be downloaded from the link   '
         'https://drive.google.com/file/d/1M4AFutTmQROaE9xk2jPc5Y4oFRibHhEh/view?usp=drive_link'
         '\nbase english model has to be downloaded from the link         '
-        'https://openaipublic.azureedge.net/main/whisper/models/25a8566e1d0c1e2231d1c762132cd20e0f96a85d16145c3a00adf5d1ac670ead/base.en.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/25a8566e1d0c1e2231d1c762132cd20e0f96a85d16145c3a00adf5d1ac670ead/base.en.pt'  # noqa: E501  pylint: disable=C0301
         '\nbase multi-lingual model has to be downloaded from the link   '
-        'https://openaipublic.azureedge.net/main/whisper/models/ed3a0b6b1c0edf879ad9b11b1af5a0e6ab5db9205f891f668f8b0e6c6326e34e/base.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/ed3a0b6b1c0edf879ad9b11b1af5a0e6ab5db9205f891f668f8b0e6c6326e34e/base.pt'  # noqa: E501  pylint: disable=C0115
         '\nsmall english model has to be downloaded from the link        '
-        'https://openaipublic.azureedge.net/main/whisper/models/f953ad0fd29cacd07d5a9eda5624af0f6bcf2258be67c92b79389873d91e0872/small.en.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/f953ad0fd29cacd07d5a9eda5624af0f6bcf2258be67c92b79389873d91e0872/small.en.pt'  # noqa: E501  pylint: disable=C0115
         '\nsmall multi-lingual model has to be downloaded from the link  '
-        'https://openaipublic.azureedge.net/main/whisper/models/9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794/small.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/9ecf779972d90ba49c06d968637d720dd632c55bbf19d441fb42bf17a411e794/small.pt'  # noqa: E501  pylint: disable=C0115
         '\n\nThe models below require higher computing power: \n\n'
         '\nmedium english model has to be downloaded from the link       '
-        'https://openaipublic.azureedge.net/main/whisper/models/d7440d1dc186f76616474e0ff0b3b6b879abc9d1a4926b7adfa41db2d497ab4f/medium.en.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/d7440d1dc186f76616474e0ff0b3b6b879abc9d1a4926b7adfa41db2d497ab4f/medium.en.pt'  # noqa: E501  pylint: disable=C0115
         '\nmedium multi-lingual model has to be downloaded from the link '
-        'https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge model has to be downloaded from the link                '
-        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge-v1 model has to be downloaded from the link             '
-        'https://openaipublic.azureedge.net/main/whisper/models/e4b87e7e0bf463eb8e6956e646f1e277e901512310def2c24bf0e11bd3c28e9a/large-v1.pt'
+        'https://openaipublic.azureedge.net/main/whisper/models/e4b87e7e0bf463eb8e6956e646f1e277e901512310def2c24bf0e11bd3c28e9a/large-v1.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge-v2 model has to be downloaded from the link             '
-        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')
+        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')  # noqa: E501  pylint: disable=C0115
     cmd_args.add_argument('-l', '--list_devices', action='store_true',
-                          help='List all audio drivers and audio devices on this machine. \
-                            \nUse this list index to select the microphone, speaker device for transcription.')
+                          help='List all audio drivers and audio devices on this machine.'
+                          '\nUse this list index to select the microphone, speaker device for transcription.')
     cmd_args.add_argument('-mi', '--mic_device_index', action='store', default=None, type=int,
                           help='Device index of the microphone for capturing sound.'
                           '\nDevice index can be obtained using the -l option.')
@@ -161,7 +166,7 @@ def create_args() -> argparse.Namespace:
     return args
 
 
-def handle_args_batch_tasks(args: argparse.Namespace):
+def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.TranscriptionGlobals):
     """Handle batch tasks, after which the program will exit."""
     interactions.params(args)
 
@@ -177,21 +182,20 @@ def handle_args_batch_tasks(args: argparse.Namespace):
     if args.transcribe is not None:
         with duration.Duration(name='Transcription', log=False, screen=True):
             output_file = args.output_file if args.output_file is not None else "transcription.txt"
-            model = TranscriberModels.get_model(args.api, model=args.model)
             print(f'Converting the audio file {args.transcribe} to text.')
             print(f'{args.transcribe} file size '
                   f'{utilities.naturalsize(os.path.getsize(args.transcribe))}.')
             print(f'Text output will be produced in {output_file}.')
-            results = model.get_transcription(args.transcribe)
-            if results is not None and len(results) > 0:
+            results = global_vars.transcriber.stt_model.get_transcription(args.transcribe)
+            # process_response can be improved to make the output more palatable to human reading
+            text = global_vars.transcriber.stt_model.process_response(results)
+            if results is not None and len(text) > 0:
                 with open(output_file, encoding='utf-8', mode='w') as f:
-                    for segment in results['segments']:
-                        f.write(f"{segment['start']} - {segment['end']}s: {segment['text']}\n")
-
+                    f.write(f"{text}\n")
                 print('Complete!')
             else:
                 print('Error during Transcription!')
-                print('Please ensure {args.transcribe} is an audio file.')
+                print(f'Please ensure {args.transcribe} is an audio file.')
                 sys.exit(1)
         sys.exit(0)
 
@@ -208,10 +212,66 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
 
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
     if args.api_key is not None:
-        api_key: bool = args.api_key
+        config['OpenAI']['api_key'] = args.api_key
+
+    if args.model is not None:
+        config['OpenAI']['local_transcripton_model_file'] = args.model
     else:
-        api_key: bool = config['OpenAI']['api_key']
-    global_vars.api_key = api_key
+        config['OpenAI']['local_transcripton_model_file'] = 'tiny'
+
+
+def create_transcriber(
+        name: str,
+        config: dict,
+        api: bool,
+        global_vars: GlobalVars.TranscriptionGlobals):
+    """Creates a transcriber object based on input parameters
+    """
+    model_factory = TranscriberModels.STTModelFactory()
+
+    if name.lower() == 'deepgram':
+        stt_model_config: dict = {
+            'api_key': config['Deepgram']['api_key']
+        }
+        model = model_factory.get_stt_model_instance(
+            stt_model=TranscriberModels.STTEnum.DEEPGRAM_API,
+            config=stt_model_config)
+        global_vars.transcriber = AudioTranscriber.DeepgramTranscriber(
+            global_vars.user_audio_recorder.source,
+            global_vars.speaker_audio_recorder.source,
+            model,
+            convo=global_vars.convo,
+            config=config)
+    elif name.lower() == 'whisper' and not api:
+        stt_model_config: dict = {
+            'api_key': config['OpenAI']['api_key'],
+            'local_transcripton_model_file': config['OpenAI']['local_transcripton_model_file'],
+        }
+        # TODO: get tiny vs base vs medium model names
+        model = model_factory.get_stt_model_instance(
+            stt_model=TranscriberModels.STTEnum.WHISPER_LOCAL,
+            config=stt_model_config)
+        global_vars.transcriber = AudioTranscriber.WhisperTranscriber(
+            global_vars.user_audio_recorder.source,
+            global_vars.speaker_audio_recorder.source,
+            model,
+            convo=global_vars.convo,
+            config=config)
+    elif name.lower() == 'whisper' and api:
+        stt_model_config: dict = {
+            'api_key': config['OpenAI']['api_key']
+        }
+        model = model_factory.get_stt_model_instance(
+            stt_model=TranscriberModels.STTEnum.WHISPER_API,
+            config=stt_model_config)
+        global_vars.transcriber = AudioTranscriber.WhisperTranscriber(
+            global_vars.user_audio_recorder.source,
+            global_vars.speaker_audio_recorder.source,
+            model,
+            convo=global_vars.convo,
+            config=config)
+    else:
+        raise ValueError(f'Unknown transcriber: {name}')
 
 
 def main():
@@ -219,24 +279,30 @@ def main():
     """
     args = create_args()
 
-    # Initiate config
     config = configuration.Config().data
-    handle_args_batch_tasks(args)
+
+    start_ffmpeg()
 
     # Initiate global variables
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
     global_vars = GlobalVars.TranscriptionGlobals()
+    global_vars.convo = conversation.Conversation()
 
-    global_vars = GlobalVars.TranscriptionGlobals(key=config["OpenAI"]["api_key"])
+    create_transcriber(name=args.speech_to_text,
+                       config=config,
+                       api=args.api,
+                       global_vars=global_vars)
+
+    # Transcriber needs to be created before handling batch tasks which include batch
+    # transcription. This order of initialization results in initialization of Mic, Speaker
+    # as well which is not necessary for some batch tasks.
+    # This does not have any side effects.
+    handle_args_batch_tasks(args, global_vars)
 
     # Initiate logging
     log_listener = app_logging.initiate_log(config=config)
 
     handle_args(args, global_vars, config)
-
-    start_ffmpeg()
-
-    model = TranscriberModels.get_model(args.api, model=args.model)
 
     root = ctk.CTk()
     ui_cb = ui.ui_callbacks()
@@ -257,8 +323,6 @@ def main():
 
     global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
 
-    global_vars.convo = conversation.Conversation()
-
     # disable speaker/microphone on startup
     if args.disable_speaker:
         print('[INFO] Disabling Speaker')
@@ -268,7 +332,7 @@ def main():
         print('[INFO] Disabling Microphone')
         ui_cb.enable_disable_microphone(global_vars.editmenu)
 
-    initiate_app_threads(global_vars=global_vars, config=config, model=model)
+    initiate_app_threads(global_vars=global_vars, config=config)
 
     print("READY")
 
@@ -284,7 +348,7 @@ def main():
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
     update_interval_slider_label.configure(text=label_text)
-    lang_combobox.configure(command=model.change_lang)
+    lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,

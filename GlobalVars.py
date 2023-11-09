@@ -30,14 +30,13 @@ class TranscriptionGlobals(Singleton.Singleton):
     # Read response in voice
     read_response: bool = False
     editmenu: tk.Menu = None
-    api_key: str = None
     filemenu: tk.Menu = None
     response_textbox: ctk.CTkTextbox = None
 
     convo: conversation.Conversation = None
     _initialized: bool = None
 
-    def __init__(self, key: str = 'API_KEY'):
+    def __init__(self):
         root_logger.info(TranscriptionGlobals.__name__)
         if self._initialized:
             return
@@ -47,7 +46,5 @@ class TranscriptionGlobals(Singleton.Singleton):
             self.user_audio_recorder = AudioRecorder.MicRecorder()
         if self.speaker_audio_recorder is None:
             self.speaker_audio_recorder = AudioRecorder.SpeakerRecorder()
-        if self.api_key is None:
-            self.api_key = key
 
         self._initialized = True

@@ -41,13 +41,13 @@ class GPTResponder:
         """
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
-            # print(f'{datetime.datetime.now()} - {GPTResponder.generate_response_from_transcript_no_check.__name__}')
             with duration.Duration(name='OpenAI Chat Completion', screen=False):
                 timeout: int = self.config['OpenAI']['request_timeout_seconds']
                 temperature: float = self.config['OpenAI']['temperature']
                 multiturn_prompt_content = self.conversation.get_merged_conversation(
                     length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
-                multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
+                multiturn_prompt_api_message = prompts.create_multiturn_prompt(
+                    multiturn_prompt_content)
                 # Multi turn response is very effective when continuous mode is off.
                 # In continuous mode, there are far too many responses from LLM.
                 # They can confuse the LLM if that many responses are replayed back to LLM.

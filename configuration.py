@@ -71,4 +71,3 @@ class Config(Singleton.Singleton):
     def config_file(self) -> str:
         """Name of the yaml file with default configuration"""
         return self._default_config_filename
-

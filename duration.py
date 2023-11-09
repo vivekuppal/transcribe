@@ -18,10 +18,10 @@ class Duration:
     When the with block ends, it will print out the duration
     of the operation in the following format
         Performing Test operation
-        Duration(dd:hh:ss:ms) of Test Operation 0:00:02.000826
+        Duration(hh:mm::ss.ms) of Test Operation 0:00:02.000826
     """
 
-    def __init__(self, name: str = 'undefined', 
+    def __init__(self, name: str = 'undefined',
                  log: bool = True,
                  screen: bool = False):
         self.start: datetime.datetime = None
@@ -41,9 +41,9 @@ class Duration:
         """
         self.end = datetime.datetime.now()
         if self.log:
-            root_logger.info(f'Duration(dd:hh:ss:ms) of {self.operation_name} {self.end - self.start}')
+            root_logger.info(f'Duration(hh:mm:ss.ms) of {self.operation_name} {self.end - self.start}')
         if self.screen:
-            print(f'Duration(dd:hh:ss:ms) of {self.operation_name} {self.end - self.start}')
+            print(f'Duration(hh:mm:ss.ms) of {self.operation_name} {self.end - self.start}')
 
 
 if __name__ == "__main__":

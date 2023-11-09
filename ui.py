@@ -45,7 +45,8 @@ class ui_callbacks:
     def freeze_unfreeze(self):
         """Respond to start / stop of seeking responses from openAI API"""
         root_logger.info(ui_callbacks.freeze_unfreeze.__name__)
-        self.global_vars.responder.enabled = not self.global_vars.responder.enabled # Invert the state
+        # Invert the state
+        self.global_vars.responder.enabled = not self.global_vars.responder.enabled
         self.global_vars.freeze_button.configure(
             text="Suggest Responses Continuously" if not self.global_vars.responder.enabled else "Do Not Suggest Responses Continuously"
             )
@@ -124,8 +125,8 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
           textbox: textbox to be updated
     """
 
-    global last_transcript_ui_update_time
-    global global_vars_module
+    global last_transcript_ui_update_time  # pylint: disable=W0603
+    global global_vars_module  # pylint: disable=W0603
 
     if global_vars_module is None:
         global_vars_module = GlobalVars.TranscriptionGlobals()
@@ -149,7 +150,7 @@ def update_response_ui(responder: GPTResponder,
           textbox: textbox to be updated
           text: updated text
     """
-    global global_vars_module
+    global global_vars_module  # pylint: disable=W0603
 
     if global_vars_module is None:
         global_vars_module = GlobalVars.TranscriptionGlobals()

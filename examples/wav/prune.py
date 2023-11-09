@@ -1,13 +1,16 @@
 import os
-import whisper
 import wave
 import struct
 import io
+import whisper
 
-# Sample python file to manipulate the WAVfile.
-# Currently this file / class is not used in the transcribe at run time
+# Sample python file to manipulate a WAVfile.
+# Create a smaller wavfile from an existing wavfile preserving the format
+
 
 class WAVFile:
+    """Represents a wav format audio file
+    """
 
     def __init__(self, filename):
         self.filename = filename
@@ -15,50 +18,46 @@ class WAVFile:
     def read(self):
         with io.open(self.filename, 'rb') as fh:
             riff, size, fformat = struct.unpack('<4sI4s', fh.read(12))
-            print("Riff: %s, Chunk Size: %i, format: %s" % (riff, size, fformat))
+            print(f"Riff: {riff}, Chunk Size: {size}, format: {fformat}")
 
             # Read header
             chunk_header = fh.read(8)
             subchunkid, subchunksize = struct.unpack('<4sI', chunk_header)
 
             if subchunkid == b'fmt ':
-                aformat, channels, samplerate, byterate, blockalign, bps = struct.unpack('HHIIHH', fh.read(16))
+                aformat, channels, samplerate, byterate, blockalign, bps = struct.unpack(
+                    'HHIIHH', fh.read(16))
                 bitrate = (samplerate * channels * bps) / 1024
                 print(f'Format: {aformat}, Channels {channels}, '
                       f'Sample Rate: {samplerate}, Kbps: {bitrate}')
 
-            chunkOffset = fh.tell()
-            while chunkOffset < size:
-                fh.seek(chunkOffset)
+            chunk_offset = fh.tell()
+            while chunk_offset < size:
+                fh.seek(chunk_offset)
                 subchunk2id, subchunk2size = struct.unpack('<4sI', fh.read(8))
                 print(f'chunk id: {subchunk2id}, size: {subchunk2size}')
                 if subchunk2id == b'LIST':
                     listtype = struct.unpack('<4s', fh.read(4))
-                    print('\tList Type: {listtype}, List Size: {subchunk2size}')
+                    print(f'\tList Type: {listtype}, List Size: {subchunk2size}')
 
-                    listOffset = 0
-                    while (subchunk2size - 8) >= listOffset:
+                    list_offset = 0
+                    while (subchunk2size - 8) >= list_offset:
                         listitemid, listitemsize = struct.unpack('<4sI', fh.read(8))
-                        listOffset = listOffset + listitemsize + 8
+                        list_offset = list_offset + listitemsize + 8
                         listdata = fh.read(listitemsize)
                         print(f"\tList id {listitemid.decode('ascii')}, size: {listitemsize},"
                               f" data: {listdata.decode('ascii')}")
-                        print("\tOffset: {listOffset}")
+                        print(f"\tOffset: {list_offset}")
                 elif subchunk2id == b'data':
                     print("Found data")
                 else:
                     print(f"Data: {fh.read(subchunk2size).decode('ascii')}")
 
-                chunkOffset = chunkOffset + subchunk2size + 8
+                chunk_offset = chunk_offset + subchunk2size + 8
 
 
-# input_file = 'C:\\Users\\vivek\\AppData\\Local\\Temp\\tmpesnnlmk_.wav'
-# input_file = 'C:\\Users\\vivek\\AppData\\Local\\Temp\\tmppablqctf.wav'
-# input_file = 'C:\\Users\\vivek\\AppData\\Local\\Temp\\tmp5hjs1as3.wav'
-
-
-# input_file = 'C:\\j\\test\\1.wav'
-# Evaluating file C:\j\test\1.wav
+# input_file = '1.wav'
+# Evaluating file 1.wav
 # It is a valid input file.
 # Riff: b'RIFF', Chunk Size: 2944660, format: b'WAVE'
 # Format: 1, Channels 2, Sample Rate: 48000, Kbps: 1500.0
@@ -68,8 +67,8 @@ class WAVFile:
 # b'\x10\x00\x03\x00'
 # b'\x14\x00\x01\x00\x18\x00\xfd\xff'
 
-input_file = 'C:\\j\\test\\2.wav'
-# Evaluating file C:\j\test\2.wav
+input_file = '2.wav'
+# Evaluating file 2.wav
 # It is a valid input file.
 # Riff: b'RIFF', Chunk Size: 3520660, format: b'WAVE'
 # Format: 1, Channels 2, Sample Rate: 48000, Kbps: 1500.0
@@ -79,8 +78,8 @@ input_file = 'C:\\j\\test\\2.wav'
 # b'\x10\x00\x03\x00'
 # b'\x14\x00\x01\x00\x18\x00\xfd\xff'
 
-# input_file = 'C:\\j\\test\\3.wav'
-# Evaluating file C:\j\test\3.wav
+# input_file = '3.wav'
+# Evaluating file 3.wav
 # It is a valid input file.
 # Riff: b'RIFF', Chunk Size: 3412095, format: b'WAVE'
 # Format: 1, Channels 2, Sample Rate: 48000, Kbps: 1500.0
@@ -90,12 +89,13 @@ input_file = 'C:\\j\\test\\2.wav'
 # b'\xff#\xff='
 # b'\xff=\xffX\xffY\xffp'
 
-# Read file 2.
-# Trim to a lower size.
-# Save to another file.
-# Transcribe successfully
+# This file attempts to 
+# - Read file 2.
+# - Trim to a lower size.
+# - Save to another file.
+# - Transcribe successfully using the local whisper model
 
-output_file = 'C:\\j\\test\\output.wav'
+output_file = 'output.wav'
 
 try:
     print(f'Evaluating file {input_file}')
@@ -132,11 +132,11 @@ with wave.open(input_file, 'rb') as wf:
     print(f'{input_file} has {num_frames} frames.')
     save_frames = int(num_frames * prune_percent)
     with wave.open(output_file, 'wb') as new_wavfile:
-        new_wavfile.setnchannels(wf.getnchannels())
-        new_wavfile.setsampwidth(wf.getsampwidth())
-        new_wavfile.setframerate(wf.getframerate())
+        new_wavfile.setnchannels(wf.getnchannels())  # pylint: disable=E1101
+        new_wavfile.setsampwidth(wf.getsampwidth())  # pylint: disable=E1101
+        new_wavfile.setframerate(wf.getframerate())  # pylint: disable=E1101
         wf.setpos(save_frames)
-        new_wavfile.writeframes(wf.readframes(num_frames - int(save_frames)))
+        new_wavfile.writeframes(wf.readframes(num_frames - int(save_frames)))  # pylint: disable=E1101
 
 result = model.transcribe(output_file)
 print('Shortened audio file transcription.')

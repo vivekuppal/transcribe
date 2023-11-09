@@ -9,6 +9,9 @@ OpenAI:
 # See this link for available models
 # https://platform.openai.com/docs/models/continuous-model-upgrades
   ai_model: gpt-3.5-turbo-0301
+# Local model file to use for transcription.
+# Can also be specified using the -m parameter on command line of the application
+  local_transcripton_model_file: 'tiny'
 # Language in which ChatGPT should respond.
 # List of languages available for openAI is available at
 # https://platform.openai.com/docs/guides/speech-to-text/supported-languages
@@ -52,6 +55,9 @@ OpenAI:
       # content: "Hello, V. That's awesome! What do you want to know about Fantasy Football"
       # content: "Hello, V. You are awesome. I am doing very well and looking forward to discussion about Agile coaching."
       content: Hello, V. You are awesome. I am doing very well and looking forward to some light hearted banter with you.
+
+Deepgram:
+  api_key: 'API_KEY'
 
 General:
   log_file: 'Transcribe.log'
