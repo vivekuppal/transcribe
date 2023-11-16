@@ -1,7 +1,11 @@
 __pycache__/
-*.wav
+.vscode/
 .venv/
+*.wav
 venv
 output
 tiny.pt
 Transcribe.log
+uid.lock
+response.txt
+transcription.txt

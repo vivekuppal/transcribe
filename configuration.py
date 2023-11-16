@@ -47,6 +47,8 @@ class Config(Singleton.Singleton):
         self._initialized = True
 
     def add_override_value(self, input_dict: dict):
+        """Override a default configuration parameter value
+        """
         if not isinstance(input_dict, dict):
             print(f'Expected input value to be a dict. Instead received: {input_dict}')
         # Update the override values

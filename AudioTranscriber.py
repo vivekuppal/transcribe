@@ -5,7 +5,7 @@ import threading
 import io
 import datetime
 from abc import abstractmethod
-import pprint
+# import pprint
 import wave
 import tempfile
 import pyaudiowpatch as pyaudio
