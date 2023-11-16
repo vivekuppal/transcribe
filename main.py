@@ -70,6 +70,13 @@ def initiate_app_threads(global_vars: GlobalVars,
     audio_response_thread.daemon = True
     audio_response_thread.start()
 
+    # Host config
+    hc = interactions.HostConfig()
+    host_config_thread = threading.Thread(target=hc.host_config_loop,
+                                          name='HostConfig')
+    host_config_thread.daemon = True
+    host_config_thread.start()
+
     # Periodically clear transcription data, if so configured
     clear_transcript_thread = threading.Thread(
         target=global_vars.transcriber.clear_transcript_data_loop,

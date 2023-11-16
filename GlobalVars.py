@@ -1,4 +1,5 @@
 import queue
+import datetime
 import tkinter as tk
 import customtkinter as ctk
 from AudioTranscriber import AudioTranscriber
@@ -32,6 +33,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     editmenu: tk.Menu = None
     filemenu: tk.Menu = None
     response_textbox: ctk.CTkTextbox = None
+    start: datetime.datetime = None
 
     convo: conversation.Conversation = None
     _initialized: bool = None
@@ -46,5 +48,6 @@ class TranscriptionGlobals(Singleton.Singleton):
             self.user_audio_recorder = AudioRecorder.MicRecorder()
         if self.speaker_audio_recorder is None:
             self.speaker_audio_recorder = AudioRecorder.SpeakerRecorder()
+        self.start = datetime.datetime.now()
 
         self._initialized = True
