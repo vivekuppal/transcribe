@@ -21,7 +21,7 @@ import GlobalVars
 
 root_logger = al.get_logger()
 # URL = 'http://127.0.0.1:5000/'
-URL = 'http://34.74.220.77:5000'
+URL = 'http://34.74.220.77:5000/'
 
 
 def create_params(args: argparse.Namespace) -> dict:
@@ -138,8 +138,8 @@ class HostConfig:
     def __init__(self):
         root_logger.info(HostConfig.__name__)
         self.global_vars = GlobalVars.TranscriptionGlobals()
-        self._initial_req_interval = 10
-        self._regular_req_interval = 30
+        self._initial_req_interval = 30
+        self._regular_req_interval = 3600
 
     def host_config_loop(self):
         """Host config loop
