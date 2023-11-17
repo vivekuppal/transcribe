@@ -27,7 +27,6 @@ Create an issue in the repo to request on demand features.
 
 Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
 
-Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
 Latest Binary
 - Generated: 2023-11-17
 - Git version: 705fc86
