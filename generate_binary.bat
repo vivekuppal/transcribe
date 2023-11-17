@@ -8,10 +8,10 @@ REM SET ZIP_LOCATION=D:\Code\transcribe\output\dist\transcribe.exe
 REM SET WINRAR=C:\Program Files\WinRAR\rar.exe
 
 REM Define variables for different hard coded paths (Change everything to your local PATHs)
-SET SOURCE_DIR=C:\git\transcribe
+SET SOURCE_DIR=C:\git\transcribe-main
 REM Contents of output dir are deleted at the end of the script
 SET OUTPUT_DIR=C:\git\output
-SET LIBSITE_PACAGES_DIR=C:\pyenv\transcribe\Lib\site-packages
+SET LIBSITE_PACAGES_DIR=C:\git\transcribe-main\venv\Lib\site-packages
 SET EXECUTABLE_NAME=transcribe.exe
 SET ZIP_FILE_DIR=C:\git\output\transcribe.rar
 SET ZIP_LOCATION=C:\git\output\dist\transcribe.exe
@@ -25,6 +25,9 @@ ECHO %PYINSTALLER_DIST_PATH%
 
 pyinstaller --clean --noconfirm --workpath %PYINSTALLER_TEMP_PATH% --specpath %OUTPUT_DIR% --distpath %PYINSTALLER_DIST_PATH% -n %EXECUTABLE_NAME% --log-level DEBUG main.py
 
+REM generate version.txt file
+git rev-parse --short HEAD > version.txt
+
 SET ASSETS_DIR_SRC=%LIBSITE_PACAGES_DIR%\whisper\assets\
 SET ASSETS_DIR_DEST=%PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper\assets
 
@@ -36,13 +39,14 @@ REM Copy appropriate files to the dir
 copy %SOURCE_DIR%\tiny.en.pt %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\tiny.en.pt
 copy %SOURCE_DIR%\parameters.yaml %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\parameters.yaml
 copy %SOURCE_DIR%\override.yaml %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\override.yaml
+copy %SOURCE_DIR%\version.txt %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\version.txt
 copy %ASSETS_DIR_SRC%\mel_filters.npz %ASSETS_DIR_DEST%
 copy %ASSETS_DIR_SRC%\gpt2.tiktoken %ASSETS_DIR_DEST%
 
 REM Code for zipping the final package
 ECHO Zipping output files...
  "%WINRAR%" a -r -ep1 -df -ibck "%ZIP_FILE_DIR%" "%ZIP_LOCATION%" 
-ECHO File Zipped at location %ZIP_LOCATION%
+ECHO File Zipped at location %ZIP_FILE_DIR%
 
 REM Remove the temp, dist folders
 rmdir /S /Q %PYINSTALLER_DIST_PATH%
