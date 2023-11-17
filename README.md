@@ -34,7 +34,7 @@ Latest Binary
 
 1. Download the zip file from
 ```
-https://drive.google.com/file/d/1Iy32YjDXK7Bga7amOUTA4Gx9VEoibPi-/view?usp=sharing
+https://drive.google.com/file/d/1TtdEkzQyxA8UaXV7rk9LGDTxMtWetjJa/view?usp=drive_link
 ```
 2. Unzip the files in a folder.
 
