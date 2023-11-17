@@ -30,6 +30,9 @@ Run ```generate_binary.bat``` file by replacing paths at the top of the file to 
 ## Software Installation
 
 Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
+Latest Binary
+- Generated: 2023-11-17
+- Git version: 705fc86
 
 1. Download the zip file from
 ```
