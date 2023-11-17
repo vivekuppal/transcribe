@@ -22,6 +22,28 @@ Create an issue in the repo to request on demand features.
 ## Developer Guide ##
 [Developer Guide](./docs/DeveloperGuide.md)
 
+
+## Software Installation
+
+Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
+
+1. Download the zip file from
+```
+https://drive.google.com/file/d/1Iy32YjDXK7Bga7amOUTA4Gx9VEoibPi-/view?usp=sharing
+```
+2. Unzip the files in a folder.
+
+3. (Optional) Replace the Open API key in `parameters.yaml` or `override.yaml` file in the transcribe directory:
+
+   Replace the Open API key in `parameters.yaml` file manually. Open in a text editor and alter the line:
+
+      ```
+        api_key: 'API_KEY'
+      ```
+      Replace "API_KEY" with the actual OpenAI API key. Save the file.
+
+4. Execute the file `transcribe\transcribe.exe\transcribe.exe`
+
 ## 🆕 Getting Started 🥇
 
 Follow below steps to run transcribe on your local machine.

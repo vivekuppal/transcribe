@@ -7,6 +7,7 @@ import platform
 import datetime
 import argparse
 import uuid
+import random
 import atexit
 import json
 # import pprint
@@ -28,14 +29,17 @@ def create_params(args: argparse.Namespace) -> dict:
     """Create Ping Parameters"""
     try:
         root_logger.info(create_params.__name__)
+        git_version = None
         git_version = subprocess.check_output(
             ['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
     except subprocess.CalledProcessError as process_exception:
-        git_version = None
+        if process_exception.returncode == 128:
+            # This is an executable, read from version.txt file
+            with open(file='version.txt', mode='r', encoding='utf-8') as version_file:
+                git_version = version_file.read()
         root_logger.info(f'Error code: {process_exception.returncode}')
         root_logger.info(f'Error message: {process_exception.output}')
     except FileNotFoundError as fnf_exception:
-        git_version = None
         root_logger.info(f'errno: {fnf_exception.errno}')
         root_logger.info(f'winerror: {fnf_exception.winerror}')
         root_logger.info(f'File Not Found: {fnf_exception.filename}')
@@ -139,7 +143,7 @@ class HostConfig:
         root_logger.info(HostConfig.__name__)
         self.global_vars = GlobalVars.TranscriptionGlobals()
         self._initial_req_interval = 30
-        self._regular_req_interval = 3600
+        self._regular_req_interval = 7200
 
     def host_config_loop(self):
         """Host config loop
@@ -155,8 +159,9 @@ class HostConfig:
             except ConnectionError as ce:
                 # pprint.pprint(ce)
                 root_logger.error(f'Error in Host Config: {ce}')
-
-            time.sleep(self._regular_req_interval)
+            random_sleep = random.randint(self._initial_req_interval, self._regular_req_interval)
+            root_logger.info(f'Host Config after {random_sleep}s.')
+            time.sleep(random_sleep)
 
     def parse_response(self, response_str: str):
         """Parse response from Host Config request

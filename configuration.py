@@ -19,24 +19,34 @@ class Config(Singleton.Singleton):
                  override_config_filename: str = 'override.yaml'):
         if self._initialized:
             return
-        with open(default_config_filename, mode='r', encoding='utf-8') as default_config_file:
-            try:
+
+        try:
+            with open(default_config_filename, mode='r', encoding='utf-8') as default_config_file:
                 if self._default_data is None:
                     self._default_data = yaml.load(stream=default_config_file, Loader=yaml.CLoader)
-            except ImportError as err:
-                print(f'Failed to load yaml file: {default_config_filename}.')
-                print(f'Error: {err}')
-                sys.exit(1)
 
-        with open(override_config_filename, mode='r', encoding='utf-8') as override_config_file:
-            try:
+        except ImportError as err:
+            print(f'Failed to load yaml file: {default_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+        except FileNotFoundError as err:
+            print(f'Failed to find yaml file: {default_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+
+        try:
+            with open(override_config_filename, mode='r', encoding='utf-8') as override_config_file:
                 if self._override_data is None:
                     self._override_data = yaml.load(stream=override_config_file,
                                                     Loader=yaml.CLoader)
-            except ImportError as err:
-                print(f'Failed to load yaml file: {override_config_filename}.')
-                print(f'Error: {err}')
-                sys.exit(1)
+        except ImportError as err:
+            print(f'Failed to load yaml file: {override_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+        except FileNotFoundError as err:
+            print(f'Failed to find yaml file: {override_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
 
         self._default_config_filename = default_config_filename
         self._override_config_filename = override_config_filename
