@@ -33,7 +33,7 @@ Latest Binary
 
 1. Download the zip file from
 ```
-https://drive.google.com/file/d/1TtdEkzQyxA8UaXV7rk9LGDTxMtWetjJa/view?usp=drive_link
+https://drive.google.com/file/d/1nCNAG9LpCZ7e1sTeC4rvRcF0WMp51_Fg/view?usp=sharing
 ```
 2. Unzip the files in a folder.
 
@@ -47,6 +47,13 @@ https://drive.google.com/file/d/1TtdEkzQyxA8UaXV7rk9LGDTxMtWetjJa/view?usp=drive
       Replace "API_KEY" with the actual OpenAI API key. Save the file.
 
 4. Execute the file `transcribe\transcribe.exe\transcribe.exe`
+
+## 🆕 Best Performance with GPU 🥇
+Application performs best with GPU support.
+
+Make sure you have installed CUDA libraries if you have GPU: https://developer.nvidia.com/cuda-downloads
+
+Application will automatically detect and use GPU once CUDA libraries are installed.
 
 ## 🆕 Getting Started 🥇
 
@@ -144,10 +151,6 @@ Incorrect API key provided: API_KEY. You can find your API key at https://platfo
 ## 👤 License 📖
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ➕ Enhancements from base repository ➕
-- Do not need Open AI key, paid OpenAI account to use the complete functionality
-
-
-## 🤝 Contributing 🤝
+## 🤝 Contributions 🤝
 
 Contributions are welcome! Open issues or submit pull requests to improve Transcribe.
