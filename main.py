@@ -110,7 +110,7 @@ def create_args() -> argparse.Namespace:
     cmd_args.add_argument('-e', '--experimental', action='store_true',
                           help='Experimental command line argument. Behavior is undefined.')
     cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper',
-                          choices=['whisper', 'deepgram'],
+                          choices=['whisper', 'whisper.cpp', 'deepgram'],
                           help='Specify the Speech to text Engine.'
                           '\nLocal STT models tend to perform best for response times.'
                           '\nAPI based STT models tend to perform best for accuracy.')
@@ -131,7 +131,7 @@ def create_args() -> argparse.Namespace:
                           help='Generate output in this file.\
                             \nThis option is valid only for the -t (transcribe) option.')
     cmd_args.add_argument('-m', '--model', action='store', choices=[
-        'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large'],
+        'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large-v3', 'large'],
         default='tiny',
         help='Specify the OpenAI Local Transcription model file to use.'
         '\nBy default tiny english model is part of the install.'
@@ -151,11 +151,13 @@ def create_args() -> argparse.Namespace:
         '\nmedium multi-lingual model has to be downloaded from the link '
         'https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge model has to be downloaded from the link                '
-        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt'  # noqa: E501  pylint: disable=C0115
+        'https://openaipublic.azureedge.net/main/whisper/models/e5b1a55b89c1367dacf97e3e19bfd829a01529dbfdeefa8caeb59b3f1b81dadb/large-v3.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge-v1 model has to be downloaded from the link             '
         'https://openaipublic.azureedge.net/main/whisper/models/e4b87e7e0bf463eb8e6956e646f1e277e901512310def2c24bf0e11bd3c28e9a/large-v1.pt'  # noqa: E501  pylint: disable=C0115
         '\nlarge-v2 model has to be downloaded from the link             '
-        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')  # noqa: E501  pylint: disable=C0115
+        'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt'  # noqa: E501  pylint: disable=C0115
+        '\nlarge-v3 model has to be downloaded from the link             '
+        'https://openaipublic.azureedge.net/main/whisper/models/e5b1a55b89c1367dacf97e3e19bfd829a01529dbfdeefa8caeb59b3f1b81dadb/large-v3.pt')  # noqa: E501  pylint: disable=C0115
     cmd_args.add_argument('-l', '--list_devices', action='store_true',
                           help='List all audio drivers and audio devices on this machine.'
                           '\nUse this list index to select the microphone, speaker device for transcription.')
@@ -249,12 +251,23 @@ def create_transcriber(
             model,
             convo=global_vars.convo,
             config=config)
+    elif name.lower() == 'whisper.cpp':
+        stt_model_config: dict = {
+        }
+        model = model_factory.get_stt_model_instance(
+            stt_model=TranscriberModels.STTEnum.WHISPER_CPP,
+            config=stt_model_config)
+        global_vars.transcriber = AudioTranscriber.WhisperCPPTranscriber(
+            global_vars.user_audio_recorder.source,
+            global_vars.speaker_audio_recorder.source,
+            model,
+            convo=global_vars.convo,
+            config=config)
     elif name.lower() == 'whisper' and not api:
         stt_model_config: dict = {
             'api_key': config['OpenAI']['api_key'],
             'local_transcripton_model_file': config['OpenAI']['local_transcripton_model_file'],
         }
-        # TODO: get tiny vs base vs medium model names
         model = model_factory.get_stt_model_instance(
             stt_model=TranscriberModels.STTEnum.WHISPER_LOCAL,
             config=stt_model_config)

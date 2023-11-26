@@ -15,11 +15,11 @@ To alter any default configuration specified in `parameters.yaml` file make the 
 
 E.g.
 
-Default Log file name is `Transcribe.log`. This is specified in `parameters.yaml` as 
+Default Log file name is `logs/Transcribe.log`. This is specified in `parameters.yaml` as 
 
 ```yaml
 General:
-  log_file: 'Transcribe.log'
+  log_file: 'logs/Transcribe.log'
 ```
 
 To change it to a different filename create a similar section in override.yaml file

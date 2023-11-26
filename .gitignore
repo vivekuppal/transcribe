@@ -5,8 +5,8 @@ __pycache__/
 venv
 output
 tiny.pt
-Transcribe.log
+logs/Transcribe.log
 uid.lock
-response.txt
+logs/response.txt
 transcription.txt
 version.txt

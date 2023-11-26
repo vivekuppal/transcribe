@@ -1,6 +1,8 @@
 import sys
 import os
 import json
+import subprocess
+import tempfile
 from enum import Enum
 from abc import abstractmethod
 import openai
@@ -14,7 +16,8 @@ class STTEnum(Enum):
     """
     WHISPER_LOCAL = 1
     WHISPER_API = 2
-    DEEPGRAM_API = 3
+    WHISPER_CPP = 3
+    DEEPGRAM_API = 4
 
 
 class STTModelFactory:
@@ -36,6 +39,8 @@ class STTModelFactory:
             return WhisperSTTModel(config=config)
         elif stt_model == STTEnum.WHISPER_API:
             return APIWhisperSTTModel(config=config)
+        elif stt_model == STTEnum.WHISPER_CPP:
+            return WhisperCPPSTTModel(config=config)
         elif stt_model == STTEnum.DEEPGRAM_API:
             return DeepgramSTTModel(config=config)
         raise ValueError("Unknown SPeech to Text Model Type")
@@ -58,6 +63,9 @@ class STTModelInterface:
         pass
 
 
+# TODO: Download the necessary models for whisper automatically
+# TODO: Move whisper models to model folder as well instead of placing them in the base folder
+#       Update readme for the models change
 class WhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper Local model
     """
@@ -86,11 +94,13 @@ class WhisperSTTModel(STTModelInterface):
             print('medium multi-lingual model has to be downloaded from the link \
                     https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.pt')  # noqa: E501  pylint: disable=C0115
             print('large model has to be downloaded from the link \
-                    https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')  # noqa: E501  pylint: disable=C0115
+                    https://openaipublic.azureedge.net/main/whisper/models/e5b1a55b89c1367dacf97e3e19bfd829a01529dbfdeefa8caeb59b3f1b81dadb/large-v3.pt')  # noqa: E501  pylint: disable=C0115
             print('large-v1 model has to be downloaded from the link \
                     https://openaipublic.azureedge.net/main/whisper/models/e4b87e7e0bf463eb8e6956e646f1e277e901512310def2c24bf0e11bd3c28e9a/large-v1.pt')  # noqa: E501  pylint: disable=C0115
             print('large-v2 model has to be downloaded from the link \
                     https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v2.pt')  # noqa: E501  pylint: disable=C0115
+            print('large-v3 model has to be downloaded from the link \
+                    https://openaipublic.azureedge.net/main/whisper/models/e5b1a55b89c1367dacf97e3e19bfd829a01529dbfdeefa8caeb59b3f1b81dadb/large-v3.pt')  # noqa: E501  pylint: disable=C0115
             sys.exit()
 
         self.model_filename = os.path.join(os.getcwd(), model_filename)
@@ -128,7 +138,7 @@ class WhisperSTTModel(STTModelInterface):
         else:
             self.audio_model = whisper.load_model(os.path.join(os.getcwd(), self.model + '.pt'))
 
-    def process_response(self, response):
+    def process_response(self, response) -> str:
         """
         Returns transcription from the response of transcription.
         """
@@ -173,7 +183,7 @@ class APIWhisperSTTModel(STTModelInterface):
 
         return result
 
-    def process_response(self, response):
+    def process_response(self, response) -> str:
         """
         Returns transcription from the response of transcription.
         """
@@ -184,6 +194,82 @@ class APIWhisperSTTModel(STTModelInterface):
         #
         # pprint.pprint(results)
         return response['text'].strip()
+
+
+# TODO: Download the necessary models for whisper CPP automatically
+# Test with and without GPU for main.exe. There are different exe with and without GPU
+# Location of models is in https://github.com/ggerganov/whisper.cpp/blob/master/models/download-ggml-model.cmd
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large.en.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v1.en.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v1.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v2.en.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v2.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.en.bin
+# https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin
+#
+#
+# bin\main.exe c:\git\whisper.cpp\samples\jfk.wav -oj
+
+class WhisperCPPSTTModel(STTModelInterface):
+    """Speech to Text using the local whisper cpp exes.
+    It primarily deals with interacting with the whisper CPP API model.
+    This model works best when used with GPU
+    """
+    def __init__(self, config: dict):
+        self.lang = 'en-US'
+
+        print('[INFO] Using Whisper CPP for transcription.')
+        self.model = 'base'
+
+    def set_lang(self, lang: str):
+        """Set STT Language"""
+        self.lang = lang
+
+    def get_transcription(self, wav_file_path: str):
+        """Get text using STT
+        """
+        mod_file_path = wav_file_path
+        try:
+            # main.exe <filename> -oj
+            subprocess.call(["./bin/main.exe", mod_file_path, '-oj'],
+                            stdout=open(file='logs/whisper.cpp.txt', mode='w', encoding='utf-8'),
+                            stderr=subprocess.STDOUT)
+        except Exception as ex:
+            print(f'ERROR: converting wav file {wav_file_path} to text using whisper.cpp.')
+            print(ex)
+
+        try:
+            # Output is produced in json file wav_file_path.json
+            json_file_path = mod_file_path+".json"
+            with open(json_file_path, mode="r", encoding='utf-8') as text_file:
+                response = json.loads(text_file.read())
+                return response
+        except Exception as exception:
+            print(f'Error reading json file: {json_file_path}')
+            print(exception)
+
+        os.unlink(json_file_path)
+        os.unlink(mod_file_path)
+
+        return None
+
+    def process_response(self, response) -> str:
+        # response is of type PrerecordedTranscriptionResponse
+        # convert result to the appropriate dict format
+        text = ''
+        for segment in response["transcription"]:
+            if segment["text"].strip() == '[BLANK_AUDIO]':
+                continue
+            text += segment["text"]
+        # print(f'Transcript: {text}')
+        return text
 
 
 class DeepgramSTTModel(STTModelInterface):
@@ -199,7 +285,7 @@ class DeepgramSTTModel(STTModelInterface):
         self.lang = 'en-US'
 
         print('[INFO] Using Deepgram API for transcription.')
-        self.model = Deepgram(config["api_key"])
+        self.audio_model = Deepgram(config["api_key"])
 
     def set_lang(self, lang: str):
         """Set STT Language"""
@@ -219,8 +305,9 @@ class DeepgramSTTModel(STTModelInterface):
                     'punctuate': True,
                     'paragraphs': True
                     }
-                response = self.model.transcription.sync_prerecorded(source, options=options)
-                with open('deep.json', mode='a', encoding='utf-8') as deep_log:
+                response = self.audio_model.transcription.sync_prerecorded(source, options=options)
+                # This is not necessary and just a debugging aid
+                with open('logs/deep.json', mode='a', encoding='utf-8') as deep_log:
                     deep_log.write(json.dumps(response, indent=4))
 
                 return response

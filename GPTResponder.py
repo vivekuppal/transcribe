@@ -22,7 +22,7 @@ class GPTResponder:
                  config: dict,
                  convo: conversation.Conversation,
                  save_to_file: bool = False,
-                 file_name: str = 'response.txt'):
+                 file_name: str = 'logs/response.txt'):
         root_logger.info(GPTResponder.__name__)
         # This var is used by UI to populate the response textbox
         self.response = prompts.INITIAL_RESPONSE
