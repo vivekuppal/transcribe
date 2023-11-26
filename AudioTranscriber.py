@@ -206,7 +206,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             # print(f'Convert file {file_path} to 16khz file {mod_file_path}')
             subprocess.call(["ffmpeg", '-i', file_path, '-ar', '16000', '-ac',
                              '1', '-c:a', 'pcm_s16le', '-y', mod_file_path],
-                            stdout=open(file='logs/ffmpeg.txt', mode='w', encoding='utf-8'),
+                            stdout=open(file='logs/ffmpeg.txt', mode='a', encoding='utf-8'),
                             stderr=subprocess.STDOUT)
             return mod_file_path
         except Exception as ex:
@@ -256,11 +256,6 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             source_info["last_sample"] += data
             source_info["last_spoken"] = time_spoken
 
-    # TODO: Why does process_mic_data handles wav data differently
-    # compared to process_speaker_data.
-    # Whichever one is a faster implementation, we should choose
-    # that and do the same for both.
-    # Same for the implemenatation in WhisperCPP, prune_for_latency
     def process_mic_data(self, data, temp_file_name):
         """Processes audio data received from the microphone
         Args:
@@ -271,11 +266,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             return
         audio_data = sr.AudioData(data, self.audio_sources["You"]["sample_rate"],
                                   self.audio_sources["You"]["sample_width"])
-        # Though counter intuitive, I think this in memory file might be a perf issue
-        # based on anecdotal observations. This might require some investigation
         wav_data = io.BytesIO(audio_data.get_wav_data())
         with open(temp_file_name, 'w+b') as file_handle:
-            # print(f'{datetime.datetime.now()} - Writing mic data into file: {temp_file_name}')
             file_handle.write(wav_data.read())
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
 
@@ -630,10 +622,10 @@ class WhisperCPPTranscriber(AudioTranscriber):
                         prune_percent = prune_seconds / original_duration
                         root_logger.info(f'Prune till segment id : {prune_segment_id}.'
                                          f' Prune duration: {prune_seconds}.')
-                        print(f'Prune till segment id : {prune_segment_id}.'
-                              f' Prune duration: {prune_seconds}.')
+                        # print(f'Prune till segment id : {prune_segment_id}.'
+                        #       f' Prune duration: {prune_seconds}.')
                         root_logger.info(f'Prune {prune_percent}% of data.')
-                        print(f'Prune {prune_percent}% of data.')
+                        # print(f'Prune {prune_percent}% of data.')
                         break
                     segment_id += 1
 
@@ -671,8 +663,6 @@ class WhisperCPPTranscriber(AudioTranscriber):
                 save_frames = int(num_frames * prune_percent)
                 root_logger.info(f'File {file_path} has {num_frames} frames.'
                                  f' We will save the last {save_frames} frames.')
-                print(f'File {file_path} has {num_frames} frames.'
-                      f' We will save the last {save_frames} frames.')
                 new_data = b""
 
                 with io.BytesIO() as temp_wav_file:
@@ -688,7 +678,6 @@ class WhisperCPPTranscriber(AudioTranscriber):
             source_info['last_sample'] = new_data
 
         root_logger.info(f'Prune convo object until prune id: {prune_id}')
-        print(f'Prune convo object until prune id: {prune_id}')
         try:
             first_string = ''
             second_string = ''

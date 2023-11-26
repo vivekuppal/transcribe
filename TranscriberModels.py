@@ -2,7 +2,6 @@ import sys
 import os
 import json
 import subprocess
-import tempfile
 from enum import Enum
 from abc import abstractmethod
 import openai
@@ -239,7 +238,7 @@ class WhisperCPPSTTModel(STTModelInterface):
         try:
             # main.exe <filename> -oj
             subprocess.call(["./bin/main.exe", mod_file_path, '-oj'],
-                            stdout=open(file='logs/whisper.cpp.txt', mode='w', encoding='utf-8'),
+                            stdout=open(file='logs/whisper.cpp.txt', mode='a', encoding='utf-8'),
                             stderr=subprocess.STDOUT)
         except Exception as ex:
             print(f'ERROR: converting wav file {wav_file_path} to text using whisper.cpp.')
