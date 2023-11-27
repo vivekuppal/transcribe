@@ -6,7 +6,7 @@ import prompts
 import conversation
 import constants
 import app_logging as al
-import duration
+from tsutils import duration
 
 
 root_logger = al.get_logger()

@@ -5,7 +5,7 @@ import customtkinter as ctk
 from AudioTranscriber import AudioTranscriber
 from audio_player import AudioPlayer
 import AudioRecorder
-import Singleton
+from tsutils import Singleton
 import app_logging as al
 import conversation
 

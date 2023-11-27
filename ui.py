@@ -5,7 +5,7 @@ import pyperclip
 import customtkinter as ctk
 import AudioTranscriber
 import prompts
-from language import LANGUAGES_DICT
+from tsutils.language import LANGUAGES_DICT
 import GlobalVars
 import GPTResponder
 import app_logging as al

@@ -11,15 +11,15 @@ import AudioTranscriber
 from GPTResponder import GPTResponder
 import AudioRecorder as ar
 import TranscriberModels
-import interactions
+from tsutils import interactions
 import ui
 import GlobalVars
 from audio_player import AudioPlayer
 import configuration
 import conversation
 import app_logging
-import utilities
-import duration
+from tsutils import utilities
+from tsutils import duration
 
 
 def save_api_key(args: argparse.Namespace):

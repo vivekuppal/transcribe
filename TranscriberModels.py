@@ -246,6 +246,7 @@ class WhisperCPPSTTModel(STTModelInterface):
                             stderr=subprocess.STDOUT)
         except Exception as ex:
             print(f'ERROR: converting wav file {wav_file_path} to text using whisper.cpp.')
+            print('Ensure that the file bin/main.exe exists.')
             print(ex)
 
         try:

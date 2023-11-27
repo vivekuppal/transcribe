@@ -14,7 +14,7 @@ import custom_speech_recognition as sr
 import conversation
 import constants
 import app_logging as al
-import duration
+from tsutils import duration
 
 
 # There can be prompts for speech to text aspects as well, that have not been considered as yet.

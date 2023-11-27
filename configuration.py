@@ -1,8 +1,8 @@
 import sys
 import copy
 import yaml
-import Singleton
-import utilities
+from tsutils import Singleton
+from tsutils import utilities
 
 
 class Config(Singleton.Singleton):
