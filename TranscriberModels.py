@@ -19,6 +19,9 @@ class STTEnum(Enum):
     DEEPGRAM_API = 4
 
 
+MODELS_DIR = './models/'
+
+
 class STTModelFactory:
     """Factory class to get the appropriate STT Model
     """
@@ -65,13 +68,14 @@ class STTModelInterface:
 # TODO: Download the necessary models for whisper automatically
 # TODO: Move whisper models to model folder as well instead of placing them in the base folder
 #       Update readme for the models change
+# TODO: Move the model files to models folder
 class WhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper Local model
     """
     def __init__(self, config: dict):
         model = config['local_transcripton_model_file']
         self.lang = 'en'
-        model_filename = model + ".en.pt"
+        model_filename = MODELS_DIR + model + ".en.pt"
         self.model = model
 
         if not os.path.isfile(model_filename):

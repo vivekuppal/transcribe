@@ -8,5 +8,7 @@ tiny.pt
 logs/Transcribe.log
 uid.lock
 logs/response.txt
+logs/ffmpeg.txt
+logs/whisper.cpp.txt
 transcription.txt
 version.txt
