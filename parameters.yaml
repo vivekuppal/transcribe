@@ -59,6 +59,10 @@ OpenAI:
 Deepgram:
   api_key: 'API_KEY'
 
+WhisperCpp:
+  # Can also be specified using the -m parameter on command line of the application
+  local_transcripton_model_file: 'base'
+
 General:
   log_file: 'logs/Transcribe.log'
   # These two parameters are used together.

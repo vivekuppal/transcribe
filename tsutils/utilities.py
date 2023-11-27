@@ -1,5 +1,6 @@
 from __future__ import annotations
 import copy
+import subprocess
 
 
 def merge(first: dict, second: dict, path=[]):
@@ -109,3 +110,22 @@ def naturalsize(
 
     ret: str = str_format % (base * bytes_ / unit) + s
     return ret
+
+
+def download_using_bits(file_url: str, file_path: str):
+    """Download a file using the BITS Service on windows
+    """
+    try:
+        print(f'Downloading file: {file_url}')
+        subprocess.check_output(['powershell',
+                                 '-NoProfile',
+                                 '-ExecutionPolicy',
+                                 'Bypass',
+                                 '-Command',
+                                 'Start-BitsTransfer',
+                                 '-Source',
+                                 file_url,
+                                 '-Destination',
+                                 file_path]).strip()
+    except subprocess.CalledProcessError:
+        print(f'Failed to download the file: {file_url}')

@@ -193,6 +193,10 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         # print(f'filesize: {os.path.getsize(file_path)}')
         return file_path
 
+    # Once these 2 PR's are resolved, we might be able to get rid of this method
+    # and use whisper.cpp for conversion to 16khz format
+    # https://github.com/ggerganov/whisper.cpp/pull/1549
+    # https://github.com/ggerganov/whisper.cpp/pull/1524
     def convert_wav_to_16khz_format(self, file_path: str) -> str:
         """Convert input wav file to 16 khz format, since this is the only format accepted by
         whisper.cpp at the moment.

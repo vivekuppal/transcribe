@@ -134,7 +134,8 @@ def create_args() -> argparse.Namespace:
         'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large-v3', 'large'],
         default='tiny',
         help='Specify the OpenAI Local Transcription model file to use.'
-        '\nBy default tiny english model is part of the install.'
+        '\nThe necessary model files will be downloaded once at run time.'
+        '\n The files can also be manually downloaded from these locations.'
         '\ntiny multi-lingual model has to be downloaded from the link   '
         'https://drive.google.com/file/d/1M4AFutTmQROaE9xk2jPc5Y4oFRibHhEh/view?usp=drive_link'
         '\nbase english model has to be downloaded from the link         '
@@ -225,8 +226,10 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
 
     if args.model is not None:
         config['OpenAI']['local_transcripton_model_file'] = args.model
+        config['WhisperCpp']['local_transcripton_model_file'] = args.model
     else:
         config['OpenAI']['local_transcripton_model_file'] = 'tiny'
+        config['WhisperCpp']['local_transcripton_model_file'] = 'base'
 
 
 def create_transcriber(
@@ -253,6 +256,7 @@ def create_transcriber(
             config=config)
     elif name.lower() == 'whisper.cpp':
         stt_model_config: dict = {
+            'local_transcripton_model_file': 'ggml-' + config['WhisperCpp']['local_transcripton_model_file'],
         }
         model = model_factory.get_stt_model_instance(
             stt_model=TranscriberModels.STTEnum.WHISPER_CPP,
@@ -308,6 +312,8 @@ def main():
     global_vars = GlobalVars.TranscriptionGlobals()
     global_vars.convo = conversation.Conversation()
 
+    handle_args(args, global_vars, config)
+
     create_transcriber(name=args.speech_to_text,
                        config=config,
                        api=args.api,
@@ -321,8 +327,6 @@ def main():
 
     # Initiate logging
     log_listener = app_logging.initiate_log(config=config)
-
-    handle_args(args, global_vars, config)
 
     root = ctk.CTk()
     ui_cb = ui.ui_callbacks()

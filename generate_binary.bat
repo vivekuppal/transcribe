@@ -39,7 +39,6 @@ if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\logs mkdir %PYINSTALLER_D
 if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin
 
 REM Copy appropriate files to the dir
-copy %SOURCE_DIR%\models\tiny.en.pt %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\models\tiny.en.pt
 copy %SOURCE_DIR%\parameters.yaml %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\parameters.yaml
 copy %SOURCE_DIR%\override.yaml %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\override.yaml
 copy %SOURCE_DIR%\version.txt %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\version.txt
