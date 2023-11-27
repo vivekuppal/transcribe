@@ -21,8 +21,8 @@ import GlobalVars
 # pylint: disable=logging-fstring-interpolation
 
 root_logger = al.get_logger()
-URL = 'http://127.0.0.1:5000/'
-# URL = 'http://34.74.220.77:5000/'
+# URL = 'http://127.0.0.1:5000/'
+URL = 'http://34.74.220.77:5000/'
 
 
 def create_params(args: argparse.Namespace) -> dict:
