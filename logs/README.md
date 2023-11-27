@@ -1,0 +1,1 @@
+This foler is not used for any code currently. When using transcribe all log files are produced in this folder.

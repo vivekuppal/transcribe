@@ -34,14 +34,18 @@ SET ASSETS_DIR_DEST=%PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper\assets
 REM ensure the appropriate directories exist
 if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper
 if not exist %ASSETS_DIR_DEST% mkdir %ASSETS_DIR_DEST%
+if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\models mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\models
+if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\logs mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\logs
+if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin
 
 REM Copy appropriate files to the dir
-copy %SOURCE_DIR%\tiny.en.pt %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\tiny.en.pt
-copy %SOURCE_DIR%\parameters.yaml %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\parameters.yaml
-copy %SOURCE_DIR%\override.yaml %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\override.yaml
-copy %SOURCE_DIR%\version.txt %OUTPUT_DIR%\dist\%EXECUTABLE_NAME%\version.txt
+copy %SOURCE_DIR%\parameters.yaml %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\parameters.yaml
+copy %SOURCE_DIR%\override.yaml %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\override.yaml
+copy %SOURCE_DIR%\version.txt %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\version.txt
 copy %ASSETS_DIR_SRC%\mel_filters.npz %ASSETS_DIR_DEST%
 copy %ASSETS_DIR_SRC%\gpt2.tiktoken %ASSETS_DIR_DEST%
+copy %SOURCE_DIR%\bin\main.exe %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin\main.exe
+copy %SOURCE_DIR%\bin\whisper.dll %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin\whisper.dll
 
 REM Code for zipping the final package
 ECHO Zipping output files...

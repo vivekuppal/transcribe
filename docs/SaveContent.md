@@ -13,7 +13,7 @@ All text in the transcription window can be saved to file using the menu option 
 ![Screenshot](../assets/Pause-Transcription.png)
 
 ## Save all responses from LLM
-By Default all responses from LLM are saved to the file `response.txt`.
+By Default all responses from LLM are saved to the file `logs/response.txt`.
 
 The behavior, file location can be changed using these config options in `parameters.yaml` file
 
@@ -21,7 +21,7 @@ The behavior, file location can be changed using these config options in `parame
   # These two parameters are used together.
   # Save LLM response to file if save_llm_response_to_file is Yes
   save_llm_response_to_file: Yes # Possible values are Yes, No
-  llm_response_file: 'response.txt'
+  llm_response_file: 'logs/response.txt'
 ```
 
 ## Copy to Clipboard
