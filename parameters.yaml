@@ -84,7 +84,7 @@ General:
 # Index of microphone device. Value of -1 indicates it is not set.
 # This is equivalent to -mi (mic_device_index) argument on command line
 # Command line argument takes precedence over value specified in parameters.yaml
-  mic_device_index: 2
+  mic_device_index: -1
 # Index of speaker device.  Value of -1 indicates it is not set.
 # This is equivalent to -si (speaker_device_index) argument on command line
 # Command line argument takes precedence over value specified in parameters.yaml

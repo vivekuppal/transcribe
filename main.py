@@ -225,6 +225,7 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
 
     if args.speaker_device_index is not None:
         print('[INFO] Override default speaker with device specified on command line.')
+        config['General']['speaker_device_index'] = int(args.speaker_device_index)
         global_vars.speaker_audio_recorder.set_device(index=args.speaker_device_index)
 
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
