@@ -76,3 +76,23 @@ General:
 # clear_transcript_interval_seconds is applicable when clear_transcript_periodically is set to Yes
   clear_transcript_periodically: No # Possible values are Yes, No
   clear_transcript_interval_seconds: 90
+# Determines whether to use API for STT or not. This option is applicable only for online services.
+# This option has no affect on offline services.
+# This is equivalent to -stt (speech_to_text) argument on command line.
+# Command line argument takes precedence over value specified in parameters.yaml
+  use_api: False
+# Index of microphone device. Value of -1 indicates it is not set.
+# This is equivalent to -mi (mic_device_index) argument on command line
+# Command line argument takes precedence over value specified in parameters.yaml
+  mic_device_index: 2
+# Index of speaker device.  Value of -1 indicates it is not set.
+# This is equivalent to -si (speaker_device_index) argument on command line
+# Command line argument takes precedence over value specified in parameters.yaml
+  speaker_device_index: -1
+# Disable Microphone
+# This is equivalent to -dm (disable_mic) argument on command line
+# Command line argument takes precedence over value specified in parameters.yaml
+  disable_mic: False
+# This is equivalent to -ds (disable_speaker) argument on command line
+# Command line argument takes precedence over value specified in parameters.yaml
+  disable_speaker: False

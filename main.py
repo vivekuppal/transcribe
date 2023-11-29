@@ -11,15 +11,13 @@ import AudioTranscriber
 from GPTResponder import GPTResponder
 import AudioRecorder as ar
 import TranscriberModels
-from tsutils import interactions
 import ui
 import GlobalVars
 from audio_player import AudioPlayer
 import configuration
 import conversation
 import app_logging
-from tsutils import utilities
-from tsutils import duration
+from tsutils import utilities, duration, interactions
 
 
 def save_api_key(args: argparse.Namespace):
@@ -212,15 +210,25 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.Tr
 
 def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict):
     """Handle all application configuration using the command line args"""
+    if config['General']['mic_device_index'] != -1:
+        print('[INFO] Override default microphone with device specified in parameters file.')
+        global_vars.user_audio_recorder.set_device(index=int(config['General']['mic_device_index']))
+
     if args.mic_device_index is not None:
         print('[INFO] Override default microphone with device specified on command line.')
+        config['General']['mic_device_index'] = int(args.mic_device_index)
         global_vars.user_audio_recorder.set_device(index=args.mic_device_index)
+
+    if config['General']['speaker_device_index'] != -1:
+        print('[INFO] Override default speaker with device specified in parameters file.')
+        global_vars.user_audio_recorder.set_device(index=int(config['General']['speaker_device_index']))
 
     if args.speaker_device_index is not None:
         print('[INFO] Override default speaker with device specified on command line.')
         global_vars.speaker_audio_recorder.set_device(index=args.speaker_device_index)
 
     # Command line arg for api_key takes preference over api_key specified in parameters.yaml file
+    # TODO: We should be able to set deepgram API key from command line as well
     if args.api_key is not None:
         config['OpenAI']['api_key'] = args.api_key
 
@@ -230,6 +238,9 @@ def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict)
     else:
         config['OpenAI']['local_transcripton_model_file'] = 'tiny'
         config['WhisperCpp']['local_transcripton_model_file'] = 'base'
+
+    if args.api:
+        config['General']['use_api'] = args.api
 
 
 def create_transcriber(
@@ -316,7 +327,7 @@ def main():
 
     create_transcriber(name=args.speech_to_text,
                        config=config,
-                       api=args.api,
+                       api=bool(config['General']['use_api']),
                        global_vars=global_vars)
 
     # Transcriber needs to be created before handling batch tasks which include batch
@@ -341,6 +352,8 @@ def main():
     response_now_button = ui_components[7]
     read_response_now_button = ui_components[8]
     global_vars.editmenu = ui_components[9]
+    github_link = ui_components[10]
+    star_link = ui_components[11]
     global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     time.sleep(2)
@@ -348,11 +361,11 @@ def main():
     global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     # disable speaker/microphone on startup
-    if args.disable_speaker:
+    if args.disable_speaker or config['General']['disable_mic']:
         print('[INFO] Disabling Speaker')
         ui_cb.enable_disable_speaker(global_vars.editmenu)
 
-    if args.disable_mic:
+    if args.disable_mic or config['General']['disable_speaker']:
         print('[INFO] Disabling Microphone')
         ui_cb.enable_disable_microphone(global_vars.editmenu)
 
@@ -373,6 +386,8 @@ def main():
     label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
     update_interval_slider_label.configure(text=label_text)
     lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
+    github_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
+    star_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,

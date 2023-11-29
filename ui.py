@@ -1,6 +1,7 @@
 import threading
 import datetime
 import tkinter as tk
+import webbrowser
 import pyperclip
 import customtkinter as ctk
 import AudioTranscriber
@@ -10,6 +11,7 @@ import GlobalVars
 import GPTResponder
 import app_logging as al
 import constants
+
 
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
@@ -106,6 +108,10 @@ class ui_callbacks:
             self.global_vars.filemenu.entryconfigure(1, label="Pause Transcription")
         else:
             self.global_vars.filemenu.entryconfigure(1, label="Start Transcription")
+
+    def open_link(self, url: str):
+        """Open the link in a web browser"""
+        webbrowser.open(url=url, new=2)
 
 
 def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
@@ -263,8 +269,15 @@ def create_ui_components(root):
     lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
     lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="wn")
 
+    github_link = ctk.CTkLabel(root, text="Transcribe Github Repo", text_color="#639cdc", cursor="hand2")
+    github_link.grid(row=3, column=0, padx=10, pady=10, sticky="n")
+
+    star_link = ctk.CTkLabel(root, text="Star the Repo if you like the app", text_color="#FFFCF2", cursor="hand2")
+    star_link.grid(row=3, column=0, padx=10, pady=10, sticky="en")
+
     # Order of returned components is important.
     # Add new components to the end
     return [transcript_textbox, response_textbox, update_interval_slider,
             update_interval_slider_label, freeze_button, lang_combobox,
-            filemenu, response_now_button, read_response_now_button, editmenu]
+            filemenu, response_now_button, read_response_now_button, editmenu,
+            github_link, star_link]
