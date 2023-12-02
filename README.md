@@ -10,7 +10,7 @@ Transcribe is a live audio, video transcription tool that provides real-time tra
 - Install without python dependencies
 - Speech to Text
     - Offline - free
-    - Online - Whisper or Deepgram
+    - Online - paid - OpenAI Whisper or Deepgram
 - Prompt customization
 - Response Audio
 - Manage Audio Input (Speaker or Mic or Both)
