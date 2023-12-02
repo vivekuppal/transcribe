@@ -1,6 +1,8 @@
 from __future__ import annotations
+import os
 import copy
 import subprocess
+import zipfile
 
 
 def merge(first: dict, second: dict, path=[]):
@@ -29,9 +31,21 @@ def merge(first: dict, second: dict, path=[]):
     return first
 
 
+def incrementing_filename(filename: str, extension: str):
+    """Create a filename with incrementing number depending on the next available
+    filename
+    e.g. text-1.txt
+    or text-2.txt if text-1.txt exists
+    """
+    i = 0
+    while os.path.exists(f'{filename}-{i}.{extension}'):
+        i += 1
+    return f'{filename}-{i}.{extension}'
+
 # The method naturalize is copied from
 # https://github.com/python-humanize/humanize/blob/main/src/humanize/filesize.py
 # Bits and bytes related humanization.
+
 
 suffixes = {
     "decimal": (" kB", " MB", " GB", " TB", " PB", " EB", " ZB", " YB"),
@@ -129,3 +143,26 @@ def download_using_bits(file_url: str, file_path: str):
                                  file_path]).strip()
     except subprocess.CalledProcessError:
         print(f'Failed to download the file: {file_url}')
+
+
+def zip_files_in_folder_with_params(**params):
+    try:
+        folder_path = params['folder_path']
+        zip_file_name = params['zip_file_name']
+        skip_zip_files = bool(params['skip_zip_files'])
+    except KeyError as ke:
+        print(f'Caught exception in method: {zip_files_in_folder_with_params}')
+        print(f'Required argument {ke} not set.')
+
+    zip_files_in_folder(folder_path=folder_path, zip_file_name=zip_file_name, skip_zip_files=skip_zip_files)
+
+
+def zip_files_in_folder(folder_path: str, zip_file_name: str,
+                        skip_zip_files: bool = True):
+    """Zip all files in this folder
+    """
+    with zipfile.ZipFile(f'{zip_file_name}', 'w') as my_zip:
+        for file in os.listdir(folder_path):
+            if skip_zip_files and file.endswith(".zip"):
+                continue
+            my_zip.write(f'{folder_path}/{file}')
