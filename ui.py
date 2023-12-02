@@ -7,6 +7,7 @@ import customtkinter as ctk
 import AudioTranscriber
 import prompts
 from tsutils.language import LANGUAGES_DICT
+from tsutils import utilities
 import GlobalVars
 import GPTResponder
 import app_logging as al
@@ -31,6 +32,7 @@ class ui_callbacks:
            Does not include responses from assistant.
         """
         root_logger.info(ui_callbacks.copy_to_clipboard.__name__)
+        self.capture_action("Copy transcript to clipboard")
         pyperclip.copy(self.global_vars.transcriber.get_transcript())
 
     def save_file(self):
@@ -38,7 +40,9 @@ class ui_callbacks:
            Does not include responses from assistant.
         """
         root_logger.info(ui_callbacks.save_file.__name__)
-        filename = ctk.filedialog.asksaveasfilename()
+        filename = ctk.filedialog.asksaveasfilename(defaultextension='.txt', title='Save Transcription',
+                                                    filetypes=[("Text Files", "*.txt")])
+        self.capture_action(f'Save transcript to file:{filename}')
         if filename == '':
             return
         with open(file=filename, mode="w", encoding='utf-8') as file_handle:
@@ -49,6 +53,7 @@ class ui_callbacks:
         root_logger.info(ui_callbacks.freeze_unfreeze.__name__)
         # Invert the state
         self.global_vars.responder.enabled = not self.global_vars.responder.enabled
+        self.capture_action(f'{"Enabled " if self.global_vars.responder.enabled else "Disabled "} continuous LLM responses')
         self.global_vars.freeze_button.configure(
             text="Suggest Responses Continuously" if not self.global_vars.responder.enabled else "Do Not Suggest Responses Continuously"
             )
@@ -58,11 +63,19 @@ class ui_callbacks:
         """Toggles the state of speaker"""
         self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
         editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
+        self.capture_action(f'{"Enabled " if self.global_vars.speaker_audio_recorder.enabled else "Disabled "} speaker input')
 
     def enable_disable_microphone(self, editmenu):
         """Toggles the state of microphone"""
         self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
         editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
+        self.capture_action(f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input')
+
+    def update_interval_slider_label(self, slider_value):
+        """Update interval slider label to match the slider value"""
+        label_text = f'Update Response interval: {int(slider_value)} seconds'
+        self.global_vars.update_interval_slider_label.configure(text=label_text)
+        self.capture_action(f'Update LLM response interval to {int(slider_value)}')
 
     def update_response_ui_now(self):
         """Get response from LLM right away
@@ -74,6 +87,7 @@ class ui_callbacks:
         # We need a separate thread to ensure UI is responsive as responses are
         # streamed back. Without the thread UI appears stuck as we stream the
         # responses back
+        self.capture_action('Get LLM response now')
         response_ui_thread = threading.Thread(target=self.update_response_ui_now_threaded,
                                               name='UpdateResponseUINow')
         response_ui_thread.daemon = True
@@ -96,6 +110,7 @@ class ui_callbacks:
         Update the Response UI with the response
         Read the response
         """
+        self.capture_action('Get LLM response now and read aloud')
         self.global_vars.read_response = True
         self.update_response_ui_now()
 
@@ -104,6 +119,7 @@ class ui_callbacks:
            Text of menu item File -> Pause Transcription toggles accordingly"""
         root_logger.info(ui_callbacks.set_transcript_state.__name__)
         self.global_vars.transcriber.transcribe = not self.global_vars.transcriber.transcribe
+        self.capture_action(f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.')
         if self.global_vars.transcriber.transcribe:
             self.global_vars.filemenu.entryconfigure(1, label="Pause Transcription")
         else:
@@ -111,8 +127,15 @@ class ui_callbacks:
 
     def open_link(self, url: str):
         """Open the link in a web browser"""
+        self.capture_action(f'Navigate to {url}.')
         webbrowser.open(url=url, new=2)
 
+    def capture_action(self, action_text: str):
+        """write to file"""
+        filename = utilities.incrementing_filename(filename='logs/ui',
+                                                   extension='txt')
+        with open(filename, mode='a', encoding='utf-8') as ui_file:
+            ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
 
 def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
     """Update the text of textbox with the given text

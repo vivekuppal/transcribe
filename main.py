@@ -84,6 +84,14 @@ def initiate_app_threads(global_vars: GlobalVars,
     clear_transcript_thread.daemon = True
     clear_transcript_thread.start()
 
+    # work_queue thread
+    work_queue_thread = threading.Thread(
+        target=global_vars.task_worker.task_exec_thread,
+        name='WorkQueue'
+    )
+    work_queue_thread.daemon = True
+    work_queue_thread.start()
+
 
 def start_ffmpeg():
     """Start ffmpeg library"""
@@ -107,7 +115,7 @@ def create_args() -> argparse.Namespace:
                           \nThis option requires an API KEY and will consume Open AI credits.')
     cmd_args.add_argument('-e', '--experimental', action='store_true',
                           help='Experimental command line argument. Behavior is undefined.')
-    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper',
+    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper.cpp',
                           choices=['whisper', 'whisper.cpp', 'deepgram'],
                           help='Specify the Speech to text Engine.'
                           '\nLocal STT models tend to perform best for response times.'
@@ -346,7 +354,7 @@ def main():
     transcript_textbox = ui_components[0]
     global_vars.response_textbox = ui_components[1]
     update_interval_slider = ui_components[2]
-    update_interval_slider_label = ui_components[3]
+    global_vars.update_interval_slider_label = ui_components[3]
     global_vars.freeze_button = ui_components[4]
     lang_combobox = ui_components[5]
     global_vars.filemenu = ui_components[6]
@@ -384,15 +392,16 @@ def main():
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
     response_now_button.configure(command=ui_cb.update_response_ui_now)
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
-    label_text = f'Update Response interval: {update_interval_slider.get()} seconds'
-    update_interval_slider_label.configure(text=label_text)
+    update_interval_slider.configure(command=ui_cb.update_interval_slider_label)
+    label_text = f'Update Response interval: {int(update_interval_slider.get())} seconds'
+    global_vars.update_interval_slider_label.configure(text=label_text)
     lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
     github_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
     star_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,
-                          update_interval_slider_label, update_interval_slider)
+                          global_vars.update_interval_slider_label, update_interval_slider)
 
     root.mainloop()
     log_listener.stop()

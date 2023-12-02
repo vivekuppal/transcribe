@@ -1,9 +1,20 @@
 
 # 👂🏻️ Transcribe ✍🏼️
 
-Transcribe is a live audio, video transcription tool that provides real-time transcripts for the microphone input (You) and the audio output (Speaker). It optionally generates a suggested response using OpenAI's GPT API for the user to say based on the live transcription of the conversation.
+Transcribe is a live audio, video transcription tool that provides real-time transcripts for the microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API based on the live transcription of the conversation.
 
 ![Screenshot](assets/Screenshot.png)
+
+## Why Transcribe over ecoute ##
+- Use Most of the functionality for Free
+- Install without python dependencies
+- Speech to Text
+    - Offline - free
+    - Online - paid - OpenAI Whisper or Deepgram
+- Prompt customization
+- Response Audio
+- Manage Audio Input (Speaker or Mic or Both)
+- Save chat history
 
 ## ![Alt text](assets/on-demand-service-48.png) On Demand Features ![Alt text](assets/on-demand-service-48.png) ##
 We develop mutually beneficial on demand features.

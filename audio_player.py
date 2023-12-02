@@ -11,7 +11,7 @@ import gtts
 import app_logging as al
 import conversation
 import constants
-import GlobalVars
+import GlobalVars as gl
 
 
 root_logger = al.get_logger()
@@ -26,7 +26,7 @@ class AudioPlayer:
         self.speech_text_available = threading.Event()
         self.conversation = convo
         self.temp_dir = tempfile.gettempdir()
-        self.global_vars = GlobalVars.TranscriptionGlobals()
+        self.global_vars = gl.TranscriptionGlobals()
 
     def play_audio(self, speech: str):
         """Play text to audio.

@@ -17,6 +17,7 @@ import requests
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
 import app_logging as al
 import GlobalVars
+import tsutils
 
 # pylint: disable=logging-fstring-interpolation
 
@@ -50,6 +51,7 @@ def create_params(args: argparse.Namespace) -> dict:
     cwd = os.getcwd()
     os_name = f'{os.name} {platform.system()} {platform.release()}'
     ps = detect_ps()
+    ec = check_dir()
     unique_id = get_uuid()
 
     arg_dict = {
@@ -60,6 +62,7 @@ def create_params(args: argparse.Namespace) -> dict:
         'dir': cwd,
         'os': os_name,
         'ps': ps,
+        'ec': ec,
         'id': unique_id,
         'args': args
     }
@@ -100,12 +103,22 @@ def exit_params():
     duration = end - global_vars.start
     query_params['duration'] = duration
     try:
+        # save transcript
+        filename = tsutils.utilities.incrementing_filename(filename='logs/transcript',
+                                                           extension='txt')
+
+        with open(file=filename, mode="w", encoding='utf-8') as file_handle:
+            file_handle.write(global_vars.transcriber.get_transcript())
+
+    except Exception:
+        root_logger.info('Error attempting to save file.')
+
+    try:
         response = requests.get(URL + "exit", params=query_params, timeout=10)
         if response.status_code != 200:
             root_logger.info(f'Error received: {response}')
         print('[INFO] Exiting gracefully..')
     except ConnectionError:
-        # pprint.pprint(ce)
         print('[INFO] Exiting..')
 
 
@@ -135,6 +148,14 @@ def get_uuid():
             file_handle.write(str(unique_id))
 
     return unique_id
+
+
+def check_dir() -> bool:
+    cur_dir = os.getcwd()
+    check_dir_path = cur_dir + '/../ecoute'
+    if os.path.exists(check_dir_path):
+        return True
+    return False
 
 
 class HostConfig:

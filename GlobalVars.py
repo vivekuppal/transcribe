@@ -5,7 +5,7 @@ import customtkinter as ctk
 from AudioTranscriber import AudioTranscriber
 from audio_player import AudioPlayer
 import AudioRecorder
-from tsutils import Singleton
+from tsutils import Singleton, task_queue, utilities
 import app_logging as al
 import conversation
 
@@ -32,8 +32,10 @@ class TranscriptionGlobals(Singleton.Singleton):
     read_response: bool = False
     editmenu: tk.Menu = None
     filemenu: tk.Menu = None
+    update_interval_slider_label: ctk.CTkLabel = None
     response_textbox: ctk.CTkTextbox = None
     start: datetime.datetime = None
+    task_worker = None
 
     convo: conversation.Conversation = None
     _initialized: bool = None
@@ -49,5 +51,14 @@ class TranscriptionGlobals(Singleton.Singleton):
         if self.speaker_audio_recorder is None:
             self.speaker_audio_recorder = AudioRecorder.SpeakerRecorder()
         self.start = datetime.datetime.now()
+        self.task_worker = task_queue.TaskQueue()
+        zip_file_name = utilities.incrementing_filename(filename='logs/transcript', extension='zip')
+        zip_params = {
+            'task_type': task_queue.TaskQueueEnum.ZIP_TASK,
+            'folder_path': './logs',
+            'zip_file_name': zip_file_name,
+            'skip_zip_files': True
+        }
+        self.task_worker.add(**zip_params)
 
         self._initialized = True
