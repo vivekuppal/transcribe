@@ -137,7 +137,6 @@ class ui_callbacks:
         with open(filename, mode='a', encoding='utf-8') as ui_file:
             ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
 
-
 def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
     """Update the text of textbox with the given text
         Args:
