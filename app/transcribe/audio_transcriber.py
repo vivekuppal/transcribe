@@ -1,3 +1,4 @@
+import sys
 import os
 import subprocess
 import queue
@@ -10,11 +11,12 @@ from abc import abstractmethod
 import wave
 import tempfile
 import pyaudiowpatch as pyaudio
-import custom_speech_recognition as sr
-import conversation
-import constants
-import app_logging as al
-from tsutils import duration
+sys.path.append('../..')
+import conversation  # noqa: E402 pylint: disable=C0413
+import constants  # noqa: E402 pylint: disable=C0413
+import custom_speech_recognition as sr  # noqa: E402 pylint: disable=C0413
+from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
+from tsutils import duration  # noqa: E402 pylint: disable=C0413
 
 
 # There can be prompts for speech to text aspects as well, that have not been considered as yet.

@@ -4,34 +4,35 @@ import tkinter as tk
 import webbrowser
 import pyperclip
 import customtkinter as ctk
-import AudioTranscriber
+from audio_transcriber import AudioTranscriber
 import prompts
+from global_vars import TranscriptionGlobals
+import constants
+import gpt_responder as gr
 from tsutils.language import LANGUAGES_DICT
 from tsutils import utilities
-import GlobalVars
-import GPTResponder
-import app_logging as al
-import constants
+from tsutils import app_logging as al
 
 
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
 last_transcript_ui_update_time: datetime.datetime = datetime.datetime.utcnow()
-global_vars_module: GlobalVars.TranscriptionGlobals = None
+global_vars_module: TranscriptionGlobals = None
 
 
-class ui_callbacks:
+class UICallbacks:
+    """All callbacks for UI"""
 
-    global_vars: GlobalVars.TranscriptionGlobals
+    global_vars: TranscriptionGlobals
 
     def __init__(self):
-        self.global_vars = GlobalVars.TranscriptionGlobals()
+        self.global_vars = TranscriptionGlobals()
 
     def copy_to_clipboard(self):
         """Copy transcription text data to clipboard.
            Does not include responses from assistant.
         """
-        root_logger.info(ui_callbacks.copy_to_clipboard.__name__)
+        root_logger.info(UICallbacks.copy_to_clipboard.__name__)
         self.capture_action("Copy transcript to clipboard")
         pyperclip.copy(self.global_vars.transcriber.get_transcript())
 
@@ -39,7 +40,7 @@ class ui_callbacks:
         """Save transcription text data to file.
            Does not include responses from assistant.
         """
-        root_logger.info(ui_callbacks.save_file.__name__)
+        root_logger.info(UICallbacks.save_file.__name__)
         filename = ctk.filedialog.asksaveasfilename(defaultextension='.txt', title='Save Transcription',
                                                     filetypes=[("Text Files", "*.txt")])
         self.capture_action(f'Save transcript to file:{filename}')
@@ -50,7 +51,7 @@ class ui_callbacks:
 
     def freeze_unfreeze(self):
         """Respond to start / stop of seeking responses from openAI API"""
-        root_logger.info(ui_callbacks.freeze_unfreeze.__name__)
+        root_logger.info(UICallbacks.freeze_unfreeze.__name__)
         # Invert the state
         self.global_vars.responder.enabled = not self.global_vars.responder.enabled
         self.capture_action(f'{"Enabled " if self.global_vars.responder.enabled else "Disabled "} continuous LLM responses')
@@ -111,13 +112,13 @@ class ui_callbacks:
         Read the response
         """
         self.capture_action('Get LLM response now and read aloud')
-        self.global_vars.read_response = True
+        self.global_vars.set_read_response(True)
         self.update_response_ui_now()
 
     def set_transcript_state(self):
         """Enables, disables transcription.
            Text of menu item File -> Pause Transcription toggles accordingly"""
-        root_logger.info(ui_callbacks.set_transcript_state.__name__)
+        root_logger.info(UICallbacks.set_transcript_state.__name__)
         self.global_vars.transcriber.transcribe = not self.global_vars.transcriber.transcribe
         self.capture_action(f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.')
         if self.global_vars.transcriber.transcribe:
@@ -158,7 +159,7 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
     global global_vars_module  # pylint: disable=W0603
 
     if global_vars_module is None:
-        global_vars_module = GlobalVars.TranscriptionGlobals()
+        global_vars_module = TranscriptionGlobals()
 
     if last_transcript_ui_update_time < global_vars_module.convo.last_update:
         transcript_string = transcriber.get_transcript()
@@ -170,7 +171,7 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
                   update_transcript_ui, transcriber, textbox)
 
 
-def update_response_ui(responder: GPTResponder,
+def update_response_ui(responder: gr.GPTResponder,
                        textbox: ctk.CTkTextbox,
                        update_interval_slider_label: ctk.CTkLabel,
                        update_interval_slider: ctk.CTkSlider):
@@ -182,7 +183,7 @@ def update_response_ui(responder: GPTResponder,
     global global_vars_module  # pylint: disable=W0603
 
     if global_vars_module is None:
-        global_vars_module = GlobalVars.TranscriptionGlobals()
+        global_vars_module = TranscriptionGlobals()
 
     # global_vars_module.responder.enabled --> This is continous response mode from LLM
     # global_vars_module.update_response_now --> Get Response now from LLM
@@ -211,8 +212,8 @@ def create_ui_components(root):
     root.configure(bg='#252422')
     root.geometry("1000x600")
 
-    ui_cb = ui_callbacks()
-    global_vars = GlobalVars.TranscriptionGlobals()
+    ui_cb = UICallbacks()
+    global_vars = TranscriptionGlobals()
 
     # Create the menu bar
     menubar = tk.Menu(root)

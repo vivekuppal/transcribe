@@ -1,10 +1,12 @@
+import sys
 from datetime import datetime
 from abc import abstractmethod
 import queue
 import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
-import app_logging as al
-import configuration
+from tsutils import app_logging as al
+sys.path.append('../..')
+from tsutils import configuration
 
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False
@@ -155,7 +157,7 @@ class MicRecorder(BaseRecorder):
         print(f'[INFO] Listening to sound from Microphone: {self.get_name()} ')
         # This line is commented because in case of non default microphone it can occasionally take
         # several minutes to execute, thus delaying the start of the application.
-        # self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
+        self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
 
     def get_name(self):
         return f'#{self.device_index} - {self.device_info["name"]}'

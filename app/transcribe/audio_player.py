@@ -8,10 +8,9 @@ import tempfile
 import threading
 import playsound
 import gtts
-import app_logging as al
 import conversation
 import constants
-import GlobalVars as gl
+from tsutils import app_logging as al
 
 
 root_logger = al.get_logger()
@@ -26,7 +25,7 @@ class AudioPlayer:
         self.speech_text_available = threading.Event()
         self.conversation = convo
         self.temp_dir = tempfile.gettempdir()
-        self.global_vars = gl.TranscriptionGlobals()
+        self.read_response = False
 
     def play_audio(self, speech: str):
         """Play text to audio.
@@ -51,7 +50,7 @@ class AudioPlayer:
         """Play text to audio based on signaling of event
         """
         while True:
-            if self.speech_text_available.is_set() and self.global_vars.read_response:
+            if self.speech_text_available.is_set() and self.read_response:
                 self.speech_text_available.clear()
                 speech = self.conversation.get_conversation(
                     sources=[constants.PERSONA_ASSISTANT], length=1)
@@ -64,5 +63,5 @@ class AudioPlayer:
                 # Remove Square brackets
                 final_speech = final_speech[1:-1]
                 self.play_audio(speech=final_speech)
-                self.global_vars.read_response = False
+                self.read_response = False
             time.sleep(0.1)

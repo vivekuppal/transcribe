@@ -79,7 +79,7 @@ List all audio drivers and devices on this machine
  »   [21]         2             True     Line (Voicemod Virtual Audio Device (WDM)) [Loopback]
 ```
 
-A specific device can be selected using the below two options
+A specific audio device can be selected using the below two options
 
 ```
   -mi MIC_DEVICE_INDEX, --mic_device_index MIC_DEVICE_INDEX

@@ -1,7 +1,9 @@
+import sys
 from heapq import merge
 import datetime
 import constants
-import configuration
+sys.path.append('../..')
+from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
 
 class Conversation:

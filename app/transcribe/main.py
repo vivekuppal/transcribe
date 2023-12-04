@@ -7,17 +7,19 @@ import time
 import subprocess
 import yaml
 import customtkinter as ctk
-import AudioTranscriber
-from GPTResponder import GPTResponder
-import AudioRecorder as ar
-import TranscriberModels
-import ui
-import GlobalVars
-from audio_player import AudioPlayer
-import configuration
-import conversation
-import app_logging
-from tsutils import utilities, duration, interactions
+from audio_transcriber import WhisperCPPTranscriber, WhisperTranscriber, DeepgramTranscriber
+from gpt_responder import GPTResponder
+from global_vars import TranscriptionGlobals
+from audio_player import AudioPlayer  # noqa: E402 pylint: disable=C0413
+sys.path.append('../..')
+import interactions  # noqa: E402 pylint: disable=C0413
+import ui  # noqa: E402 pylint: disable=C0413
+import conversation  # noqa: E402 pylint: disable=C0413
+from sdk import audio_recorder as ar  # noqa: E402 pylint: disable=C0413
+from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
+from tsutils import configuration  # noqa: E402 pylint: disable=C0413
+from tsutils import utilities, duration  # noqa: E402 pylint: disable=C0413
+from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
 
 
 def save_api_key(args: argparse.Namespace):
@@ -37,11 +39,11 @@ def save_api_key(args: argparse.Namespace):
     print(f'Saved API Key to {yml.config_override_file}')
 
 
-def initiate_app_threads(global_vars: GlobalVars,
+def initiate_app_threads(global_vars: TranscriptionGlobals,
                          config: dict):
     """Start all threads required for the application"""
     # Transcribe and Respond threads, both work on the same instance of the AudioTranscriber class
-    global_vars.audio_player = AudioPlayer(convo=global_vars.convo)
+    global_vars.audio_player_var = AudioPlayer(convo=global_vars.convo)
     transcribe_thread = threading.Thread(target=global_vars.transcriber.transcribe_audio_queue,
                                          name='Transcribe',
                                          args=(global_vars.audio_queue,))
@@ -63,7 +65,7 @@ def initiate_app_threads(global_vars: GlobalVars,
     respond_thread.start()
 
     # Convert response from text to sound and play to user
-    audio_response_thread = threading.Thread(target=global_vars.audio_player.play_audio_loop,
+    audio_response_thread = threading.Thread(target=global_vars.audio_player_var.play_audio_loop,
                                              name='AudioResponse')
     audio_response_thread.daemon = True
     audio_response_thread.start()
@@ -115,7 +117,7 @@ def create_args() -> argparse.Namespace:
                           \nThis option requires an API KEY and will consume Open AI credits.')
     cmd_args.add_argument('-e', '--experimental', action='store_true',
                           help='Experimental command line argument. Behavior is undefined.')
-    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper.cpp',
+    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper',
                           choices=['whisper', 'whisper.cpp', 'deepgram'],
                           help='Specify the Speech to text Engine.'
                           '\nLocal STT models tend to perform best for response times.'
@@ -182,7 +184,7 @@ def create_args() -> argparse.Namespace:
     return args
 
 
-def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.TranscriptionGlobals):
+def handle_args_batch_tasks(args: argparse.Namespace, global_vars: TranscriptionGlobals):
     """Handle batch tasks, after which the program will exit."""
     interactions.params(args)
 
@@ -202,7 +204,12 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.Tr
             print(f'{args.transcribe} file size '
                   f'{utilities.naturalsize(os.path.getsize(args.transcribe))}.')
             print(f'Text output will be produced in {output_file}.')
-            results = global_vars.transcriber.stt_model.get_transcription(args.transcribe)
+            # For whisper.cpp STT convert the file to 16 khz
+            file_path = args.transcribe
+            if args.speech_to_text == 'whisper.cpp':
+                file_path = global_vars.transcriber.convert_wav_to_16khz_format(args.transcribe)
+
+            results = global_vars.transcriber.stt_model.get_transcription(file_path)
             # process_response can be improved to make the output more palatable to human reading
             text = global_vars.transcriber.stt_model.process_response(results)
             if results is not None and len(text) > 0:
@@ -216,7 +223,7 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: GlobalVars.Tr
         sys.exit(0)
 
 
-def handle_args(args: argparse.Namespace, global_vars: GlobalVars, config: dict):
+def handle_args(args: argparse.Namespace, global_vars: TranscriptionGlobals, config: dict):
     """Handle all application configuration using the command line args"""
     if config['General']['mic_device_index'] != -1:
         print('[INFO] Override default microphone with device specified in parameters file.')
@@ -256,19 +263,19 @@ def create_transcriber(
         name: str,
         config: dict,
         api: bool,
-        global_vars: GlobalVars.TranscriptionGlobals):
+        global_vars: TranscriptionGlobals):
     """Creates a transcriber object based on input parameters
     """
-    model_factory = TranscriberModels.STTModelFactory()
+    model_factory = tm.STTModelFactory()
 
     if name.lower() == 'deepgram':
         stt_model_config: dict = {
             'api_key': config['Deepgram']['api_key']
         }
         model = model_factory.get_stt_model_instance(
-            stt_model=TranscriberModels.STTEnum.DEEPGRAM_API,
+            stt_model=tm.STTEnum.DEEPGRAM_API,
             config=stt_model_config)
-        global_vars.transcriber = AudioTranscriber.DeepgramTranscriber(
+        global_vars.transcriber = DeepgramTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -279,9 +286,9 @@ def create_transcriber(
             'local_transcripton_model_file': 'ggml-' + config['WhisperCpp']['local_transcripton_model_file'],
         }
         model = model_factory.get_stt_model_instance(
-            stt_model=TranscriberModels.STTEnum.WHISPER_CPP,
+            stt_model=tm.STTEnum.WHISPER_CPP,
             config=stt_model_config)
-        global_vars.transcriber = AudioTranscriber.WhisperCPPTranscriber(
+        global_vars.transcriber = WhisperCPPTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -293,9 +300,9 @@ def create_transcriber(
             'local_transcripton_model_file': config['OpenAI']['local_transcripton_model_file'],
         }
         model = model_factory.get_stt_model_instance(
-            stt_model=TranscriberModels.STTEnum.WHISPER_LOCAL,
+            stt_model=tm.STTEnum.WHISPER_LOCAL,
             config=stt_model_config)
-        global_vars.transcriber = AudioTranscriber.WhisperTranscriber(
+        global_vars.transcriber = WhisperTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -306,9 +313,9 @@ def create_transcriber(
             'api_key': config['OpenAI']['api_key']
         }
         model = model_factory.get_stt_model_instance(
-            stt_model=TranscriberModels.STTEnum.WHISPER_API,
+            stt_model=tm.STTEnum.WHISPER_API,
             config=stt_model_config)
-        global_vars.transcriber = AudioTranscriber.WhisperTranscriber(
+        global_vars.transcriber = WhisperTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -329,7 +336,7 @@ def main():
 
     # Initiate global variables
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
-    global_vars = GlobalVars.TranscriptionGlobals()
+    global_vars = TranscriptionGlobals()
     global_vars.convo = conversation.Conversation()
 
     handle_args(args, global_vars, config)
@@ -346,10 +353,10 @@ def main():
     handle_args_batch_tasks(args, global_vars)
 
     # Initiate logging
-    log_listener = app_logging.initiate_log(config=config)
+    log_listener = al.initiate_log(config=config)
 
     root = ctk.CTk()
-    ui_cb = ui.ui_callbacks()
+    ui_cb = ui.UICallbacks()
     ui_components = ui.create_ui_components(root)
     transcript_textbox = ui_components[0]
     global_vars.response_textbox = ui_components[1]

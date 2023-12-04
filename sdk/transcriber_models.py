@@ -252,12 +252,12 @@ class WhisperCPPSTTModel(STTModelInterface):
         mod_file_path = wav_file_path
         try:
             # main.exe <filename> -oj
-            subprocess.call(["./bin/main.exe", mod_file_path, '-oj', '-m', self.model_filename],
+            subprocess.call(["../../bin/main.exe", mod_file_path, '-oj', '-m', self.model_filename],
                             stdout=open(file='logs/whisper.cpp.txt', mode='a', encoding='utf-8'),
                             stderr=subprocess.STDOUT)
         except Exception as ex:
             print(f'ERROR: converting wav file {wav_file_path} to text using whisper.cpp.')
-            print('Ensure that the file bin/main.exe exists.')
+            print('Ensure that the file ../../bin/main.exe exists.')
             print(ex)
 
         try:
