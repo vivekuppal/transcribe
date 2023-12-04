@@ -1,6 +1,6 @@
 import datetime
 import time
-import app_logging as al
+from tsutils import app_logging as al
 
 
 # pylint: disable=logging-fstring-interpolation

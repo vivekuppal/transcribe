@@ -15,9 +15,10 @@ import subprocess
 import socket
 import requests
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
-import app_logging as al
-import GlobalVars
-import tsutils
+from global_vars import TranscriptionGlobals
+from tsutils import app_logging as al
+from tsutils import utilities
+
 
 # pylint: disable=logging-fstring-interpolation
 
@@ -97,15 +98,15 @@ def detect_ps():
 
 def exit_params():
     """Params for exit of program"""
-    global_vars = GlobalVars.TranscriptionGlobals()
+    global_vars = TranscriptionGlobals()
     end = datetime.datetime.now()
     query_params = create_params(args=None)
     duration = end - global_vars.start
     query_params['duration'] = duration
     try:
         # save transcript
-        filename = tsutils.utilities.incrementing_filename(filename='logs/transcript',
-                                                           extension='txt')
+        filename = utilities.incrementing_filename(filename='logs/transcript',
+                                                   extension='txt')
 
         with open(file=filename, mode="w", encoding='utf-8') as file_handle:
             file_handle.write(global_vars.transcriber.get_transcript())
@@ -162,7 +163,7 @@ class HostConfig:
     """Host Configuration"""
     def __init__(self):
         root_logger.info(HostConfig.__name__)
-        self.global_vars = GlobalVars.TranscriptionGlobals()
+        self.global_vars = TranscriptionGlobals()
         self._initial_req_interval = 30
         self._regular_req_interval = 7200
 
