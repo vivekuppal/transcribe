@@ -1,5 +1,5 @@
 
-A million thanks to Fahd Mirza for creating an [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
+A million thanks to [Fahd Mirza](https://www.fahdmirza.com/) for creating an [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
 Please subscribe to his [youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
 
 [![install video](https://img.youtube.com/vi/RX86zKdCpMc/0.jpg)](https://www.youtube.com/watch?v=RX86zKdCpMc)
