@@ -1,4 +1,7 @@
 
+A million thanks to Fahd Mirza for creating an [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
+Please subscribe to his [youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/)
+
 # 👂🏻️ Transcribe ✍🏼️
 
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
@@ -49,14 +52,16 @@ https://drive.google.com/file/d/1nCNAG9LpCZ7e1sTeC4rvRcF0WMp51_Fg/view?usp=shari
 ```
 2. Unzip the files in a folder.
 
-3. (Optional) Replace the Open API key in `parameters.yaml` or `override.yaml` file in the transcribe directory:
+3. (Optional) Add Open API key in `override.yaml` file in the transcribe directory:
 
-   Replace the Open API key in `parameters.yaml` file manually. Open in a text editor and alter the line:
+   Add Open API key in `override.yaml` file manually. Open in a text editor and add these lines:
 
-      ```
-        api_key: 'API_KEY'
-      ```
-      Replace "API_KEY" with the actual OpenAI API key. Save the file.
+```
+OpenAI:
+   api_key: 'API_KEY'
+```
+
+   Replace "API_KEY" with the actual OpenAI API key. Save the file.
 
 4. Execute the file `transcribe\transcribe.exe\transcribe.exe`
 

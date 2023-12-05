@@ -25,18 +25,23 @@ from tsutils import utilities
 root_logger = al.get_logger()
 # URL = 'http://127.0.0.1:5000/'
 URL = 'http://34.74.220.77:5000/'
+git_version: str = None
 
 
 def create_params(args: argparse.Namespace) -> dict:
     """Create Ping Parameters"""
+    global git_version  # pylint: disable=W0603
     try:
         root_logger.info(create_params.__name__)
-        git_version = None
-        git_version = subprocess.check_output(
-            ['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
+        if git_version is None:
+            git_version = subprocess.check_output(
+                ['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
     except subprocess.CalledProcessError as process_exception:
         if process_exception.returncode == 128:
-            # This is an executable, read from version.txt file
+            # This is likely an executable
+            # or repo downloaded as zip file
+            # or python cannot find the git executable
+            # read from version.txt file
             with open(file='version.txt', mode='r', encoding='utf-8') as version_file:
                 git_version = version_file.read()
         root_logger.info(f'Error code: {process_exception.returncode}')
