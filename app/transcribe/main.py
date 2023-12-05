@@ -369,7 +369,7 @@ def main():
     read_response_now_button = ui_components[8]
     global_vars.editmenu = ui_components[9]
     github_link = ui_components[10]
-    star_link = ui_components[11]
+    issue_link = ui_components[11]
     global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     time.sleep(2)
@@ -400,11 +400,11 @@ def main():
     response_now_button.configure(command=ui_cb.update_response_ui_now)
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     update_interval_slider.configure(command=ui_cb.update_interval_slider_label)
-    label_text = f'Update Response interval: {int(update_interval_slider.get())} seconds'
+    label_text = f'LLM Response interval: {int(update_interval_slider.get())} seconds'
     global_vars.update_interval_slider_label.configure(text=label_text)
     lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
     github_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
-    star_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
+    issue_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
     ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,

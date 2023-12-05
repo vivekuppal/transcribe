@@ -16,6 +16,7 @@ from tsutils import app_logging as al
 
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
+LLM_RESPONSE_INTERVAL = 8
 last_transcript_ui_update_time: datetime.datetime = datetime.datetime.utcnow()
 global_vars_module: TranscriptionGlobals = None
 
@@ -74,7 +75,7 @@ class UICallbacks:
 
     def update_interval_slider_label(self, slider_value):
         """Update interval slider label to match the slider value"""
-        label_text = f'Update Response interval: {int(slider_value)} seconds'
+        label_text = f'LLM Response interval: {int(slider_value)} seconds'
         self.global_vars.update_interval_slider_label.configure(text=label_text)
         self.capture_action(f'Update LLM response interval to {int(slider_value)}')
 
@@ -131,12 +132,19 @@ class UICallbacks:
         self.capture_action(f'Navigate to {url}.')
         webbrowser.open(url=url, new=2)
 
+    def open_github(self):
+        webbrowser.open(url='https://github.com/vivekuppal/transcribe?referer=desktop', new=2)
+    
+    def open_support(self):
+        webbrowser.open(url='https://github.com/vivekuppal/transcribe/issues/new?referer=desktop', new=2)
+
     def capture_action(self, action_text: str):
         """write to file"""
         filename = utilities.incrementing_filename(filename='logs/ui',
                                                    extension='txt')
         with open(filename, mode='a', encoding='utf-8') as ui_file:
             ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
+
 
 def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
     """Update the text of textbox with the given text
@@ -197,7 +205,7 @@ def update_response_ui(responder: gr.GPTResponder,
 
         update_interval = int(update_interval_slider.get())
         responder.update_response_interval(update_interval)
-        update_interval_slider_label.configure(text=f'Update Response interval: '
+        update_interval_slider_label.configure(text=f'LLM Response interval: '
                                                f'{update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
@@ -260,6 +268,12 @@ def create_ui_components(root):
     # Add the edit menu to the menu bar
     menubar.add_cascade(label="Edit", menu=editmenu)
 
+    helpmenu = tk.Menu(menubar, tearoff=False)
+    helpmenu.add_command(label="Github Repo", command=ui_cb.open_github)
+    helpmenu.add_command(label="Star the Github repo", command=ui_cb.open_github)
+    helpmenu.add_command(label="Report an Issue", command=ui_cb.open_support)
+    menubar.add_cascade(label="Help", menu=helpmenu)
+
     # Add the menu bar to the main window
     root.config(menu=menubar)
 
@@ -287,21 +301,21 @@ def create_ui_components(root):
 
     update_interval_slider = ctk.CTkSlider(root, from_=1, to=10, width=300, height=20,
                                            number_of_steps=9)
-    update_interval_slider.set(2)
+    update_interval_slider.set(LLM_RESPONSE_INTERVAL)
     update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
     lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
     lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="wn")
 
-    github_link = ctk.CTkLabel(root, text="Transcribe Github Repo", text_color="#639cdc", cursor="hand2")
+    github_link = ctk.CTkLabel(root, text="Star the Github Repo", text_color="#639cdc", cursor="hand2")
     github_link.grid(row=3, column=0, padx=10, pady=10, sticky="n")
 
-    star_link = ctk.CTkLabel(root, text="Star the Repo if you like the app", text_color="#FFFCF2", cursor="hand2")
-    star_link.grid(row=3, column=0, padx=10, pady=10, sticky="en")
+    issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
+    issue_link.grid(row=3, column=0, padx=10, pady=10, sticky="en")
 
     # Order of returned components is important.
     # Add new components to the end
     return [transcript_textbox, response_textbox, update_interval_slider,
             update_interval_slider_label, freeze_button, lang_combobox,
             filemenu, response_now_button, read_response_now_button, editmenu,
-            github_link, star_link]
+            github_link, issue_link]
