@@ -251,14 +251,26 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 # if source and target sample rates are not the same, conver to target sample rate
                 # Write wav data to file
                 # Convert to desired sample rate using ffmpeg
-                channels = int(source_info["Speaker"]["channels"])
+                channels = int(source_info["channels"])
                 p = pyaudio.PyAudio()
                 sample_width = p.get_sample_size(pyaudio.paInt16)
-                frame_rate = int(source_info["Speaker"]["sample_rate"])
-                file_path = self.write_wav_data_to_file(data,
-                                                        channels=channels,
-                                                        sample_width=sample_width,
-                                                        frame_rate=frame_rate)
+                frame_rate = int(source_info["sample_rate"])
+                file_descritor, file_path = tempfile.mkstemp(suffix=".wav")
+                os.close(file_descritor)
+
+                # Distinguish audio from speaker, microphone. 
+                # Microphone audio requires a little bit of extra processing.
+                if who_spoke == 'Speaker':
+                    file_path = self.write_wav_data_to_file(data,
+                                                            channels=channels,
+                                                            sample_width=sample_width,
+                                                            frame_rate=frame_rate,
+                                                            file_path=file_path)
+                if who_spoke == 'You':
+                    audio_data = sr.AudioData(data, frame_rate, sample_width)
+                    with open(file_path, 'w+b') as file_handle:
+                        file_handle.write(audio_data.get_wav_data())
+
                 mod_file_path = self.convert_wav_to_16khz_format(file_path)
                 data = self.get_wav_file_data(mod_file_path)
 
@@ -280,11 +292,9 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         p = pyaudio.PyAudio()
         sample_width = p.get_sample_size(pyaudio.paInt16)
         frame_rate = int(self.audio_sources["You"]["sample_rate"])
-
         audio_data = sr.AudioData(data, frame_rate, sample_width)
-        wav_data = io.BytesIO(audio_data.get_wav_data())
         with open(temp_file_name, 'w+b') as file_handle:
-            file_handle.write(wav_data.read())
+            file_handle.write(audio_data.get_wav_data())
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
 
     def process_speaker_data(self, data, temp_file_name):
@@ -573,12 +583,11 @@ class WhisperCPPTranscriber(AudioTranscriber):
         root_logger.info(AudioTranscriber.process_mic_data.__name__)
         if not self.transcribe:
             return
+
         audio_data = sr.AudioData(data, self.audio_sources["You"]["target_sample_rate"],
                                   self.audio_sources["You"]["sample_width"])
-        wav_data = io.BytesIO(audio_data.get_wav_data())
         with open(temp_file_name, 'w+b') as file_handle:
-            # print(f'{datetime.datetime.now()} - Writing mic data into file: {temp_file_name}')
-            file_handle.write(wav_data.read())
+            file_handle.write(audio_data.get_wav_data())
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
 
     def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
