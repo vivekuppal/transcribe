@@ -177,7 +177,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         in format of results. It is implemented in each transcriber specific class.
         """
 
-    def write_wav_data_to_file(self, data, file_path='') -> str:
+    def write_wav_data_to_file(self, data, channels, sample_width, frame_rate, file_path='', ) -> str:
         """Write the data as a wave file
         """
         if file_path == '':
@@ -186,10 +186,9 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
 
         with wave.open(file_path, 'wb') as wf:
             # print(f'{datetime.datetime.now()} - Writing speaker data into file: {file_path}')
-            wf.setnchannels(self.audio_sources["Speaker"]["channels"])    # pylint: disable=E1101
-            p = pyaudio.PyAudio()
-            wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))    # pylint: disable=E1101
-            wf.setframerate(self.audio_sources["Speaker"]["sample_rate"])    # pylint: disable=E1101
+            wf.setnchannels(channels)    # pylint: disable=E1101
+            wf.setsampwidth(sample_width)    # pylint: disable=E1101
+            wf.setframerate(frame_rate)    # pylint: disable=E1101
             wf.writeframes(data)    # pylint: disable=E1101
             # print(f'datasize: {len(data)}')
         # print(f'filesize: {os.path.getsize(file_path)}')
@@ -252,7 +251,14 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 # if source and target sample rates are not the same, conver to target sample rate
                 # Write wav data to file
                 # Convert to desired sample rate using ffmpeg
-                file_path = self.write_wav_data_to_file(data)
+                channels = int(source_info["Speaker"]["channels"])
+                p = pyaudio.PyAudio()
+                sample_width = p.get_sample_size(pyaudio.paInt16)
+                frame_rate = int(source_info["Speaker"]["sample_rate"])
+                file_path = self.write_wav_data_to_file(data,
+                                                        channels=channels,
+                                                        sample_width=sample_width,
+                                                        frame_rate=frame_rate)
                 mod_file_path = self.convert_wav_to_16khz_format(file_path)
                 data = self.get_wav_file_data(mod_file_path)
 
@@ -270,8 +276,12 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         root_logger.info(AudioTranscriber.process_mic_data.__name__)
         if not self.transcribe:
             return
-        audio_data = sr.AudioData(data, self.audio_sources["You"]["sample_rate"],
-                                  self.audio_sources["You"]["sample_width"])
+
+        p = pyaudio.PyAudio()
+        sample_width = p.get_sample_size(pyaudio.paInt16)
+        frame_rate = int(self.audio_sources["You"]["sample_rate"])
+
+        audio_data = sr.AudioData(data, frame_rate, sample_width)
         wav_data = io.BytesIO(audio_data.get_wav_data())
         with open(temp_file_name, 'w+b') as file_handle:
             file_handle.write(wav_data.read())
@@ -285,7 +295,15 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         root_logger.info(AudioTranscriber.process_speaker_data.__name__)
         if not self.transcribe:
             return
-        self.write_wav_data_to_file(data, file_path=temp_file_name)
+        channels = int(self.audio_sources["Speaker"]["channels"])
+        p = pyaudio.PyAudio()
+        sample_width = p.get_sample_size(pyaudio.paInt16)
+        frame_rate = self.audio_sources["Speaker"]["sample_rate"]
+        self.write_wav_data_to_file(data,
+                                    channels=channels,
+                                    sample_width=sample_width,
+                                    frame_rate=frame_rate,
+                                    file_path=temp_file_name)
 
     def update_transcript(self, who_spoke, text, time_spoken):
         """Update transcript with new data
