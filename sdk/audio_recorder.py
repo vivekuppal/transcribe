@@ -6,7 +6,7 @@ import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
 sys.path.append('../..')
-from tsutils import configuration
+from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False

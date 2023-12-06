@@ -33,7 +33,8 @@ def merge(first: dict, second: dict, path=[]):
 
 def incrementing_filename(filename: str, extension: str):
     """Create a filename with incrementing number depending on the next available
-    filename
+    filename. Include dir path in filename if needed.
+    Do not include . in the extension
     e.g. text-1.txt
     or text-2.txt if text-1.txt exists
     """
