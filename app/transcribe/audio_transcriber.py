@@ -112,9 +112,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                     with duration.Duration('Transcription (Speech to Text)', screen=False):
                         root_logger.info(f'{datetime.datetime.now()} - Begin transcription')
                         response = self.stt_model.get_transcription(path)
-                        # pprint.pprint(f'Response from Stt: {response}')
                         text = self.stt_model.process_response(response)
-                        # print(f'Transcript: {text}')
                         if text != '':
                             self._prune_audio_file(response, who_spoke, time_spoken, path)
 
@@ -413,6 +411,10 @@ class WhisperTranscriber(AudioTranscriber):
             # print(f'Key error in check for latency. {ke}')
             # print(f'Type of results: {type(results)}')
             # pprint.pprint(results)
+            return (False, 0, 0)
+        except TypeError:
+            # For the case of API Whisper we run into this exception
+            # Transcription' object is not subscriptable
             return (False, 0, 0)
 
         if len_segments == 0:
