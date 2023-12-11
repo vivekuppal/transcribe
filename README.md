@@ -1,5 +1,5 @@
 
-A million thanks to [Fahd Mirza](https://www.fahdmirza.com/) for creating an [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
+Thanks to [Fahd Mirza](https://www.fahdmirza.com/) for creating an [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
 Please subscribe to his [youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
 
 [![install video](https://img.youtube.com/vi/RX86zKdCpMc/0.jpg)](https://www.youtube.com/watch?v=RX86zKdCpMc)
@@ -13,6 +13,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
 ## Why Transcribe over ecoute ##
 - Use Most of the functionality for FREE
 - Choose between GPT 3.5, 4.0 or other models from OpenAI
+- Upto date with the latest OpenAI libraries, faster
 - Install without python dependencies
 - Speech to Text
     - Offline - FREE

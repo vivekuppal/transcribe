@@ -31,7 +31,7 @@ class GPTResponder:
         self.response_interval = 2
         self.conversation = convo
         self.config = config
-        openai.api_key = self.config['OpenAI']['api_key']
+        self.client = openai.OpenAI(api_key=self.config['OpenAI']['api_key'])
         self.model = self.config['OpenAI']['ai_model']
         self.save_response_to_file = save_to_file
         self.response_file = file_name
@@ -55,12 +55,12 @@ class GPTResponder:
                 # They can confuse the LLM if that many responses are replayed back to LLM.
                 # print(f'{datetime.datetime.now()} - Request response')
                 # self._pretty_print_openai_request(multiturn_prompt_api_message)
-                multi_turn_response = openai.ChatCompletion.create(
-                        model=self.model,
-                        messages=multiturn_prompt_api_message,
-                        temperature=temperature,
-                        request_timeout=timeout,
-                        stream=True
+                multi_turn_response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=multiturn_prompt_api_message,
+                    temperature=temperature,
+                    timeout=timeout,
+                    stream=True
                 )
                 # pprint.pprint(f'openai response: {multi_turn_response}', width=120)
                 # print(f'{datetime.datetime.now()} - Got response')
@@ -71,9 +71,9 @@ class GPTResponder:
                                           response="  ", pop=False)
                 collected_messages = ""
                 for chunk in multi_turn_response:
-                    chunk_message = chunk['choices'][0]['delta']  # extract the message
-                    if "content" in chunk_message:
-                        message_text = chunk_message['content']
+                    chunk_message = chunk.choices[0].delta  # extract the message
+                    if chunk_message.content:
+                        message_text = chunk_message.content
                         collected_messages += message_text
                         # print(f"{message_text}", end="")
                         self._update_conversation(persona=constants.PERSONA_ASSISTANT,

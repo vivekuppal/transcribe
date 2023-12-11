@@ -14,6 +14,7 @@ messages = [
 
 # model="gpt-3.5-turbo"
 MODEL = "gpt-3.5-turbo-0301"
+# MODEL = 'text-davinci-003'
 
 
 def update_chat(message_list, role, content):
@@ -30,7 +31,8 @@ def update_chat(message_list, role, content):
 def get_chatgpt_response(message_list):
     """Call chatGPT for a response
     """
-    response = openai.ChatCompletion.create(model=MODEL, messages=message_list)
+    client = openai.OpenAI(api_key='API_KEY')
+    response = client.chat.completions.create(model=MODEL, messages=messages)
     # return  response['choices'][0]['message']['content']
     return response
 
@@ -126,10 +128,9 @@ def get_chatgpt_response(message_list):
 
 
 if __name__ == "__main__":
-    openai.api_key = "<OpenAI Key>"
     model_response = get_chatgpt_response(messages)
     messages = update_chat(messages, "assistant",
-                           model_response['choices'][0]['message']['content'])
+                           model_response.choices[0].message.content)
     pprint.pprint(messages, width=120)
 
     while True:
@@ -137,6 +138,6 @@ if __name__ == "__main__":
         messages = update_chat(messages, "user", user_input)
         model_response = get_chatgpt_response(messages)
         messages = update_chat(messages, "assistant",
-                               model_response['choices'][0]['message']['content'])
+                               model_response.choices[0].message.content)
         print('---------------- Getting response from LLM ---------------- ')
         pprint.pprint(messages, width=120)
