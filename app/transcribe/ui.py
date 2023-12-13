@@ -101,7 +101,7 @@ class UICallbacks:
         self.global_vars.update_response_now = False
         # Set event to play the recording audio if required
         if self.global_vars.read_response:
-            self.global_vars.audio_player.speech_text_available.set()
+            self.global_vars.audio_player_var.speech_text_available.set()
         self.global_vars.response_textbox.configure(state="normal")
         write_in_textbox(self.global_vars.response_textbox, response_string)
         self.global_vars.response_textbox.configure(state="disabled")
