@@ -46,8 +46,8 @@ Create an issue in the repo to request on demand features.
 Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
 
 Latest Binary
-- Generated: 2023-11-23
-- Git version: 705fc86
+- Generated: 2023-12-18
+- Git version: 4ae0726
 
 1. Download the zip file from
 ```
@@ -114,13 +114,15 @@ Run these commands in a PowerShell window with administrator privileges. For any
    cd app\transcribe
    ```
 
-3. Install the required packages:
+3. Create a virutal env and install the required packages:
 
    ```
-   pip install -r requirements.txt
+   python -m venv venv
+   venv\Scripts\activate.bat
+   pip install -r app\transcribe\requirements.txt
    ```
-   
-   It is recommended to create a virtual environment for installing the required packages
+
+   Virutal environments can also be created using conda or a tool of choice.
    
 4. (Optional) Provide OpenAI API key in `override.yaml` file in the transcribe directory:
 
