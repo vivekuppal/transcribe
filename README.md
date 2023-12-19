@@ -46,12 +46,20 @@ Create an issue in the repo to request on demand features.
 Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
 
 Latest Binary
-- Generated: 2023-11-23
-- Git version: 705fc86
+- Generated: 2023-12-18
+- Git version: 4ae0726
 
 1. Download the zip file from
 ```
-https://drive.google.com/file/d/1nCNAG9LpCZ7e1sTeC4rvRcF0WMp51_Fg/view?usp=sharing
+CPU Only version
+https://drive.google.com/file/d/1SKkB647qgXx37yM5fhkundVaBCw3zcSq/view?usp=sharing
+
+GPU + CPU version
+https://drive.google.com/file/d/14-rULM5ov6RQ5ksicW5cNJJgckSD0Co9/view?usp=sharing
+
+
+Using GPU provides 2-3 times faster reseponse time depending on processing power of GPU.
+CPU only version is 8x smaller in size than GPU version.
 ```
 2. Unzip the files in a folder.
 
@@ -114,13 +122,15 @@ Run these commands in a PowerShell window with administrator privileges. For any
    cd app\transcribe
    ```
 
-3. Install the required packages:
+3. Create a virutal env and install the required packages:
 
    ```
-   pip install -r requirements.txt
+   python -m venv venv
+   venv\Scripts\activate.bat
+   pip install -r app\transcribe\requirements.txt
    ```
-   
-   It is recommended to create a virtual environment for installing the required packages
+
+   Virutal environments can also be created using conda or a tool of choice.
    
 4. (Optional) Provide OpenAI API key in `override.yaml` file in the transcribe directory:
 
