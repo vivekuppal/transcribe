@@ -51,7 +51,15 @@ Latest Binary
 
 1. Download the zip file from
 ```
-https://drive.google.com/file/d/1nCNAG9LpCZ7e1sTeC4rvRcF0WMp51_Fg/view?usp=sharing
+CPU Only version
+https://drive.google.com/file/d/1SKkB647qgXx37yM5fhkundVaBCw3zcSq/view?usp=sharing
+
+GPU + CPU version
+https://drive.google.com/file/d/14-rULM5ov6RQ5ksicW5cNJJgckSD0Co9/view?usp=sharing
+
+
+Using GPU provides 2-3 times faster reseponse time depending on processing power of GPU.
+CPU only version is 8x smaller in size than GPU version.
 ```
 2. Unzip the files in a folder.
 
