@@ -17,16 +17,37 @@ Transcribe provides real time transcription for microphone and speaker output. I
 - Install without python dependencies
 - Speech to Text
     - Offline - FREE
-    - Online - paid - OpenAI Whisper or Deepgram
+    - Online - paid
+      - OpenAI Whisper - **(Encouraged)**
+      - Deepgram
 - Prompt customization
 - Manage Audio Input (Speaker or Mic or Both)
 - Save chat history
 - Response Audio
 
+## Response Generation ##
+Response generation requires a paid account with OpenAI API key. **Encouraged**
+
+Without the OpenAI key we get an error similar to below
+
+```
+Error when attempting to get a response from LLM.
+Error code: 401 - {'error': {'message': 'Incorrect API key provided: API_KEY. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
+```
+
+With a valid OpenAI key and no available credits, we get an error similar to below
+```
+Error when attempting to get a response from LLM. Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}} 
+```
+
+
 ## ![Alt text](assets/on-demand-service-48.png) On Demand Features ![Alt text](assets/on-demand-service-48.png) ##
 We develop mutually beneficial features on demand.
 
 Create an issue in the repo to request on demand features.
+
+Connect with me on LinkedIn to discuss further.
+
 
 ## Features ##
 - [Response Customization](./docs/ResponseCustomization.md)
@@ -180,3 +201,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🤝 Contributions 🤝
 
 Contributions are welcome! Open issues or submit pull requests to improve Transcribe.
+
+## Videos
+[Install Video](https://www.youtube.com/watch?v=RX86zKdCpMc) Thanks to Fahd Mirza.
+[Fireside chat](https://www.youtube.com/watch?v=vUm-elVkxOI) about Transcribe.
