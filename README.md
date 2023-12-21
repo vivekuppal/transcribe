@@ -28,14 +28,16 @@ Transcribe provides real time transcription for microphone and speaker output. I
 ## Response Generation ##
 Response generation requires a paid account with OpenAI API key. **Encouraged**
 
-Without the OpenAI key we get an error similar to below
+Wait for some sentences of audio to be transcribed to text prior to starting the continuous response method.
+
+Without the OpenAI key, using continuous response gives an error similar to below
 
 ```
 Error when attempting to get a response from LLM.
 Error code: 401 - {'error': {'message': 'Incorrect API key provided: API_KEY. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_api_key'}}
 ```
 
-With a valid OpenAI key and no available credits, we get an error similar to below
+With a valid OpenAI key and no available credits, using continuous response gives an error similar to below
 ```
 Error when attempting to get a response from LLM. Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}} 
 ```
