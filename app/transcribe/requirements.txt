@@ -14,5 +14,5 @@ gtts
 # in case of continuous play back of files in quick succession
 playsound==1.2.2
 deepgram-sdk
---extra-index-url https://download.pytorch.org/whl/cu118
+--index-url https://download.pytorch.org/whl/cu121
 torch
