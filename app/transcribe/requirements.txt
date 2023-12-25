@@ -17,5 +17,5 @@ deepgram-sdk
 # Use 117 to build for CPU only
 # --extra-index-url https://download.pytorch.org/whl/cu117
 #--extra-index-url https://download.pytorch.org/whl/cu118
---index-url https://download.pytorch.org/whl/cu121
+--extra-index-url https://download.pytorch.org/whl/cu121
 torch
