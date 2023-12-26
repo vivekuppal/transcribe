@@ -11,7 +11,7 @@ OpenAI:
   ai_model: gpt-3.5-turbo-0301
 # Local model file to use for transcription.
 # Can also be specified using the -m parameter on command line of the application
-  local_transcripton_model_file: 'tiny'
+  local_transcripton_model_file: 'base'
 # Language in which ChatGPT should respond.
 # List of languages available for openAI is available at
 # https://platform.openai.com/docs/guides/speech-to-text/supported-languages

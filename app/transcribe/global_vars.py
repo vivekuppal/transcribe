@@ -48,10 +48,6 @@ class TranscriptionGlobals(Singleton.Singleton):
             return
         if self.audio_queue is None:
             self.audio_queue = queue.Queue()
-        if self.user_audio_recorder is None:
-            self.user_audio_recorder = ar.MicRecorder()
-        if self.speaker_audio_recorder is None:
-            self.speaker_audio_recorder = ar.SpeakerRecorder()
         self.start = datetime.datetime.now()
         self.task_worker = task_queue.TaskQueue()
         zip_file_name = utilities.incrementing_filename(filename='logs/transcript', extension='zip')
@@ -64,6 +60,21 @@ class TranscriptionGlobals(Singleton.Singleton):
         self.task_worker.add(**zip_params)
 
         self._initialized = True
+
+    def initiate_audio_devices(self, config: dict):
+        # Handle mic if it is not disabled in arguments or yaml file
+        print('[INFO] Using default microphone.')
+        self.user_audio_recorder = ar.MicRecorder()
+        if not config['General']['disable_mic'] and config['General']['mic_device_index'] != -1:
+            print('[INFO] Override default microphone with device specified in parameters file.')
+            self.user_audio_recorder.set_device(index=int(config['General']['mic_device_index']))
+
+        # Handle speaker if it is not disabled in arguments or yaml file
+        print('[INFO] Using default speaker.')
+        self.speaker_audio_recorder = ar.SpeakerRecorder()
+        if not config['General']['disable_speaker'] and config['General']['speaker_device_index'] != -1:
+            print('[INFO] Override default speaker with device specified in parameters file.')
+            self.speaker_audio_recorder.set_device(index=int(config['General']['speaker_device_index']))
 
     def set_read_response(self, value: bool):
         self.read_response = value
