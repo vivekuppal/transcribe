@@ -1589,7 +1589,9 @@ class Recognizer(AudioSource):
             audio_array,
             language=language,
             task="translate" if translate else None,
-            fp16=torch.cuda.is_available(),
+            # fp16=torch.cuda.is_available(),
+            fp16=False,
+            temperature=0,
             **transcribe_options
         )
 
