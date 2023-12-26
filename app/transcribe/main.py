@@ -377,11 +377,11 @@ def main():
     global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
 
     # disable speaker/microphone on startup
-    if args.disable_speaker or config['General']['disable_mic']:
+    if args.disable_speaker or config['General']['disable_speaker']:
         print('[INFO] Disabling Speaker')
         ui_cb.enable_disable_speaker(global_vars.editmenu)
 
-    if args.disable_mic or config['General']['disable_speaker']:
+    if args.disable_mic or config['General']['disable_mic']:
         print('[INFO] Disabling Microphone')
         ui_cb.enable_disable_microphone(global_vars.editmenu)
 
