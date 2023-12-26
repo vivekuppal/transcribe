@@ -239,13 +239,22 @@ class Microphone(AudioSource):
                         rate=self.SAMPLE_RATE, frames_per_buffer=self.CHUNK, input=True,
                     )
                 )
-        except Exception:
+        except Exception as e:
+            # This exception often goes unseen since this method is implicitly
+            # called for the with clause of Microphone and can go unnoticed
+            print('Encountered exception in Microphone __enter__')
+            print(e)
             self.audio.terminate()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
             self.stream.close()
+        except Exception as e:
+            # This exception often goes unseen since this method is implicitly
+            # called for the with clause of Microphone and can go unnoticed
+            print('Encountered exception in Microphone __exit__')
+            print(e)
         finally:
             self.stream = None
             self.audio.terminate()
@@ -429,7 +438,8 @@ class Recognizer(AudioSource):
                     offset_reached = True
 
             buffer = source.stream.read(source.CHUNK)
-            if len(buffer) == 0: break
+            if len(buffer) == 0:
+                break
 
             if offset_reached or not offset:
                 elapsed_time += seconds_per_buffer
@@ -640,7 +650,7 @@ class Recognizer(AudioSource):
         # print(f'listen: Sample Width: {source.SAMPLE_WIDTH}, Sample Rate: {source.SAMPLE_RATE}, datelen: {len(frame_data)}')
         return AudioData(frame_data, source.SAMPLE_RATE, source.SAMPLE_WIDTH)
 
-    def listen_in_background(self, source, callback, phrase_time_limit=None):
+    def listen_in_background(self, source, source_name, callback, phrase_time_limit=None):
         """
         Spawns a thread to repeatedly record phrases from ``source`` (an ``AudioSource`` instance) into an ``AudioData`` instance and call ``callback`` with that ``AudioData`` instance as soon as each phrase are detected.
 
@@ -669,7 +679,7 @@ class Recognizer(AudioSource):
             if wait_for_stop:
                 listener_thread.join()  # block until the background thread is done, which can take around 1 second
 
-        listener_thread = threading.Thread(target=threaded_listen)
+        listener_thread = threading.Thread(target=threaded_listen, name=source_name+' Thread')
         listener_thread.daemon = True
         listener_thread.start()
         return stopper

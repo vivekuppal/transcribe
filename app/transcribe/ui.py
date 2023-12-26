@@ -6,7 +6,7 @@ import pyperclip
 import customtkinter as ctk
 from audio_transcriber import AudioTranscriber
 import prompts
-from global_vars import TranscriptionGlobals
+from global_vars import TranscriptionGlobals, T_GLOBALS
 import constants
 import gpt_responder as gr
 from tsutils.language import LANGUAGES_DICT
@@ -18,7 +18,7 @@ root_logger = al.get_logger()
 UI_FONT_SIZE = 20
 LLM_RESPONSE_INTERVAL = 8
 last_transcript_ui_update_time: datetime.datetime = datetime.datetime.utcnow()
-global_vars_module: TranscriptionGlobals = None
+global_vars_module: TranscriptionGlobals = T_GLOBALS
 
 
 class UICallbacks:

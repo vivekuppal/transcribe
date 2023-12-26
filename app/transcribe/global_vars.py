@@ -48,6 +48,7 @@ class TranscriptionGlobals(Singleton.Singleton):
             return
         if self.audio_queue is None:
             self.audio_queue = queue.Queue()
+        self.convo = conversation.Conversation()
         self.start = datetime.datetime.now()
         self.task_worker = task_queue.TaskQueue()
         zip_file_name = utilities.incrementing_filename(filename='logs/transcript', extension='zip')
@@ -79,3 +80,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     def set_read_response(self, value: bool):
         self.read_response = value
         self.audio_player_var.read_response = value
+
+
+# Instantiate a single copy of globals here itself
+T_GLOBALS = TranscriptionGlobals()
