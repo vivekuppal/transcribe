@@ -140,7 +140,9 @@ class WhisperSTTModel(STTModelInterface):
         """
         try:
             result = self.audio_model.transcribe(wav_file_path,
-                                                 fp16=torch.cuda.is_available(), language=self.lang)
+                                                 fp16=False,
+                                                 language=self.lang,
+                                                 temperature=0)
         except Exception as exception:
             print('WhisperSTTModel:get_transcription - Encountered error')
             print(exception)
