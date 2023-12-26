@@ -60,8 +60,7 @@ class Conversation:
             and (
                 (persona.lower() == 'you' and len(transcript) > 1)
                 or (persona.lower() != 'you' and len(transcript) > 0)
-                )
-            ):
+                )):
             transcript.pop()
 
         transcript.append((f"{persona}: [{text}]\n\n", time_spoken))

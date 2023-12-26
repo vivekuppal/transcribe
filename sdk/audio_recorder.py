@@ -133,7 +133,9 @@ class BaseRecorder:
                 data = audio.get_raw_data()
                 audio_queue.put((self.source_name, data, datetime.utcnow()))
 
-        stop_func = self.recorder.listen_in_background(self.source, record_callback,
+        stop_func = self.recorder.listen_in_background(source=self.source,
+                                                       source_name=self.source_name,
+                                                       callback=record_callback,
                                                        phrase_time_limit=self.config['General']['transcript_audio_duration_seconds'])
         return stop_func
 

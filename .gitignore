@@ -1,5 +1,4 @@
 __pycache__/
-.vscode/
 .venv/
 *.wav
 venv

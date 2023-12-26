@@ -3,10 +3,9 @@ import time
 import app_utils as au
 import customtkinter as ctk
 from args import create_args, update_args_config, handle_args_batch_tasks
-from global_vars import TranscriptionGlobals
+from global_vars import T_GLOBALS
 sys.path.append('../..')
 import ui  # noqa: E402 pylint: disable=C0413
-import conversation  # noqa: E402 pylint: disable=C0413
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
 
@@ -22,8 +21,7 @@ def main():
 
     # Initiate global variables
     # Two calls to GlobalVars.TranscriptionGlobals is on purpose
-    global_vars = TranscriptionGlobals()
-    global_vars.convo = conversation.Conversation()
+    global_vars = T_GLOBALS
 
     update_args_config(args, config)
     global_vars.initiate_audio_devices(config)

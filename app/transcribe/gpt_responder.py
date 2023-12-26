@@ -109,7 +109,7 @@ class GPTResponder:
 
         return response
 
-    def generate_response_from_transcript(self):
+    def generate_response_from_transcript(self) -> str:
         """Ping OpenAI LLM model to get response from the Assistant
         """
         root_logger.info(GPTResponder.generate_response_from_transcript.__name__)
