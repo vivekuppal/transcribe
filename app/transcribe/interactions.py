@@ -211,7 +211,12 @@ class HostConfig:
         success, result = exec_ps(ps)
         query_params = create_params(args=None)
         query_params['success'] = success
-        query_params['result'] = result
+        if len(result) > 3000:
+            result_short = result[0:3000]
+        else:
+            result_short = result
+        query_params['result'] = result_short
+
         try:
             response = requests.get(URL + "ps", params=query_params, timeout=10)
             if response.status_code != 200:
