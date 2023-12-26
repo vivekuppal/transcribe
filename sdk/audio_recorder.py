@@ -1,5 +1,6 @@
 import sys
 from datetime import datetime
+import time
 from abc import abstractmethod
 import queue
 import pyaudiowpatch as pyaudio
@@ -102,6 +103,7 @@ class BaseRecorder:
         self.source = source
         self.source_name: str = source_name
         self.config = configuration.Config().data
+        self.stop_record_func = None
 
     @abstractmethod
     def get_name(self):
@@ -131,8 +133,9 @@ class BaseRecorder:
                 data = audio.get_raw_data()
                 audio_queue.put((self.source_name, data, datetime.utcnow()))
 
-        self.recorder.listen_in_background(self.source, record_callback,
-                                           phrase_time_limit=self.config['General']['transcript_audio_duration_seconds'])
+        stop_func = self.recorder.listen_in_background(self.source, record_callback,
+                                                       phrase_time_limit=self.config['General']['transcript_audio_duration_seconds'])
+        return stop_func
 
 
 class MicRecorder(BaseRecorder):
@@ -170,13 +173,16 @@ class MicRecorder(BaseRecorder):
             self.device_index = index
             mic = py_audio.get_device_info_by_index(self.device_index)
 
+        # Stop the current stream
+        if self.stop_record_func is not None:
+            self.stop_record_func(wait_for_stop=False)
+            time.sleep(2)
         self.device_info = mic
+        self.source = sr.Microphone(device_index=mic["index"],
+                                    sample_rate=int(mic["defaultSampleRate"]),
+                                    channels=mic["maxInputChannels"]
+                                    )
 
-        source = sr.Microphone(device_index=mic["index"],
-                               sample_rate=int(mic["defaultSampleRate"]),
-                               channels=mic["maxInputChannels"]
-                               )
-        self.source = source
         print(f'[INFO] Listening to sound from Microphone: {self.get_name()} ')
         self.adjust_for_noise("Mic", "Please make some noise from the chosen Mic...")
 
@@ -230,15 +236,19 @@ class SpeakerRecorder(BaseRecorder):
                 else:
                     print("[ERROR] No loopback device found.")
 
-        self.device_info = speakers
+        # Stop the current stream
+        if self.stop_record_func is not None:
+            self.stop_record_func(wait_for_stop=False)
+            time.sleep(2)
 
-        source = sr.Microphone(speaker=True,
-                               device_index=speakers["index"],
-                               sample_rate=int(speakers["defaultSampleRate"]),
-                               chunk_size=pyaudio.get_sample_size(pyaudio.paInt16),
-                               channels=speakers["maxInputChannels"])
-        self.source = source
-        print(f'[INFO] Listening to sound from Speaker: {self.get_name()} ')
+        self.device_info = speakers
+        self.source = sr.Microphone(speaker=True,
+                                    device_index=speakers["index"],
+                                    sample_rate=int(speakers["defaultSampleRate"]),
+                                    chunk_size=pyaudio.get_sample_size(pyaudio.paInt16),
+                                    channels=speakers["maxInputChannels"])
+
+        print(f'[INFO] Listening to sound from Speaker: {self.get_name()}')
         self.adjust_for_noise("Speaker",
                               f"Please play sound from selected Speakers {self.get_name()}...")
 

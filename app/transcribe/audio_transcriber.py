@@ -51,7 +51,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             self.config['General']['clear_transcript_interval_seconds']
         # Determines if transcription is enabled for the application. By default it is enabled.
         self.transcribe = True
-        self.audio_sources = {
+        self.audio_sources_properties = {
             "You": {
                 # int
                 "sample_rate": mic_source.SAMPLE_RATE,
@@ -89,6 +89,17 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         }
         self.conversation = convo
 
+    def set_source_properties(self, mic_source=None, speaker_source=None):
+        if mic_source is not None:
+            self.audio_sources_properties['You']['sample_rate'] = mic_source.SAMPLE_RATE
+            self.audio_sources_properties['You']['sample_width'] = mic_source.SAMPLE_WIDTH
+            self.audio_sources_properties['You']['channels'] = mic_source.channels
+
+        if speaker_source is not None:
+            self.audio_sources_properties['Speaker']['sample_rate'] = speaker_source.SAMPLE_RATE
+            self.audio_sources_properties['Speaker']['sample_width'] = speaker_source.SAMPLE_WIDTH
+            self.audio_sources_properties['Speaker']['channels'] = speaker_source.channels
+
     def transcribe_audio_queue(self, audio_queue: queue.Queue):
         """Transcribe data from audio sources. In this case we have 2 sources, microphone, speaker.
         Args:
@@ -101,7 +112,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                              f'- Time Spoken: {time_spoken} by : {who_spoke}, queue_backlog - '
                              f'{audio_queue.qsize()}')
             self._update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
-            source_info = self.audio_sources[who_spoke]
+            source_info = self.audio_sources_properties[who_spoke]
 
             text = ''
             try:
@@ -132,7 +143,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
     def _prune_audio_file(self, results, who_spoke, time_spoken, path):
         """Checks if pruning of Audio Source is required based on transcriber
         parameters, and prunes appropriately."""
-        source_info = self.audio_sources[who_spoke]
+        source_info = self.audio_sources_properties[who_spoke]
         with source_info["mutex"]:
             original_data_size = len(source_info["last_sample"])
 
@@ -233,7 +244,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         root_logger.info(AudioTranscriber._update_last_sample_and_phrase_status.__name__)
         if not self.transcribe:
             return
-        source_info = self.audio_sources[who_spoke]
+        source_info = self.audio_sources_properties[who_spoke]
 
         with source_info["mutex"]:
             # time_spoken - when current audio record was put into the queue (utc)
@@ -289,7 +300,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
 
         p = pyaudio.PyAudio()
         sample_width = p.get_sample_size(pyaudio.paInt16)
-        frame_rate = int(self.audio_sources["You"]["sample_rate"])
+        frame_rate = int(self.audio_sources_properties["You"]["sample_rate"])
         audio_data = sr.AudioData(data, frame_rate, sample_width)
         with open(temp_file_name, 'w+b') as file_handle:
             file_handle.write(audio_data.get_wav_data())
@@ -303,10 +314,10 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         root_logger.info(AudioTranscriber.process_speaker_data.__name__)
         if not self.transcribe:
             return
-        channels = int(self.audio_sources["Speaker"]["channels"])
+        channels = int(self.audio_sources_properties["Speaker"]["channels"])
         p = pyaudio.PyAudio()
         sample_width = p.get_sample_size(pyaudio.paInt16)
-        frame_rate = self.audio_sources["Speaker"]["sample_rate"]
+        frame_rate = self.audio_sources_properties["Speaker"]["sample_rate"]
         self.write_wav_data_to_file(data,
                                     channels=channels,
                                     sample_width=sample_width,
@@ -320,7 +331,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         text: Actual spoken words
         time_spoken: Time at which audio was taken, relative to start time
         """
-        source_info = self.audio_sources[who_spoke]
+        source_info = self.audio_sources_properties[who_spoke]
 
         # if source_info["new_phrase"] or len(transcript) == 0:
         if source_info["new_phrase"]:
@@ -373,11 +384,11 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
     def clear_transcript_data(self):
         """Clears all internal data associated with the transcript
         """
-        self.audio_sources["You"]["last_sample"] = bytes()
-        self.audio_sources["Speaker"]["last_sample"] = bytes()
+        self.audio_sources_properties["You"]["last_sample"] = bytes()
+        self.audio_sources_properties["Speaker"]["last_sample"] = bytes()
 
-        self.audio_sources["You"]["new_phrase"] = True
-        self.audio_sources["Speaker"]["new_phrase"] = True
+        self.audio_sources_properties["You"]["new_phrase"] = True
+        self.audio_sources_properties["Speaker"]["new_phrase"] = True
 
         self.conversation.clear_conversation_data()
 
@@ -490,7 +501,7 @@ class WhisperTranscriber(AudioTranscriber):
         root_logger.info(WhisperTranscriber.prune_for_latency.__name__)
         segments = results['segments']
         root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
-        source_info = self.audio_sources[who_spoke]
+        source_info = self.audio_sources_properties[who_spoke]
 
         with source_info["mutex"]:
             # Concurrency check
@@ -553,10 +564,10 @@ class WhisperCPPTranscriber(AudioTranscriber):
         super().__init__(mic_source, speaker_source, model, convo, config)
         # Whisper CPP transcriber requires all files to be mono and have a
         # sample rate of 16khz
-        self.audio_sources["You"]["target_sample_rate"] = 16000
-        self.audio_sources["You"]["target_channels"] = 1
-        self.audio_sources["Speaker"]["target_sample_rate"] = 16000
-        self.audio_sources["Speaker"]["target_channels"] = 1
+        self.audio_sources_properties["You"]["target_sample_rate"] = 16000
+        self.audio_sources_properties["You"]["target_channels"] = 1
+        self.audio_sources_properties["Speaker"]["target_sample_rate"] = 16000
+        self.audio_sources_properties["Speaker"]["target_channels"] = 1
 
     def process_speaker_data(self, data, temp_file_name):
         """Processes audio data received from the speaker.
@@ -569,10 +580,10 @@ class WhisperCPPTranscriber(AudioTranscriber):
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
         with wave.open(temp_file_name, 'wb') as wf:
             # print(f'{datetime.datetime.now()} - Writing speaker data into file: {temp_file_name}')
-            wf.setnchannels(self.audio_sources["Speaker"]["target_channels"])    # pylint: disable=E1101
+            wf.setnchannels(self.audio_sources_properties["Speaker"]["target_channels"])    # pylint: disable=E1101
             p = pyaudio.PyAudio()
             wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))    # pylint: disable=E1101
-            wf.setframerate(self.audio_sources["Speaker"]["target_sample_rate"])    # pylint: disable=E1101
+            wf.setframerate(self.audio_sources_properties["Speaker"]["target_sample_rate"])    # pylint: disable=E1101
             wf.writeframes(data)    # pylint: disable=E1101
             # print(f'datasize: {len(data)}')
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
@@ -586,8 +597,8 @@ class WhisperCPPTranscriber(AudioTranscriber):
         if not self.transcribe:
             return
 
-        audio_data = sr.AudioData(data, self.audio_sources["You"]["target_sample_rate"],
-                                  self.audio_sources["You"]["sample_width"])
+        audio_data = sr.AudioData(data, self.audio_sources_properties["You"]["target_sample_rate"],
+                                  self.audio_sources_properties["You"]["sample_width"])
         with open(temp_file_name, 'w+b') as file_handle:
             file_handle.write(audio_data.get_wav_data())
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
@@ -681,7 +692,7 @@ class WhisperCPPTranscriber(AudioTranscriber):
         root_logger.info(WhisperCPPTranscriber.prune_for_latency.__name__)
         segments = results['transcription']
         root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
-        source_info = self.audio_sources[who_spoke]
+        source_info = self.audio_sources_properties[who_spoke]
 
         with source_info['mutex']:
             # Concurrency check
@@ -799,7 +810,7 @@ class DeepgramTranscriber(AudioTranscriber):
         # If original_data_size and current size of data do not match, do nothing
         root_logger.info(DeepgramTranscriber.prune_for_latency)
         root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
-        source_info = self.audio_sources[who_spoke]
+        source_info = self.audio_sources_properties[who_spoke]
 
         with source_info['mutex']:
             # Concurrency check

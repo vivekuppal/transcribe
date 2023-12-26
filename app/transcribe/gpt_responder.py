@@ -31,7 +31,7 @@ class GPTResponder:
         self.response_interval = 2
         self.conversation = convo
         self.config = config
-        self.client = openai.OpenAI(api_key=self.config['OpenAI']['api_key'])
+        self.llm_client = openai.OpenAI(api_key=self.config['OpenAI']['api_key'])
         self.model = self.config['OpenAI']['ai_model']
         self.save_response_to_file = save_to_file
         self.response_file = file_name
@@ -55,7 +55,7 @@ class GPTResponder:
                 # They can confuse the LLM if that many responses are replayed back to LLM.
                 # print(f'{datetime.datetime.now()} - Request response')
                 # self._pretty_print_openai_request(multiturn_prompt_api_message)
-                multi_turn_response = self.client.chat.completions.create(
+                multi_turn_response = self.llm_client.chat.completions.create(
                     model=self.model,
                     messages=multiturn_prompt_api_message,
                     temperature=temperature,
