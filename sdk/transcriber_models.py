@@ -81,6 +81,7 @@ class WhisperSTTModel(STTModelInterface):
         openai.api_key = config["api_key"]
 
     def download_model(self):
+        """Download the appropriate OpenAI model if needed"""
 
         if os.path.exists(self.model_filename):
             return
@@ -163,11 +164,10 @@ class WhisperSTTModel(STTModelInterface):
         self.download_model()
         self._load_model()
 
-    def _load_model(self) -> bool:
-        """Set Model for STT
+    def _load_model(self):
+        """Load Model for STT
         """
         self.audio_model = whisper.load_model(self.model_filename)
-        return True
 
     def process_response(self, response) -> str:
         """
