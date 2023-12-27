@@ -41,7 +41,7 @@ def create_args() -> argparse.Namespace:
                             \nThis option is valid only for the -t (transcribe) option.')
     cmd_args.add_argument('-m', '--model', action='store', choices=[
         'tiny', 'base', 'small', 'medium', 'large-v1', 'large-v2', 'large-v3', 'large'],
-        default='tiny',
+        default='base',
         help='Specify the OpenAI Local Transcription model file to use.'
         '\nThe necessary model files will be downloaded once at run time.'
         '\n The files can also be manually downloaded from these locations.'
