@@ -96,6 +96,8 @@ class UICallbacks:
         response_ui_thread.start()
 
     def update_response_ui_now_threaded(self):
+        """update response ui in a separate thread
+        """
         self.global_vars.update_response_now = True
         response_string = self.global_vars.responder.generate_response_from_transcript_no_check()
         self.global_vars.update_response_now = False
@@ -133,9 +135,13 @@ class UICallbacks:
         webbrowser.open(url=url, new=2)
 
     def open_github(self):
+        """Link to git repo main page
+        """
         webbrowser.open(url='https://github.com/vivekuppal/transcribe?referer=desktop', new=2)
-    
+
     def open_support(self):
+        """Link to git repo issues page
+        """
         webbrowser.open(url='https://github.com/vivekuppal/transcribe/issues/new?referer=desktop', new=2)
 
     def capture_action(self, action_text: str):
