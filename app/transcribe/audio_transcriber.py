@@ -17,6 +17,7 @@ import constants  # noqa: E402 pylint: disable=C0413
 import custom_speech_recognition as sr  # noqa: E402 pylint: disable=C0413
 from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
 from tsutils import duration  # noqa: E402 pylint: disable=C0413
+from sdk.transcriber_models import WhisperCPPSTTModel
 
 
 # There can be prompts for speech to text aspects as well, that have not been considered as yet.
@@ -255,7 +256,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             else:
                 source_info["new_phrase"] = False
 
-            if isinstance(self, WhisperCPPTranscriber):
+            if isinstance(self.stt_model, WhisperCPPSTTModel):
                 # Target sample_rate: For Whisper CPP target sample rate is 16000 khz
                 # if source and target sample rates are not the same, conver to target sample rate
                 # Write wav data to file
@@ -267,7 +268,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 file_descritor, file_path = tempfile.mkstemp(suffix=".wav")
                 os.close(file_descritor)
 
-                # Distinguish audio from speaker, microphone. 
+                # Distinguish audio from speaker, microphone.
                 # Microphone audio requires a little bit of extra processing.
                 if who_spoke == 'Speaker':
                     file_path = self.write_wav_data_to_file(data,
@@ -279,7 +280,6 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                     audio_data = sr.AudioData(data, frame_rate, sample_width)
                     with open(file_path, 'w+b') as file_handle:
                         file_handle.write(audio_data.get_wav_data())
-
                 mod_file_path = self.convert_wav_to_16khz_format(file_path)
                 data = self.get_wav_file_data(mod_file_path)
 

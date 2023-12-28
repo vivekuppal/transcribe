@@ -1,8 +1,12 @@
 import sys
+import time
 import copy
 import yaml
 from tsutils import Singleton
 from tsutils import utilities
+
+
+CONFIG_REFRESH_INTERVAL_SECONDS = 10
 
 
 class Config(Singleton.Singleton):
@@ -14,47 +18,57 @@ class Config(Singleton.Singleton):
     _override_data: dict = None  # Data as read from override.yaml
     _current_data: dict = None   # Merged data of parameters.yaml and override.yaml
     _initialized: bool = False
+    _refresh_period = 10
+    _refresh_periodically = False
 
     def __init__(self, default_config_filename: str = 'parameters.yaml',
                  override_config_filename: str = 'override.yaml'):
+
         if self._initialized:
             return
 
-        try:
-            with open(default_config_filename, mode='r', encoding='utf-8') as default_config_file:
-                if self._default_data is None:
-                    self._default_data = yaml.load(stream=default_config_file, Loader=yaml.CLoader)
-
-        except ImportError as err:
-            print(f'Failed to load yaml file: {default_config_filename}.')
-            print(f'Error: {err}')
-            sys.exit(1)
-        except FileNotFoundError as err:
-            print(f'Failed to find yaml file: {default_config_filename}.')
-            print(f'Error: {err}')
-            sys.exit(1)
-
-        try:
-            with open(override_config_filename, mode='r', encoding='utf-8') as override_config_file:
-                if self._override_data is None:
-                    self._override_data = yaml.load(stream=override_config_file,
-                                                    Loader=yaml.CLoader)
-        except ImportError as err:
-            print(f'Failed to load yaml file: {override_config_filename}.')
-            print(f'Error: {err}')
-            sys.exit(1)
-        except FileNotFoundError as err:
-            print(f'Failed to find yaml file: {override_config_filename}.')
-            print(f'Error: {err}')
-            sys.exit(1)
-
         self._default_config_filename = default_config_filename
         self._override_config_filename = override_config_filename
+        self.read_config_from_files()
+        self._initialized = True
+
+    def refresh(self):
+        while True:
+            time.sleep(CONFIG_REFRESH_INTERVAL_SECONDS)
+            self.read_config_from_files()
+
+    def read_config_from_files(self):
+        """Read config data from yaml files
+        """
+        try:
+            with open(self._default_config_filename, mode='r', encoding='utf-8') as default_config_file:
+                self._default_data = yaml.load(stream=default_config_file, Loader=yaml.CLoader)
+
+        except ImportError as err:
+            print(f'Failed to load yaml file: {self._default_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+        except FileNotFoundError as err:
+            print(f'Failed to find yaml file: {self._default_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+
+        try:
+            with open(self._override_config_filename, mode='r', encoding='utf-8') as override_config_file:
+                self._override_data = yaml.load(stream=override_config_file,
+                                                Loader=yaml.CLoader)
+        except ImportError as err:
+            print(f'Failed to load yaml file: {self._override_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
+        except FileNotFoundError as err:
+            print(f'Failed to find yaml file: {self._override_config_filename}.')
+            print(f'Error: {err}')
+            sys.exit(1)
 
         # Merge default and override values
         self._current_data = copy.deepcopy(self._default_data)
         utilities.merge(self._current_data, self._override_data)
-        self._initialized = True
 
     def add_override_value(self, input_dict: dict):
         """Override a default configuration parameter value
