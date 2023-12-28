@@ -69,6 +69,23 @@ class Config(Singleton.Singleton):
         with open(file=self._override_config_filename, mode="w", encoding='utf-8') as override_file:
             yaml.dump(self._override_data, override_file, default_flow_style=False)
 
+    @staticmethod
+    def load_alter_save(section_name, property_name, value):
+        """Load from config files, alter a value, save back to config files"""
+        yml = Config()
+        with open(yml.config_override_file, mode='r', encoding='utf-8') as file:
+            try:
+                altered_config = yaml.load(stream=file, Loader=yaml.CLoader)
+            except ImportError as err:
+                print(f'Failed to load yaml file: {yml.config_override_file}.')
+                print(f'Error: {err}')
+                sys.exit(1)
+
+        if section_name not in altered_config:
+            altered_config[section_name] = {}
+        altered_config[section_name][property_name] = value
+        yml.add_override_value(altered_config)
+
     @property
     def data(self) -> dict:
         """Get all configuration data read from yaml file"""
