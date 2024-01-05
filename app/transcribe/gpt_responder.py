@@ -12,7 +12,7 @@ from tsutils import duration
 root_logger = al.get_logger()
 
 
-# TODO: When we have to get responses from another LLM as well, we will split this class
+# When we have to get responses from another LLM as well, we will split this class
 # into a base and LLM specific class and move the base class to SDK
 class GPTResponder:
     """Handles all interactions with openAI LLM / ChatGPT
@@ -134,6 +134,7 @@ class GPTResponder:
         """
         while True:
 
+            # Attempt to get responses only if transcript has changed
             if transcriber.transcript_changed_event.is_set():
                 start_time = time.time()
 

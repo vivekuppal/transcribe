@@ -55,7 +55,7 @@ def main():
 
     root = ctk.CTk()
     ui_cb = ui.UICallbacks()
-    ui_components = ui.create_ui_components(root)
+    ui_components = ui.create_ui_components(root, config=config)
     transcript_textbox = ui_components[0]
     global_vars.response_textbox = ui_components[1]
     update_interval_slider = ui_components[2]

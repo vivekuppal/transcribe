@@ -27,7 +27,8 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
                                          convo=global_vars.convo,
                                          save_to_file=save_llm_response_to_file,
                                          file_name=llm_response_file)
-    global_vars.responder.enabled = False
+    global_vars.responder.enabled = bool(config['General']['continuous_response'])
+    print(f'Continuous responses: {global_vars.responder.enabled}')
 
     respond_thread = threading.Thread(target=global_vars.responder.respond_to_transcriber,
                                       name='Respond',

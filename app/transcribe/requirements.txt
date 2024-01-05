@@ -4,7 +4,7 @@ Wave==0.0.2
 openai
 customtkinter==5.1.3
 PyAudioWPatch==0.2.12.5
-pyinstaller==5.13.1
+pyinstaller
 pyperclip
 PyYAML
 soundfile
