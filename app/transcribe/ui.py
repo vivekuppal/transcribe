@@ -218,7 +218,7 @@ def update_response_ui(responder: gr.GPTResponder,
                   update_interval_slider_label, update_interval_slider)
 
 
-def create_ui_components(root):
+def create_ui_components(root, config: dict):
     root_logger.info(create_ui_components.__name__)
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
@@ -292,7 +292,9 @@ def create_ui_components(root):
     response_textbox.grid(row=0, column=1, padx=10, pady=20, sticky="nsew")
     response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
 
-    freeze_button = ctk.CTkButton(root, text="Suggest Responses Continuously", command=None)
+    response_enabled = bool(config['General']['continuous_response'])
+    b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
+    freeze_button = ctk.CTkButton(root, text=b_text, command=None)
     freeze_button.grid(row=1, column=1, padx=10, pady=3, sticky="nsew")
 
     response_now_button = ctk.CTkButton(root, text="Suggest Response Now", command=None)

@@ -96,3 +96,5 @@ General:
 # This is equivalent to -ds (disable_speaker) argument on command line
 # Command line argument takes precedence over value specified in parameters.yaml
   disable_speaker: False
+  stt: whisper
+  continuous_response: True
