@@ -94,6 +94,11 @@ class GPTResponder:
 
         return processed_multi_turn_response
 
+    def create_client(self, api_key: str):
+        if self.llm_client is not None:
+            self.llm_client.close()
+        self.llm_client = openai.OpenAI(api_key=api_key)
+
     def process_response(self, input_str: str) -> str:
         """ Extract relevant data from LLM response.
         """
