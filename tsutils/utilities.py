@@ -12,12 +12,12 @@ def merge(first: dict, second: dict, path=[]):
     """
     if second is None:
         # No values to merge into first dict. Leave first dict unchanged.
-        return
+        return first
     if first is None:
         # First dict does not exist as yet, but second does.
         # Make a deepcopy of second and append to first
         first = copy.deepcopy(second)
-        return
+        return first
 
     for key in second:
         if key in first:

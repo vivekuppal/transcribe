@@ -18,7 +18,7 @@ class Config(Singleton.Singleton):
     _override_data: dict = None  # Data as read from override.yaml
     _current_data: dict = None   # Merged data of parameters.yaml and override.yaml
     _initialized: bool = False
-    _refresh_period = CONFIG_REFRESH_INTERVAL_SECONDS
+    _refresh_period = 10
     _refresh_periodically = False
 
     def __init__(self, default_config_filename: str = 'parameters.yaml',
@@ -68,7 +68,7 @@ class Config(Singleton.Singleton):
 
         # Merge default and override values
         self._current_data = copy.deepcopy(self._default_data)
-        utilities.merge(self._current_data, self._override_data)
+        self._current_data = utilities.merge(self._current_data, self._override_data)
 
     def add_override_value(self, input_dict: dict):
         """Override a default configuration parameter value
@@ -76,9 +76,9 @@ class Config(Singleton.Singleton):
         if not isinstance(input_dict, dict):
             print(f'Expected input value to be a dict. Instead received: {input_dict}')
         # Update the override values
-        utilities.merge(self._override_data, input_dict)
+        self._override_data = utilities.merge(self._override_data, input_dict)
         # update the current values
-        utilities.merge(self._current_data, input_dict)
+        self._current_data = utilities.merge(self._current_data, input_dict)
         # Write override values to file
         with open(file=self._override_config_filename, mode="w", encoding='utf-8') as override_file:
             yaml.dump(self._override_data, override_file, default_flow_style=False)
@@ -90,6 +90,9 @@ class Config(Singleton.Singleton):
         with open(yml.config_override_file, mode='r', encoding='utf-8') as file:
             try:
                 altered_config = yaml.load(stream=file, Loader=yaml.CLoader)
+                # Handle empty override file
+                if altered_config is None:
+                    altered_config = {}
             except ImportError as err:
                 print(f'Failed to load yaml file: {yml.config_override_file}.')
                 print(f'Error: {err}')
