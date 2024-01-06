@@ -18,7 +18,7 @@ class Config(Singleton.Singleton):
     _override_data: dict = None  # Data as read from override.yaml
     _current_data: dict = None   # Merged data of parameters.yaml and override.yaml
     _initialized: bool = False
-    _refresh_period = 10
+    _refresh_period = CONFIG_REFRESH_INTERVAL_SECONDS
     _refresh_periodically = False
 
     def __init__(self, default_config_filename: str = 'parameters.yaml',
