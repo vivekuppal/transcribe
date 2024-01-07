@@ -6,6 +6,8 @@ Please subscribe to his [youtube channel](https://www.youtube.com/@fahdmirza) an
 
 # 👂🏻️ Transcribe ✍🏼️
 
+<img src="assets/Transcribe-2.png" width="100">
+
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
 
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
