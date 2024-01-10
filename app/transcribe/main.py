@@ -31,16 +31,16 @@ def main():
                           config=config,
                           api=bool(config['General']['use_api']),
                           global_vars=global_vars)
-    global_vars.transcriber.set_source_properties(global_vars.user_audio_recorder.source,
-                                                  global_vars.speaker_audio_recorder.source)
+    global_vars.transcriber.set_source_properties(mic_source=global_vars.user_audio_recorder.source,
+                                                  speaker_source=global_vars.speaker_audio_recorder.source)
 
-    stop_func = global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
-    global_vars.user_audio_recorder.stop_record_func = stop_func
+    user_stop_func = global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
+    global_vars.user_audio_recorder.stop_record_func = user_stop_func
 
     time.sleep(2)
 
-    stop_func = global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
-    global_vars.speaker_audio_recorder.stop_record_func = stop_func
+    speaker_stop_func = global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
+    global_vars.speaker_audio_recorder.stop_record_func = speaker_stop_func
 
 #    update_audio_devices(global_vars, config)
 

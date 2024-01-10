@@ -235,8 +235,12 @@ class Microphone(AudioSource):
             else:
                 self.stream = Microphone.MicrophoneStream(
                     self.audio.open(
-                        input_device_index=self.device_index, channels=1, format=self.format,
-                        rate=self.SAMPLE_RATE, frames_per_buffer=self.CHUNK, input=True,
+                        input_device_index=self.device_index,
+                        channels=1,
+                        format=self.format,
+                        rate=self.SAMPLE_RATE,
+                        frames_per_buffer=self.CHUNK,
+                        input=True,
                     )
                 )
         except Exception as e:
