@@ -144,25 +144,32 @@ class MicRecorder(BaseRecorder):
     """Encapsultes the Microphone device audio input
     """
     def __init__(self):
-        root_logger.info(MicRecorder.__name__)
-        with pyaudio.PyAudio() as py_audio:
+        self.source = sr.Microphone(sample_rate=16000)
+        self.device_index = self.source.device_index
+        super().__init__(source=self.source, source_name="You")
+        self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
+
+#    def __init__(self):
+#        root_logger.info(MicRecorder.__name__)
+#        with pyaudio.PyAudio() as py_audio:
             # WASAPI is windows specific
-            wasapi_info = py_audio.get_host_api_info_by_type(pyaudio.paWASAPI)
-            self.device_index = wasapi_info["defaultInputDevice"]
-            default_mic = py_audio.get_device_info_by_index(self.device_index)
+#            wasapi_info = py_audio.get_host_api_info_by_type(pyaudio.paWASAPI)
+#            self.device_index = wasapi_info["defaultInputDevice"]
+#            default_mic = py_audio.get_device_info_by_index(self.device_index)
 
-        self.device_info = default_mic
+#        self.device_info = default_mic
+#        print(f'default_mic: {default_mic}')
 
-        source = sr.Microphone(device_index=default_mic["index"],
-                               sample_rate=int(default_mic["defaultSampleRate"]),
-                               channels=default_mic["maxInputChannels"]
-                               )
-        self.source = source
-        super().__init__(source=source, source_name="You")
-        print(f'[INFO] Listening to sound from Microphone: {self.get_name()} ')
+#        source = sr.Microphone(device_index=default_mic["index"],
+#                               sample_rate=int(default_mic["defaultSampleRate"]),
+#                               channels=1
+#                               )
+#        self.source = source
+#        super().__init__(source=source, source_name="You")
+#        print(f'[INFO] Listening to sound from Microphone: {self.get_name()} ')
         # This line is commented because in case of non default microphone it can occasionally take
         # several minutes to execute, thus delaying the start of the application.
-        self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
+#        self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
 
     def get_name(self):
         return f'#{self.device_index} - {self.device_info["name"]}'
@@ -182,7 +189,7 @@ class MicRecorder(BaseRecorder):
         self.device_info = mic
         self.source = sr.Microphone(device_index=mic["index"],
                                     sample_rate=int(mic["defaultSampleRate"]),
-                                    channels=mic["maxInputChannels"]
+                                    channels=1
                                     )
 
         print(f'[INFO] Listening to sound from Microphone: {self.get_name()} ')
@@ -216,8 +223,11 @@ class SpeakerRecorder(BaseRecorder):
                                channels=default_speakers["maxInputChannels"])
         super().__init__(source=source, source_name="Speaker")
         print(f'[INFO] Listening to sound from Speaker: {self.get_name()} ')
-        self.adjust_for_noise("Default Speaker",
-                              "Please play sound from Default Speaker...")
+        # On some devices, speaker adjustment is very slow unless some noise is
+        # made from the speakers, though capturing of speaker output is very
+        # good in almost all instances I have seen thus far.
+        # self.adjust_for_noise("Default Speaker",
+        #                       "Please play sound from Default Speaker...")
 
     def get_name(self):
         return f'#{self.device_index} - {self.device_info["name"]}'
@@ -251,8 +261,8 @@ class SpeakerRecorder(BaseRecorder):
                                     channels=speakers["maxInputChannels"])
 
         print(f'[INFO] Listening to sound from Speaker: {self.get_name()}')
-        self.adjust_for_noise("Speaker",
-                              f"Please play sound from selected Speakers {self.get_name()}...")
+        # self.adjust_for_noise("Speaker",
+        #                       f"Please play sound from selected Speakers {self.get_name()}...")
 
 
 if __name__ == "__main__":

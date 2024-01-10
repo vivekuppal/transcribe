@@ -16,7 +16,6 @@ from tsutils import app_logging as al
 
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
-LLM_RESPONSE_INTERVAL = 8
 last_transcript_ui_update_time: datetime.datetime = datetime.datetime.utcnow()
 global_vars_module: TranscriptionGlobals = T_GLOBALS
 
@@ -309,7 +308,7 @@ def create_ui_components(root, config: dict):
 
     update_interval_slider = ctk.CTkSlider(root, from_=1, to=10, width=300, height=20,
                                            number_of_steps=9)
-    update_interval_slider.set(LLM_RESPONSE_INTERVAL)
+    update_interval_slider.set(config['General']['response_interval'])
     update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
     lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))

@@ -98,3 +98,5 @@ General:
   disable_speaker: False
   stt: whisper
   continuous_response: True
+  # The interval at which to ping the LLM for response
+  response_interval: 10
