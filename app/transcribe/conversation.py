@@ -94,7 +94,8 @@ class Conversation:
         return "".join([t[0] for t in combined_transcript])
 
     def get_merged_conversation_summary(self, length: int = 0) -> list:
-        """Creates a prompt to be sent to LLM (OpenAI by default)
+        """Creates a prompt to be sent to LLM (OpenAI by default) for summarizing 
+           the conversation.
            length: Get the last length elements from the audio transcript.
            Initial system prompt is always part of the return value
            Default value = 0, gives the complete transcript
@@ -106,15 +107,15 @@ class Conversation:
         sorted_transcript = sorted(combined_transcript, key=lambda x: x[1])
         sorted_transcript = sorted_transcript[-length:]
         sorted_transcript.insert(0, self.transcript_data[constants.PERSONA_YOU][0])
-        # sorted_transcript.insert(0, self.config["OpenAI"]["system_prompt"])
         sorted_transcript.insert(0, (f"{constants.PERSONA_SYSTEM}: [{self.config['OpenAI']['summary_prompt']}]\n\n",
                                      datetime.datetime.now()))
         return sorted_transcript
 
     def get_merged_conversation_response(self, length: int = 0) -> list:
-        """Creates a prompt to be sent to LLM (OpenAI by default)
+        """Creates a prompt to be sent to LLM (OpenAI by default) to get 
+           a contextual response.
            length: Get the last length elements from the audio transcript.
-           Initial system prompt is always part of the return value
+           Initial summary prompt is always part of the return value
            Default value = 0, gives the complete transcript
         """
 

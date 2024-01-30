@@ -2,7 +2,7 @@ numpy==1.24.3
 openai-whisper
 Wave==0.0.2
 openai
-customtkinter==5.2.1
+customtkinter==5.2.2
 PyAudioWPatch==0.2.12.6
 pyinstaller==6.3.0
 pyperclip

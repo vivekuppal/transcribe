@@ -8,7 +8,6 @@ OpenAI:
 # text-davinci-003, text-davinci-002, code-davinci-002
 # See this link for available models
 # https://platform.openai.com/docs/models/continuous-model-upgrades
-#  ai_model: gpt-3.5-turbo-0301
   ai_model: gpt-4
 # Local model file to use for transcription.
 # Can also be specified using the -m parameter on command line of the application

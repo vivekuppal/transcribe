@@ -112,20 +112,21 @@ class UICallbacks:
     def summarize_threaded(self):
         """Get summary from LLM in a separate thread
         """
-        global pop_up
+        global pop_up  # pylint: disable=W0603
         print('Summarizing...')
         popup_msg_no_close(title='Summary', msg='Creating a summary')
         summary = self.global_vars.responder.summarize()
         if pop_up is not None:
             try:
                 pop_up.destroy()
-            except:
+            except Exception as e:
                 # Somehow we get the exception
                 # RuntimeError: main thread is not in main loop
-                # Not sure why at the moment
-                print('Caught an exception..')
-                # print(re)
+                root_logger.info('Exception in summarize_threaded')
+                root_logger.info(e)
+
             pop_up = None
+        # Enhancement here would be to get a streaming summary
         popup_msg_close_button(title='Summary', msg=summary)
 
     def summarize(self):
@@ -181,7 +182,9 @@ class UICallbacks:
 
 
 def popup_msg_no_close_threaded(title, msg):
-    global pop_up
+    """Create a pop up with no close button.
+    """
+    global pop_up  # pylint: disable=W0603
     try:
         popup = ctk.CTkToplevel(T_GLOBALS.main_window)
         popup.geometry("100x50")
@@ -191,10 +194,10 @@ def popup_msg_no_close_threaded(title, msg):
         label.pack(side="top", fill="x", pady=10)
         pop_up = popup
         popup.lift()
-    except Exception:
-        # We get the error - calling Tcl from different apartment
-        # print(re)
-        # print('Popup Exception')
+    except Exception as e:
+        # Sometimes get the error - calling Tcl from different apartment
+        root_logger.info('Exception in popup_msg_no_close_threaded')
+        root_logger.info(e)
         return
 
 
