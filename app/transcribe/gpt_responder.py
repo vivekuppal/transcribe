@@ -40,6 +40,11 @@ class GPTResponder:
         """Ping LLM to get a summary of the conversation.
         """
         root_logger.info(GPTResponder.summarize.__name__)
+
+        if self.config['OpenAI']['api_key'] in ('', 'API_KEY'):
+            # Cannot summarize without connection to LLM
+            return None
+
         with duration.Duration(name='OpenAI Summarize', screen=False):
             timeout: int = self.config['OpenAI']['summarize_request_timeout_seconds']
             temperature: float = self.config['OpenAI']['temperature']
@@ -70,6 +75,9 @@ class GPTResponder:
         """
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
+            if self.config['OpenAI']['api_key'] in ('', 'API_KEY'):
+                return None
+
             with duration.Duration(name='OpenAI Chat Completion', screen=False):
                 timeout: int = self.config['OpenAI']['response_request_timeout_seconds']
                 temperature: float = self.config['OpenAI']['temperature']

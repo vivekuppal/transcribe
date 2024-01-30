@@ -18,9 +18,9 @@ Please subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) an
 
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
 
-## Why Transcribe over ecoute ##
+## Why Transcribe over other Speech to Text apps##
 - Use Most of the functionality for FREE
-- Choose between GPT 3.5, 4.0 or other models from OpenAI
+- Choose between GPT 4.0, 3.5 or other models from OpenAI
 - Upto date with the latest OpenAI libraries, faster
 - Install without python dependencies
 - Speech to Text
@@ -28,6 +28,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
     - Online - paid
       - OpenAI Whisper - **(Encouraged)**
       - Deepgram
+- Conversation Summary
 - Prompt customization
 - Manage Audio Input (Speaker or Mic or Both)
 - Save chat history

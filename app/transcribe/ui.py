@@ -126,6 +126,9 @@ class UICallbacks:
                 root_logger.info(e)
 
             pop_up = None
+        if summary is None:
+            popup_msg_close_button(title='Summary', msg='Failed to get summary. Please check you have a valid API key.')
+            return
         # Enhancement here would be to get a streaming summary
         popup_msg_close_button(title='Summary', msg=summary)
 
