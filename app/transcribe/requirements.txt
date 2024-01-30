@@ -2,9 +2,9 @@ numpy==1.24.3
 openai-whisper
 Wave==0.0.2
 openai
-customtkinter==5.1.3
-PyAudioWPatch==0.2.12.5
-pyinstaller
+customtkinter==5.2.1
+PyAudioWPatch==0.2.12.6
+pyinstaller==6.3.0
 pyperclip
 PyYAML
 soundfile

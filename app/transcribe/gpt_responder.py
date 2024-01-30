@@ -36,6 +36,33 @@ class GPTResponder:
         self.save_response_to_file = save_to_file
         self.response_file = file_name
 
+    def summarize(self) -> str:
+        """Ping LLM to get a summary of the conversation.
+        """
+        root_logger.info(GPTResponder.summarize.__name__)
+        with duration.Duration(name='OpenAI Summarize', screen=False):
+            timeout: int = self.config['OpenAI']['summarize_request_timeout_seconds']
+            temperature: float = self.config['OpenAI']['temperature']
+            prompt_content = self.conversation.get_merged_conversation_summary()
+            prompt_api_message = prompts.create_multiturn_prompt(prompt_content)
+            # self._pretty_print_openai_request(prompt_api_message)
+            summary_response = self.llm_client.chat.completions.create(
+                    model=self.model,
+                    messages=prompt_api_message,
+                    temperature=temperature,
+                    timeout=timeout,
+                    stream=True
+                )
+            collected_messages = ""
+            for chunk in summary_response:
+                chunk_message = chunk.choices[0].delta  # extract the message
+                if chunk_message.content:
+                    message_text = chunk_message.content
+                    collected_messages += message_text
+                    # print(f'{message_text}', end="")
+
+        return collected_messages
+
     def generate_response_from_transcript_no_check(self) -> str:
         """Ping LLM to get a suggested response right away.
            Gets a response even if the continuous suggestion option is disabled.
@@ -44,9 +71,9 @@ class GPTResponder:
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
             with duration.Duration(name='OpenAI Chat Completion', screen=False):
-                timeout: int = self.config['OpenAI']['request_timeout_seconds']
+                timeout: int = self.config['OpenAI']['response_request_timeout_seconds']
                 temperature: float = self.config['OpenAI']['temperature']
-                multiturn_prompt_content = self.conversation.get_merged_conversation(
+                multiturn_prompt_content = self.conversation.get_merged_conversation_response(
                     length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
                 multiturn_prompt_api_message = prompts.create_multiturn_prompt(
                     multiturn_prompt_content)
@@ -169,8 +196,8 @@ class GPTResponder:
         print('[')
         for item in message:
             print('  {')
-            print(f'    Role: {item["role"]}')
-            print(f'    Content: {item["content"]}')
+            print(f'    \'role\': \'{item["role"]}\'')
+            print(f'    \'content\': \'{item["content"]}\'')
             print('  }')
 
         print(']')

@@ -20,11 +20,11 @@ class Conversation:
         self.initialize_conversation()
 
     def initialize_conversation(self):
-        config = configuration.Config().data
-        prompt = config["OpenAI"]["system_prompt"]
+        self.config = configuration.Config().data
+        prompt = self.config["OpenAI"]["system_prompt"]
         self.update_conversation(persona=constants.PERSONA_SYSTEM, text=prompt,
                                  time_spoken=datetime.datetime.utcnow())
-        initial_convo: dict = config["OpenAI"]["initial_convo"]
+        initial_convo: dict = self.config["OpenAI"]["initial_convo"]
         # Read the initial conversation from parameters.yaml file and add to the convo
         for _, value in initial_convo.items():
             role = value['role']
@@ -93,14 +93,34 @@ class Conversation:
         combined_transcript = combined_transcript[-length:]
         return "".join([t[0] for t in combined_transcript])
 
-    def get_merged_conversation(self, length: int = 0) -> list:
+    def get_merged_conversation_summary(self, length: int = 0) -> list:
         """Creates a prompt to be sent to LLM (OpenAI by default)
            length: Get the last length elements from the audio transcript.
            Initial system prompt is always part of the return value
            Default value = 0, gives the complete transcript
         """
 
-        combined_transcript = self.transcript_data[constants.PERSONA_YOU][-length:] + self.transcript_data[constants.PERSONA_SPEAKER][-length:] + self.transcript_data[constants.PERSONA_ASSISTANT][-length:]
+        combined_transcript = self.transcript_data[constants.PERSONA_YOU][-length:] \
+            + self.transcript_data[constants.PERSONA_SPEAKER][-length:] \
+            + self.transcript_data[constants.PERSONA_ASSISTANT][-length:]
+        sorted_transcript = sorted(combined_transcript, key=lambda x: x[1])
+        sorted_transcript = sorted_transcript[-length:]
+        sorted_transcript.insert(0, self.transcript_data[constants.PERSONA_YOU][0])
+        # sorted_transcript.insert(0, self.config["OpenAI"]["system_prompt"])
+        sorted_transcript.insert(0, (f"{constants.PERSONA_SYSTEM}: [{self.config['OpenAI']['summary_prompt']}]\n\n",
+                                     datetime.datetime.now()))
+        return sorted_transcript
+
+    def get_merged_conversation_response(self, length: int = 0) -> list:
+        """Creates a prompt to be sent to LLM (OpenAI by default)
+           length: Get the last length elements from the audio transcript.
+           Initial system prompt is always part of the return value
+           Default value = 0, gives the complete transcript
+        """
+
+        combined_transcript = self.transcript_data[constants.PERSONA_YOU][-length:] \
+            + self.transcript_data[constants.PERSONA_SPEAKER][-length:] \
+            + self.transcript_data[constants.PERSONA_ASSISTANT][-length:]
         sorted_transcript = sorted(combined_transcript, key=lambda x: x[1])
         sorted_transcript = sorted_transcript[-length:]
         sorted_transcript.insert(0, self.transcript_data[constants.PERSONA_YOU][0])

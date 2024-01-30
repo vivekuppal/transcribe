@@ -8,7 +8,8 @@ OpenAI:
 # text-davinci-003, text-davinci-002, code-davinci-002
 # See this link for available models
 # https://platform.openai.com/docs/models/continuous-model-upgrades
-  ai_model: gpt-3.5-turbo-0301
+#  ai_model: gpt-3.5-turbo-0301
+  ai_model: gpt-4
 # Local model file to use for transcription.
 # Can also be specified using the -m parameter on command line of the application
   local_transcripton_model_file: 'base'
@@ -17,8 +18,11 @@ OpenAI:
 # https://platform.openai.com/docs/guides/speech-to-text/supported-languages
   response_lang: English
 
-# Request timeout for any requests made to openAI API
-  request_timeout_seconds: 10
+# Request timeout for any response requests made to openAI API
+  response_request_timeout_seconds: 10
+
+# Summarize request timeout for any response requests made to openAI API
+  summarize_request_timeout_seconds: 30
 
 # Temperature parameter for OpenAI chat completion API
   temperature: 0.0
@@ -34,6 +38,8 @@ OpenAI:
 #  system_prompt: "You are an expert at Basketball and helping others learn about basketball. Please respond, in detail, to the conversation. Confidently give a straightforward response to the speaker, even if you don't understand them. Give your response in square brackets. DO NOT ask to repeat, and DO NOT ask for clarification. Just answer the speaker directly."
 #  system_prompt: "You are an expert at Fantasy Football and helping others learn about Fantasy football. Please respond, in detail, to the conversation. Confidently give a straightforward response to the speaker, even if you don't understand them. Give your response in square brackets. DO NOT ask to repeat, and DO NOT ask for clarification. Just answer the speaker directly."
 #  system_prompt: “You are an expert Agile Coach and are interviewing for a position. Respond in detail to the conversation. Confidently give a straightforward response to the speaker, even if you don't understand them. Give your response in square brackets. DO NOT ask to repeat, and DO NOT ask for clarification. Just answer the speaker directly."
+
+  summary_prompt: 'Create a summary of the following text'
 
 # When we anticipate to talk about a specific topic, seed the content with some conversation
 # Application expects role "You" to have 1 entry
@@ -54,7 +60,7 @@ OpenAI:
       # content: "Hello, V. That's awesome! What do you want to know about basketball"
       # content: "Hello, V. That's awesome! What do you want to know about Fantasy Football"
       # content: "Hello, V. You are awesome. I am doing very well and looking forward to discussion about Agile coaching."
-      content: Hello, V. You are awesome. I am doing very well and looking forward to some light hearted banter with you.
+      content: "Hello, V. You are awesome. I am doing very well and looking forward to some light hearted banter with you."
 
 Deepgram:
   api_key: 'API_KEY'
