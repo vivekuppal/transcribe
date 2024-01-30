@@ -29,4 +29,4 @@ Users can add customer system_prompt, initial convo examples for the specific to
       content: Hello, V. You are awesome. I am doing very well and looking forward to some light hearted banter with you.
 ```
 
-Change system_prompt, intial_convo to be specific to the scenario you are intersted in.
+Change system_prompt, intial_convo to be specific to the scenario you are interested in.
