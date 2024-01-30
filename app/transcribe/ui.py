@@ -133,7 +133,7 @@ class UICallbacks:
         """
         self.capture_action('Get summary from LLM')
         summarize_ui_thread = threading.Thread(target=self.summarize_threaded,
-                                               name='UpdateResponseUINow')
+                                               name='Summarize')
         summarize_ui_thread.daemon = True
         summarize_ui_thread.start()
 
@@ -190,10 +190,11 @@ def popup_msg_no_close_threaded(title, msg):
                              text_color="#FFFCF2")
         label.pack(side="top", fill="x", pady=10)
         pop_up = popup
-        popup.mainloop()
-    except RuntimeError:
+        popup.lift()
+    except Exception:
         # We get the error - calling Tcl from different apartment
         # print(re)
+        # print('Popup Exception')
         return
 
 
@@ -211,53 +212,27 @@ def popup_msg_no_close(title: str, msg: str):
     pop_ui_thread.start()
 
 
-def popup_msg_close_button_threaded(title: str, msg: str):
-    popup = ctk.CTkToplevel(T_GLOBALS.main_window)
-    popup.geometry("400x400")
-    popup.title(title)
-
-    label = ctk.CTkLabel(popup, text=msg, font=("Arial", 12),
-                         text_color="#FFFCF2")
-    label.grid(row=0, column=0, padx=10, pady=20, sticky="nsew")
-#     label.pack(side="top", fill="x", pady=10)
-    b1 = ctk.CTkButton(popup, text="Close", command=popup.destroy)
-    b1.grid(row=1, column=0, padx=10, pady=20, sticky="nsew")
-    # b1.pack()
-
-    def copy_summary_to_clipboard():
-        pyperclip.copy(label.cget("text"))
-
-    b2 = ctk.CTkButton(popup, text="Copy to Clipboard", command=copy_summary_to_clipboard)
-    b2.grid(row=1, column=1, padx=10, pady=20, sticky="nsew")
-    # b2.pack()
-
-    popup.mainloop()
-
-
 def popup_msg_close_button(title: str, msg: str):
     """Create a popup that the caller is responsible for closing
     using the destroy method
     """
     popup = ctk.CTkToplevel(T_GLOBALS.main_window)
-    popup.geometry("600x300")
+    popup.geometry("380x710")
     popup.title(title)
-    txtbox = ctk.CTkTextbox(popup, width=350, font=("Arial", UI_FONT_SIZE),
+    txtbox = ctk.CTkTextbox(popup, width=350, height=600, font=("Arial", UI_FONT_SIZE),
                             text_color='#FFFCF2', wrap="word")
-    # label = ctk.CTkLabel(popup, text=msg, font=("Arial", 12),
-    #                      text_color="#FFFCF2")
-    txtbox.grid(row=0, column=0, padx=10, pady=20, sticky="nsew")
+    txtbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
     txtbox.insert("0.0", msg)
 
     def copy_summary_to_clipboard():
         pyperclip.copy(txtbox.cget("text"))
 
     copy_button = ctk.CTkButton(popup, text="Copy to Clipboard", command=copy_summary_to_clipboard)
-    copy_button.grid(row=1, column=0, padx=10, pady=20, sticky="nsew")
+    copy_button.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
 
     close_button = ctk.CTkButton(popup, text="Close", command=popup.destroy)
-    close_button.grid(row=1, column=1, padx=10, pady=20, sticky="nsew")
-
-    popup.mainloop()
+    close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+    popup.lift()
 
 
 def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
