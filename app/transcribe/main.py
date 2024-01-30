@@ -54,6 +54,7 @@ def main():
     log_listener = al.initiate_log(config=config)
 
     root = ctk.CTk()
+    T_GLOBALS.main_window = root
     ui_cb = ui.UICallbacks()
     ui_components = ui.create_ui_components(root, config=config)
     transcript_textbox = ui_components[0]
@@ -68,6 +69,7 @@ def main():
     global_vars.editmenu = ui_components[9]
     github_link = ui_components[10]
     issue_link = ui_components[11]
+    summarize_button = ui_components[12]
 
     # disable speaker/microphone on startup
     if config['General']['disable_speaker']:
@@ -92,6 +94,7 @@ def main():
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
     response_now_button.configure(command=ui_cb.update_response_ui_now)
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
+    summarize_button.configure(command=ui_cb.summarize)
     update_interval_slider.configure(command=ui_cb.update_interval_slider_label)
     label_text = f'LLM Response interval: {int(update_interval_slider.get())} seconds'
     global_vars.update_interval_slider_label.configure(text=label_text)

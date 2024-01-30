@@ -1,18 +1,22 @@
+<img src="assets/Transcribe-2.png" width="100">
+
+
+We are here to help. File issues for problems you encounter and we will resolve them.
+
+## Source Code Install Video
 
 Thanks to [Fahd Mirza](https://www.fahdmirza.com/) for creating an [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
-Please subscribe to his [youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
+Please subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
 
-[![install video](https://img.youtube.com/vi/RX86zKdCpMc/0.jpg)](https://www.youtube.com/watch?v=RX86zKdCpMc)
+<a href="https://www.youtube.com/watch?feature=player_embedded&v=RX86zKdCpMc" target="_blank">
+ <img src="https://img.youtube.com/vi/RX86zKdCpMc/0.jpg" alt="Watch the video" width="240" height="180"/>
+</a>
 
 # 👂🏻️ Transcribe ✍🏼️
-
-<img src="assets/Transcribe-2.png" width="100">
 
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
 
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
-
-![Screenshot](assets/Screenshot.png)
 
 ## Why Transcribe over ecoute ##
 - Use Most of the functionality for FREE
@@ -30,7 +34,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
 - Response Audio
 
 ## Response Generation ##
-Response generation requires a paid account with OpenAI API key. **Encouraged**
+Response generation requires a paid account with an OpenAI API key. **Encouraged**
 
 Wait for some sentences of audio to be transcribed to text prior to starting the continuous response method.
 
@@ -50,9 +54,9 @@ Error when attempting to get a response from LLM. Error code: 429 - {'error': {'
 ## ![Alt text](assets/on-demand-service-48.png) On Demand Features ![Alt text](assets/on-demand-service-48.png) ##
 We develop mutually beneficial features on demand.
 
-Create an issue in the repo to request on demand features.
+Create an issue in the repo to request mutually beneficial on demand features.
 
-Connect with me on LinkedIn to discuss further.
+Connect on LinkedIn to discuss further.
 
 
 ## Features ##
@@ -210,4 +214,4 @@ Contributions are welcome! Open issues or submit pull requests to improve Transc
 
 ## Videos
 [Install Video](https://www.youtube.com/watch?v=RX86zKdCpMc) Thanks to Fahd Mirza.
-[Fireside chat](https://www.youtube.com/watch?v=vUm-elVkxOI) about Transcribe.
+[Fireside chat](https://www.youtube.com/watch?v=vUm-elVkxOI) for Transcribe.

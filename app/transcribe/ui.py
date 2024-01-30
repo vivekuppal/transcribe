@@ -18,6 +18,7 @@ root_logger = al.get_logger()
 UI_FONT_SIZE = 20
 last_transcript_ui_update_time: datetime.datetime = datetime.datetime.utcnow()
 global_vars_module: TranscriptionGlobals = T_GLOBALS
+pop_up = None
 
 
 class UICallbacks:
@@ -95,7 +96,7 @@ class UICallbacks:
         response_ui_thread.start()
 
     def update_response_ui_now_threaded(self):
-        """update response ui in a separate thread
+        """Update response ui in a separate thread
         """
         self.global_vars.update_response_now = True
         response_string = self.global_vars.responder.generate_response_from_transcript_no_check()
@@ -107,6 +108,35 @@ class UICallbacks:
         write_in_textbox(self.global_vars.response_textbox, response_string)
         self.global_vars.response_textbox.configure(state="disabled")
         self.global_vars.response_textbox.see("end")
+
+    def summarize_threaded(self):
+        """Get summary from LLM in a separate thread
+        """
+        global pop_up  # pylint: disable=W0603
+        print('Summarizing...')
+        popup_msg_no_close(title='Summary', msg='Creating a summary')
+        summary = self.global_vars.responder.summarize()
+        if pop_up is not None:
+            try:
+                pop_up.destroy()
+            except Exception as e:
+                # Somehow we get the exception
+                # RuntimeError: main thread is not in main loop
+                root_logger.info('Exception in summarize_threaded')
+                root_logger.info(e)
+
+            pop_up = None
+        # Enhancement here would be to get a streaming summary
+        popup_msg_close_button(title='Summary', msg=summary)
+
+    def summarize(self):
+        """Get summary response from LLM
+        """
+        self.capture_action('Get summary from LLM')
+        summarize_ui_thread = threading.Thread(target=self.summarize_threaded,
+                                               name='Summarize')
+        summarize_ui_thread.daemon = True
+        summarize_ui_thread.start()
 
     def update_response_ui_and_read_now(self):
         """Get response from LLM right away
@@ -149,6 +179,63 @@ class UICallbacks:
                                                    extension='txt')
         with open(filename, mode='a', encoding='utf-8') as ui_file:
             ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
+
+
+def popup_msg_no_close_threaded(title, msg):
+    """Create a pop up with no close button.
+    """
+    global pop_up  # pylint: disable=W0603
+    try:
+        popup = ctk.CTkToplevel(T_GLOBALS.main_window)
+        popup.geometry("100x50")
+        popup.title(title)
+        label = ctk.CTkLabel(popup, text=msg, font=("Arial", 12),
+                             text_color="#FFFCF2")
+        label.pack(side="top", fill="x", pady=10)
+        pop_up = popup
+        popup.lift()
+    except Exception as e:
+        # Sometimes get the error - calling Tcl from different apartment
+        root_logger.info('Exception in popup_msg_no_close_threaded')
+        root_logger.info(e)
+        return
+
+
+def popup_msg_no_close(title: str, msg: str):
+    """Create a popup that the caller is responsible for closing
+    using the destroy method
+    """
+    kwargs = {}
+    kwargs['title'] = title
+    kwargs['msg'] = msg
+    pop_ui_thread = threading.Thread(target=popup_msg_no_close_threaded,
+                                     name='Pop up thread',
+                                     kwargs=kwargs)
+    pop_ui_thread.daemon = True
+    pop_ui_thread.start()
+
+
+def popup_msg_close_button(title: str, msg: str):
+    """Create a popup that the caller is responsible for closing
+    using the destroy method
+    """
+    popup = ctk.CTkToplevel(T_GLOBALS.main_window)
+    popup.geometry("380x710")
+    popup.title(title)
+    txtbox = ctk.CTkTextbox(popup, width=350, height=600, font=("Arial", UI_FONT_SIZE),
+                            text_color='#FFFCF2', wrap="word")
+    txtbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+    txtbox.insert("0.0", msg)
+
+    def copy_summary_to_clipboard():
+        pyperclip.copy(txtbox.cget("text"))
+
+    copy_button = ctk.CTkButton(popup, text="Copy to Clipboard", command=copy_summary_to_clipboard)
+    copy_button.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+
+    close_button = ctk.CTkButton(popup, text="Close", command=popup.destroy)
+    close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+    popup.lift()
 
 
 def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
@@ -302,6 +389,9 @@ def create_ui_components(root, config: dict):
     read_response_now_button = ctk.CTkButton(root, text="Suggest Response and Read", command=None)
     read_response_now_button.grid(row=3, column=1, padx=10, pady=3, sticky="nsew")
 
+    summarize_button = ctk.CTkButton(root, text="Summarize", command=None)
+    summarize_button.grid(row=4, column=1, padx=10, pady=3, sticky="nsew")
+
     update_interval_slider_label = ctk.CTkLabel(root, text="", font=("Arial", 12),
                                                 text_color="#FFFCF2")
     update_interval_slider_label.grid(row=1, column=0, padx=10, pady=3, sticky="nsew")
@@ -325,4 +415,4 @@ def create_ui_components(root, config: dict):
     return [transcript_textbox, response_textbox, update_interval_slider,
             update_interval_slider_label, freeze_button, lang_combobox,
             filemenu, response_now_button, read_response_now_button, editmenu,
-            github_link, issue_link]
+            github_link, issue_link, summarize_button]

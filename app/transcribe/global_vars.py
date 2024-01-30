@@ -38,6 +38,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     response_textbox: ctk.CTkTextbox = None
     start: datetime.datetime = None
     task_worker = None
+    main_window = None
 
     convo: conversation.Conversation = None
     _initialized: bool = None
