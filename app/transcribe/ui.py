@@ -1,5 +1,6 @@
 import threading
 import datetime
+import time
 import tkinter as tk
 import webbrowser
 import pyperclip
@@ -116,6 +117,8 @@ class UICallbacks:
         print('Summarizing...')
         popup_msg_no_close(title='Summary', msg='Creating a summary')
         summary = self.global_vars.responder.summarize()
+        # When API key is not specified, give a chance for the thread to initilizw
+        
         if pop_up is not None:
             try:
                 pop_up.destroy()
@@ -216,6 +219,10 @@ def popup_msg_no_close(title: str, msg: str):
                                      kwargs=kwargs)
     pop_ui_thread.daemon = True
     pop_ui_thread.start()
+    # Give a chance for the thread to initialize
+    # When API key is not specified, need the thread to initialize to
+    # allow summarize window to show and ultimately be closed.
+    time.sleep(0.1)
 
 
 def popup_msg_close_button(title: str, msg: str):
