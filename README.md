@@ -18,7 +18,7 @@ Please subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) an
 
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
 
-## Why Transcribe over other Speech to Text apps##
+## Why Transcribe over other Speech to Text apps ##
 - Use Most of the functionality for FREE
 - Choose between GPT 4.0, 3.5 or other models from OpenAI
 - Upto date with the latest OpenAI libraries, faster
@@ -36,10 +36,11 @@ Transcribe provides real time transcription for microphone and speaker output. I
 
 ## Response Generation ##
 Response generation requires a paid account with an OpenAI API key. **Encouraged**
+or Deepgram
 
-Wait for some sentences of audio to be transcribed to text prior to starting the continuous response method.
+OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide irrelevant answers if there is not enough conversation content in the beginning.
 
-Without the OpenAI key, using continuous response gives an error similar to below
+When using OpenAI, without the OpenAI key, using continuous response gives an error similar to below
 
 ```
 Error when attempting to get a response from LLM.
@@ -78,26 +79,38 @@ Connect on LinkedIn to discuss further.
 Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
 
 Latest Binary
-- Generated: 2023-12-18
-- Git version: 4ae0726
+- Generated: 2024-01-30
+- Git version: bbe1f4
 
-1. Download the zip file from
+1. Install ffmpeg
+
+First, install Chocolatey, a package manager for Windows.
+
+Open PowerShell as Administrator and run the following command:
 ```
-CPU Only version
-https://drive.google.com/file/d/1SKkB647qgXx37yM5fhkundVaBCw3zcSq/view?usp=sharing
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+```
+Once Chocolatey is installed, install FFmpeg by running the following command in PowerShell:
+```
+choco install ffmpeg
+```
+Run these commands in a PowerShell window with administrator privileges. For any issues during the installation, visit the official [Chocolatey](https://chocolatey.org/) and [FFmpeg](https://ffmpeg.org/) websites for troubleshooting.
 
-GPU + CPU version
-https://drive.google.com/file/d/14-rULM5ov6RQ5ksicW5cNJJgckSD0Co9/view?usp=sharing
+2. Download the zip file from
+```
+https://drive.google.com/file/d/1vJCHv8eEjp6q7HEnCMY5mlX_8Ys2_06u/view?usp=drive_link
 
 
 Using GPU provides 2-3 times faster reseponse time depending on processing power of GPU.
 CPU only version is 8x smaller in size than GPU version.
 ```
-2. Unzip the files in a folder.
+3. Unzip the files in a folder.
 
-3. (Optional) Add Open API key in `override.yaml` file in the transcribe directory:
+4. (Optional) Add Open API key in `override.yaml` file in the transcribe directory:
 
-   Add Open API key in `override.yaml` file manually. Open in a text editor and add these lines:
+   Create an [OpenAI account](https://openai.com/)
+
+   Add OpenAI API key in `override.yaml` file manually. Open in a text editor and add these lines:
 
 ```
 OpenAI:
@@ -106,7 +119,9 @@ OpenAI:
 
    Replace "API_KEY" with the actual OpenAI API key. Save the file.
 
-4. Execute the file `transcribe\transcribe.exe\transcribe.exe`
+5. Execute the file `transcribe\transcribe.exe\transcribe.exe`
+
+
 
 ## 🆕 Best Performance with GPU 🥇
 Application performs best with GPU support.
