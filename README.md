@@ -108,7 +108,9 @@ CPU only version is 8x smaller in size than GPU version.
 
 4. (Optional) Add Open API key in `override.yaml` file in the transcribe directory:
 
-   Add Open API key in `override.yaml` file manually. Open in a text editor and add these lines:
+   Create an [OpenAI account](https://openai.com/)
+
+   Add OpenAI API key in `override.yaml` file manually. Open in a text editor and add these lines:
 
 ```
 OpenAI:
