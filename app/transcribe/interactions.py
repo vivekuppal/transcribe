@@ -103,7 +103,7 @@ def detect_ps():
     except subprocess.CalledProcessError:
         return False
     except FileNotFoundError:
-        print('Please install Powershell.')
+        print('Please install Powershell or ensure it is in path.')
         print('Powershell is required to download models and install ffmpeg')
         return False
 
@@ -145,7 +145,7 @@ def exec_ps(script: str) -> (bool, str):
     except subprocess.CalledProcessError:
         return False, ''
     except FileNotFoundError:
-        print('Please install Powershell.')
+        print('Please install Powershell or ensure it is in path.')
         print('Powershell is required to download models and install ffmpeg')
         return False, ''
 
