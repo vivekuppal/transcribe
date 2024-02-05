@@ -765,16 +765,16 @@ class DeepgramTranscriber(AudioTranscriber):
         # check for existence of paragraphs
         root_logger.info(DeepgramTranscriber.check_for_latency)
         try:
-            outer_paragraphs = results['results']['channels'][0]['alternatives'][0]['paragraphs']
+            outer_paragraphs = results.results.channels[0].alternatives[0].paragraphs
         except KeyError as ke:
             print('Error when attempting to get paragraphs from Deepgram response.')
             print(f'Key Error: {ke}')
             return [False, 0, 0]
 
-        speech_duration = float(results['metadata']['duration'])
+        speech_duration = float(results.metadata.duration)
         # print(f'Total speech length: {speech_duration}')
 
-        para_list = outer_paragraphs['paragraphs']
+        para_list = outer_paragraphs.paragraphs
         num_paragraphs = len(para_list)
         # print(f'There are {num_paragraphs} paragraphs')
         # i = 1
@@ -793,7 +793,7 @@ class DeepgramTranscriber(AudioTranscriber):
         # determine prune percent based on how much speech we need to keep
         # First paragraph we will keep is
         beginning_para = para_list[-DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD]
-        start_time = float(beginning_para['sentences'][0]['start'])
+        start_time = float(beginning_para.sentences[0].start)
         # print(f"First para to keep, start time: {start_time}. Para text: {beginning_para['sentences'][0]['text']}.")
         prune_percent = start_time / speech_duration
 
@@ -846,13 +846,13 @@ class DeepgramTranscriber(AudioTranscriber):
             root_logger.info(f'Prune convo object until prune id: {prune_id}')
             first_string = ''
             second_string = ''
-            para_list = results['results']['channels'][0]['alternatives'][0]['paragraphs']['paragraphs']
+            para_list = results.results.channels[0].alternatives[0].paragraphs.paragraphs
             for para in para_list[0:-prune_id]:
-                for sentence in para['sentences']:
-                    first_string += sentence['text']
+                for sentence in para.sentences:
+                    first_string += sentence.text
             for para in para_list[-prune_id:]:
-                for sentence in para['sentences']:
-                    second_string += sentence['text']
+                for sentence in para.sentences:
+                    second_string += sentence.text
         except Exception as ex:
             print(f'Exception while pruning: {ex}')
 
