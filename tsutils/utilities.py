@@ -142,7 +142,7 @@ def download_using_bits(file_url: str, file_path: str):
                                  file_url,
                                  '-Destination',
                                  file_path]).strip()
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         print(f'Failed to download the file: {file_url}')
 
 
