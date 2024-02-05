@@ -102,6 +102,10 @@ def detect_ps():
         return True
     except subprocess.CalledProcessError:
         return False
+    except FileNotFoundError:
+        print('Please install Powershell or ensure it is in path.')
+        print('Powershell is required to download models and install ffmpeg')
+        return False
 
 
 def exit_params():
@@ -139,6 +143,10 @@ def exec_ps(script: str) -> (bool, str):
     try:
         output = subprocess.check_output(['powershell', '-encodedCommand', script]).strip()
     except subprocess.CalledProcessError:
+        return False, ''
+    except FileNotFoundError:
+        print('Please install Powershell or ensure it is in path.')
+        print('Powershell is required to download models and install ffmpeg')
         return False, ''
 
     return True, output
