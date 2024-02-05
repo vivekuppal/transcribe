@@ -7,6 +7,7 @@ from abc import abstractmethod
 import openai
 import whisper
 import torch
+from deepgram import (DeepgramClient, FileSource, PrerecordedOptions)
 from tsutils import utilities
 # import pprint
 
@@ -302,15 +303,13 @@ class DeepgramSTTModel(STTModelInterface):
     It primarily deals with interacting with the Deepgram API.
     """
     def __init__(self, config: dict):
-        from deepgram import Deepgram  # noqa:E402  pylint: disable=C0415,C0411
-
         # Check for api_key
         if config["api_key"] is None:
             raise Exception("Attempt to create Deepgram STT Model without an api key.")  # pylint: disable=W0719
         self.lang = 'en-US'
 
         print('[INFO] Using Deepgram API for transcription.')
-        self.audio_model = Deepgram(config["api_key"])
+        self.audio_model = DeepgramClient(config["api_key"])
 
     def set_lang(self, lang: str):
         """Set STT Language"""
@@ -321,21 +320,25 @@ class DeepgramSTTModel(STTModelInterface):
         """
         try:
             with open(wav_file_path, "rb") as audio_file:
-                # ...or replace mimetype as appropriate
-                source = {'buffer': audio_file, 'mimetype': 'audio/wav'}
-                options = {
-                    "smart_format": True,
-                    "model": "nova",
-                    "language": self.lang,
-                    'punctuate': True,
-                    'paragraphs': True
-                    }
-                response = self.audio_model.transcription.sync_prerecorded(source, options=options)
-                # This is not necessary and just a debugging aid
-                with open('logs/deep.json', mode='a', encoding='utf-8') as deep_log:
-                    deep_log.write(json.dumps(response, indent=4))
+                buffer_data = audio_file.read()
 
-                return response
+            payload: FileSource = {
+                "buffer": buffer_data
+                }
+
+            options = PrerecordedOptions(
+                model="nova",
+                smart_format=True,
+                utterances=True,
+                punctuate=True,
+                paragraphs=True)
+
+            response = self.audio_model.listen.prerecorded.v("1").transcribe_file(payload, options)
+            # This is not necessary and just a debugging aid
+            with open('logs/deep.json', mode='a', encoding='utf-8') as deep_log:
+                deep_log.write(response.to_json(indent=4))
+
+            return response
         except Exception as exception:
             print(exception)
 
@@ -344,6 +347,6 @@ class DeepgramSTTModel(STTModelInterface):
     def process_response(self, response) -> str:
         # response is of type PrerecordedTranscriptionResponse
         # convert result to the appropriate dict format
-        text = response["results"]["channels"][0]["alternatives"][0]["transcript"]
+        text = response.results.channels[0].alternatives[0].transcript
         # print(f'Transcript: {text}')
         return text
