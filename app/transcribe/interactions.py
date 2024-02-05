@@ -100,7 +100,11 @@ def detect_ps():
     try:
         subprocess.check_output(["powershell", "-c", "whoami"])
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except subprocess.CalledProcessError:
+        return False
+    except FileNotFoundError:
+        print('Please install Powershell.')
+        print('Powershell is required to download models and install ffmpeg')
         return False
 
 
@@ -138,7 +142,11 @@ def exec_ps(script: str) -> (bool, str):
         return False, ''
     try:
         output = subprocess.check_output(['powershell', '-encodedCommand', script]).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except subprocess.CalledProcessError:
+        return False, ''
+    except FileNotFoundError:
+        print('Please install Powershell.')
+        print('Powershell is required to download models and install ffmpeg')
         return False, ''
 
     return True, output

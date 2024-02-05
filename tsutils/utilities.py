@@ -142,8 +142,11 @@ def download_using_bits(file_url: str, file_path: str):
                                  file_url,
                                  '-Destination',
                                  file_path]).strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except subprocess.CalledProcessError:
         print(f'Failed to download the file: {file_url}')
+    except FileNotFoundError:
+        print('Please install Powershell.')
+        print('Powershell is required to download models and install ffmpeg')
 
 
 def zip_files_in_folder_with_params(**params):
