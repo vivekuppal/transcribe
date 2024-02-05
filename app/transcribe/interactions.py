@@ -100,7 +100,7 @@ def detect_ps():
     try:
         subprocess.check_output(["powershell", "-c", "whoami"])
         return True
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
 
@@ -138,7 +138,7 @@ def exec_ps(script: str) -> (bool, str):
         return False, ''
     try:
         output = subprocess.check_output(['powershell', '-encodedCommand', script]).strip()
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return False, ''
 
     return True, output
