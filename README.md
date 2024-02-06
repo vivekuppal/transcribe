@@ -21,16 +21,20 @@ Transcribe provides real time transcription for microphone and speaker output. I
 ## Why Transcribe over other Speech to Text apps ##
 - Use Most of the functionality for FREE
 - Choose between GPT 4.0, 3.5 or other models from OpenAI
-- Upto date with the latest OpenAI libraries, faster
-- Install without python dependencies
+- Streaming fast response instead of waiting for complete response
+- Upto date with the latest OpenAI libraries
+- Install / use without python dependencies
+- Manage Audio Input (Speaker or Mic or Both)
 - Speech to Text
     - Offline - FREE
     - Online - paid
       - OpenAI Whisper - **(Encouraged)**
       - Deepgram
+- Chat Inference
+    - OpenAI
+    - Together
 - Conversation Summary
 - Prompt customization
-- Manage Audio Input (Speaker or Mic or Both)
 - Save chat history
 - Response Audio
 
@@ -102,7 +106,6 @@ https://drive.google.com/file/d/1vJCHv8eEjp6q7HEnCMY5mlX_8Ys2_06u/view?usp=drive
 
 
 Using GPU provides 2-3 times faster reseponse time depending on processing power of GPU.
-CPU only version is 8x smaller in size than GPU version.
 ```
 3. Unzip the files in a folder.
 

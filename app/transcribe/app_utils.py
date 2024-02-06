@@ -3,11 +3,33 @@ import subprocess
 import threading
 from global_vars import TranscriptionGlobals
 from audio_player import AudioPlayer  # noqa: E402 pylint: disable=C0413
-from gpt_responder import GPTResponder
+from gpt_responder import InferenceResponderFactory, InferenceEnum
 from audio_transcriber import WhisperCPPTranscriber, WhisperTranscriber, DeepgramTranscriber
 sys.path.append('../..')
 import interactions  # noqa: E402 pylint: disable=C0413
 from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
+
+
+def create_responder(provider_name: str, config, convo, save_to_file: bool, file_name: str):
+    """Creates a responder / Inference provider object based on input parameters
+    """
+    responder_factory = InferenceResponderFactory()
+
+    if provider_name.lower() == 'openai':
+        responder = responder_factory.get_stt_model_instance(provider=InferenceEnum.OPENAI,
+                                                             config=config,
+                                                             convo=convo,
+                                                             save_to_file=save_to_file,
+                                                             file_name=file_name)
+    elif provider_name.lower() == 'together':
+        responder = responder_factory.get_stt_model_instance(provider=InferenceEnum.TOGETHER,
+                                                             config=config,
+                                                             convo=convo,
+                                                             save_to_file=save_to_file,
+                                                             file_name=file_name)
+    else:
+        responder = None
+    return responder
 
 
 def initiate_app_threads(global_vars: TranscriptionGlobals,
@@ -23,10 +45,12 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
 
     save_llm_response_to_file: bool = config['General']['save_llm_response_to_file']
     llm_response_file = config['General']['llm_response_file']
-    global_vars.responder = GPTResponder(config=config,
-                                         convo=global_vars.convo,
-                                         save_to_file=save_llm_response_to_file,
-                                         file_name=llm_response_file)
+    chat = config['General']['chat']
+    global_vars.responder = create_responder(provider_name=chat,
+                                             config=config,
+                                             convo=global_vars.convo,
+                                             save_to_file=save_llm_response_to_file,
+                                             file_name=llm_response_file)
     global_vars.responder.enabled = bool(config['General']['continuous_response'])
 
     respond_thread = threading.Thread(target=global_vars.responder.respond_to_transcriber,
@@ -94,7 +118,7 @@ def create_transcriber(
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.DEEPGRAM_API,
-            config=stt_model_config)
+            stt_model_config=stt_model_config)
         global_vars.transcriber = DeepgramTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
@@ -107,7 +131,7 @@ def create_transcriber(
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_CPP,
-            config=stt_model_config)
+            stt_model_config=stt_model_config)
         global_vars.transcriber = WhisperCPPTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
@@ -121,7 +145,7 @@ def create_transcriber(
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_LOCAL,
-            config=stt_model_config)
+            stt_model_config=stt_model_config)
         global_vars.transcriber = WhisperTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
@@ -134,7 +158,7 @@ def create_transcriber(
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_API,
-            config=stt_model_config)
+            stt_model_config=stt_model_config)
         global_vars.transcriber = WhisperTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,

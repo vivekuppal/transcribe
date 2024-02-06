@@ -64,6 +64,12 @@ OpenAI:
 Deepgram:
   api_key: 'API_KEY'
 
+Together:
+  api_key: 'API_KEY'
+  # Supported models are at https://docs.together.ai/docs/inference-models
+  ai_model: 'mistralai/Mixtral-8x7B-Instruct-v0.1'
+  base_url: 'https://api.together.xyz'
+
 WhisperCpp:
   # Can also be specified using the -m parameter on command line of the application
   local_transcripton_model_file: 'base'
@@ -105,3 +111,7 @@ General:
   continuous_response: True
   # The interval at which to ping the LLM for response
   response_interval: 10
+
+# This is equivalent to -c argument on command line
+# Command line argument takes precedence over value specified in parameters.yaml
+  chat: openai

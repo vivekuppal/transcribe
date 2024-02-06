@@ -27,7 +27,7 @@ MODELS_DIR = './models/'
 class STTModelFactory:
     """Factory class to get the appropriate STT Model
     """
-    def get_stt_model_instance(self, stt_model: STTEnum, config: dict):
+    def get_stt_model_instance(self, stt_model: STTEnum, stt_model_config: dict):
         """Get the appropriate STT model class instance
         Args:
           stt_model: Speech to Text Model
@@ -40,14 +40,14 @@ class STTModelFactory:
         if stt_model == STTEnum.WHISPER_LOCAL:
             # How do we get a different model for whisper, tiny vs base vs medium
             # Model value is derived from command line args
-            return WhisperSTTModel(config=config)
+            return WhisperSTTModel(stt_model_config=stt_model_config)
         elif stt_model == STTEnum.WHISPER_API:
-            return APIWhisperSTTModel(config=config)
+            return APIWhisperSTTModel(stt_model_config=stt_model_config)
         elif stt_model == STTEnum.WHISPER_CPP:
-            return WhisperCPPSTTModel(config=config)
+            return WhisperCPPSTTModel(stt_model_config=stt_model_config)
         elif stt_model == STTEnum.DEEPGRAM_API:
-            return DeepgramSTTModel(config=config)
-        raise ValueError("Unknown SPeech to Text Model Type")
+            return DeepgramSTTModel(stt_model_config=stt_model_config)
+        raise ValueError("Unknown Speech to Text Model Type")
 
 
 class STTModelInterface:
@@ -70,8 +70,8 @@ class STTModelInterface:
 class WhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper Local model
     """
-    def __init__(self, config: dict):
-        self.model = config['local_transcripton_model_file']
+    def __init__(self, stt_model_config: dict):
+        self.model = stt_model_config['local_transcripton_model_file']
         self.lang = 'en'
         model_filename = MODELS_DIR + self.model + ".pt"
         self.model_name = self.model + ".pt"
@@ -79,7 +79,7 @@ class WhisperSTTModel(STTModelInterface):
         self.download_model()
         self.audio_model = whisper.load_model(self.model_filename)
         print(f'[INFO] Whisper using GPU: {str(torch.cuda.is_available())}')
-        openai.api_key = config["api_key"]
+        openai.api_key = stt_model_config["api_key"]
 
     def download_model(self):
         """Download the appropriate OpenAI model if needed"""
@@ -186,12 +186,12 @@ class WhisperSTTModel(STTModelInterface):
 class APIWhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper API
     """
-    def __init__(self, config: dict):
+    def __init__(self, stt_model_config: dict):
         # Check for api_key
-        if config["api_key"] is None:
+        if stt_model_config["api_key"] is None:
             raise Exception("Attempt to create Open AI Whisper STT Model without an api key.")  # pylint: disable=W0719
         print('[INFO] Using Open AI Whisper API for transcription.')
-        self.stt_client = openai.OpenAI(api_key=config["api_key"])
+        self.stt_client = openai.OpenAI(api_key=stt_model_config["api_key"])
         # lang parameter is not required for API invocation. This exists solely
         # to support --api option from command line.
         # A better solution is to create a base class for APIWhisperSTTModel,
@@ -233,9 +233,9 @@ class WhisperCPPSTTModel(STTModelInterface):
     It primarily deals with interacting with the whisper CPP API model.
     This model works best when used with GPU
     """
-    def __init__(self, config: dict):
+    def __init__(self, stt_model_config: dict):
         self.lang = 'en-US'
-        model = config['local_transcripton_model_file']
+        model = stt_model_config['local_transcripton_model_file']
         self.model_filename = MODELS_DIR + model + ".bin"
         self.model = model
 
@@ -302,14 +302,14 @@ class DeepgramSTTModel(STTModelInterface):
     """Speech to Text using the Deepgram API.
     It primarily deals with interacting with the Deepgram API.
     """
-    def __init__(self, config: dict):
+    def __init__(self, stt_model_config: dict):
         # Check for api_key
-        if config["api_key"] is None:
+        if stt_model_config["api_key"] is None:
             raise Exception("Attempt to create Deepgram STT Model without an api key.")  # pylint: disable=W0719
         self.lang = 'en-US'
 
         print('[INFO] Using Deepgram API for transcription.')
-        self.audio_model = DeepgramClient(config["api_key"])
+        self.audio_model = DeepgramClient(stt_model_config["api_key"])
 
     def set_lang(self, lang: str):
         """Set STT Language"""
