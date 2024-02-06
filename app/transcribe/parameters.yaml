@@ -114,4 +114,4 @@ General:
 
 # This is equivalent to -c argument on command line
 # Command line argument takes precedence over value specified in parameters.yaml
-  chat: openai
+  chat_inference_provider: openai

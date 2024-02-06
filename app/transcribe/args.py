@@ -23,7 +23,7 @@ def create_args() -> argparse.Namespace:
                           help='Specify the Speech to text Engine.'
                           '\nLocal STT models tend to perform best for response times.'
                           '\nAPI based STT models tend to perform best for accuracy.')
-    cmd_args.add_argument('-c', '--chat', action='store', default='openai',
+    cmd_args.add_argument('-c', '--chat-inference-provider', action='store', default='openai',
                           choices=['openai', 'together'],
                           help='Specify the Chat Inference engine.')
     cmd_args.add_argument('-k', '--api_key', action='store', default=None,

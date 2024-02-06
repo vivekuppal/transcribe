@@ -45,12 +45,15 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
 
     save_llm_response_to_file: bool = config['General']['save_llm_response_to_file']
     llm_response_file = config['General']['llm_response_file']
-    chat = config['General']['chat']
+    chat = config['General']['chat_inference_provider']
     global_vars.responder = create_responder(provider_name=chat,
                                              config=config,
                                              convo=global_vars.convo,
                                              save_to_file=save_llm_response_to_file,
                                              file_name=llm_response_file)
+    if global_vars.responder is None:
+        print(f'FATAL: Could not create Chat Reponder for {chat}')
+        sys.exit(1)
     global_vars.responder.enabled = bool(config['General']['continuous_response'])
 
     respond_thread = threading.Thread(target=global_vars.responder.respond_to_transcriber,
