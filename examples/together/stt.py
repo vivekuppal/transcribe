@@ -1,8 +1,7 @@
 from openai import OpenAI
 
 
-# TOGETHER_API_KEY = 'API_KEY'
-TOGETHER_API_KEY = '86db8cd011f08a069e6880033eb782ce314a604f2a5339dd4764dac262398c4a'
+TOGETHER_API_KEY = 'API_KEY'
 # Supported models are at - https://docs.together.ai/docs/inference-models
 
 
