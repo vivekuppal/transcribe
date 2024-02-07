@@ -78,7 +78,7 @@ class WhisperSTTModel(STTModelInterface):
         self.model_filename = os.path.join(os.getcwd(), model_filename)
         self.download_model()
         self.audio_model = whisper.load_model(self.model_filename)
-        print(f'[INFO] Whisper using GPU: {str(torch.cuda.is_available())}')
+        print(f'[INFO] Speech To Text - Whisper using GPU: {str(torch.cuda.is_available())}')
         openai.api_key = stt_model_config["api_key"]
 
     def download_model(self):

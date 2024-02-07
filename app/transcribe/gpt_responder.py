@@ -20,38 +20,6 @@ class InferenceEnum(Enum):
     TOGETHER = 2
 
 
-class InferenceResponderFactory:
-    """Factory class to get the appropriate Inference Provider / GPT Provider
-    """
-    def get_stt_model_instance(self,
-                               provider: InferenceEnum,
-                               config: dict,
-                               convo: conversation.Conversation,
-                               save_to_file: bool = False,
-                               file_name: str = 'logs/response.txt'
-                               ):
-        """Get the appropriate Inference Provider class instance
-        Args:
-          stt_model: Speech to Text Model
-          config: dict: Used to pass all configuration parameters
-          model_file: str: OpenAI Transcription model for local transcription
-        """
-        if not isinstance(provider, InferenceEnum):
-            raise TypeError('STTModelFactory: stt_model should be an instance of STTEnum')
-
-        if provider == InferenceEnum.OPENAI:
-            return OpenAIResponder(config=config,
-                                   convo=convo,
-                                   save_to_file=save_to_file,
-                                   file_name=file_name)
-        elif provider == InferenceEnum.TOGETHER:
-            return TogetherAIResponder(config=config,
-                                       convo=convo,
-                                       save_to_file=save_to_file,
-                                       file_name=file_name)
-        raise ValueError("Unknown Inference Provider type")
-
-
 class GPTResponder:
     """Handles all interactions with openAI LLM / ChatGPT
     """
@@ -256,16 +224,17 @@ class OpenAIResponder(GPTResponder):
                  config: dict,
                  convo: conversation.Conversation,
                  save_to_file: bool = False,
-                 file_name: str = 'logs/response.txt'):
+                 response_file_name: str = 'logs/response.txt'):
         root_logger.info(OpenAIResponder.__name__)
         self.config = config
         api_key = self.config['OpenAI']['api_key']
         self.llm_client = openai.OpenAI(api_key=api_key)
         self.model = self.config['OpenAI']['ai_model']
+        print(f'[INFO] Using OpenAI for inference. Model: {self.model}')
         super().__init__(config=self.config,
                          convo=convo,
                          save_to_file=save_to_file,
-                         file_name=file_name)
+                         file_name=response_file_name)
 
 
 class TogetherAIResponder(GPTResponder):
@@ -275,17 +244,52 @@ class TogetherAIResponder(GPTResponder):
                  config: dict,
                  convo: conversation.Conversation,
                  save_to_file: bool = False,
-                 file_name: str = 'logs/response.txt'):
+                 response_file_name: str = 'logs/response.txt'):
         root_logger.info(TogetherAIResponder.__name__)
         self.config = config
         api_key = self.config['Together']['api_key']
         self.llm_client = openai.OpenAI(api_key=api_key,
                                         base_url=self.config['Together']['base_url'])
         self.model = self.config['Together']['ai_model']
+        print(f'[INFO] Using Together for inference. Model: {self.model}')
         super().__init__(config=self.config,
                          convo=convo,
                          save_to_file=save_to_file,
-                         file_name=file_name)
+                         file_name=response_file_name)
+
+
+class InferenceResponderFactory:
+    """Factory class to get the appropriate Inference Provider / GPT Provider
+    """
+    def get_responder_instance(self,
+                               provider: InferenceEnum,
+                               config: dict,
+                               convo: conversation.Conversation,
+                               save_to_file: bool = False,
+                               response_file_name: str = 'logs/response.txt'
+                               ) -> GPTResponder:
+        """Get the appropriate Inference Provider class instance
+        Args:
+          provider: InferenceEnum: The Inference provider enum
+          config: dict: Used to pass all configuration parameters
+          convo: Conversation: Conversation object for storing all conversation text
+          save_to_file: bool: Save LLM responses to file or not
+          response_file_name: str: Filename for saving LLM responses
+        """
+        if not isinstance(provider, InferenceEnum):
+            raise TypeError('InferenceResponderFactory: provider should be an instance of InferenceEnum')
+
+        if provider == InferenceEnum.OPENAI:
+            return OpenAIResponder(config=config,
+                                   convo=convo,
+                                   save_to_file=save_to_file,
+                                   response_file_name=response_file_name)
+        elif provider == InferenceEnum.TOGETHER:
+            return TogetherAIResponder(config=config,
+                                       convo=convo,
+                                       save_to_file=save_to_file,
+                                       response_file_name=response_file_name)
+        raise ValueError("Unknown Inference Provider type")
 
 
 if __name__ == "__main__":

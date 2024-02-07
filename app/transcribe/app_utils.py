@@ -10,23 +10,24 @@ import interactions  # noqa: E402 pylint: disable=C0413
 from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
 
 
-def create_responder(provider_name: str, config, convo, save_to_file: bool, file_name: str):
+def create_responder(provider_name: str, config, convo, save_to_file: bool, 
+                     response_file_name: str):
     """Creates a responder / Inference provider object based on input parameters
     """
     responder_factory = InferenceResponderFactory()
 
     if provider_name.lower() == 'openai':
-        responder = responder_factory.get_stt_model_instance(provider=InferenceEnum.OPENAI,
+        responder = responder_factory.get_responder_instance(provider=InferenceEnum.OPENAI,
                                                              config=config,
                                                              convo=convo,
                                                              save_to_file=save_to_file,
-                                                             file_name=file_name)
+                                                             response_file_name=response_file_name)
     elif provider_name.lower() == 'together':
-        responder = responder_factory.get_stt_model_instance(provider=InferenceEnum.TOGETHER,
+        responder = responder_factory.get_responder_instance(provider=InferenceEnum.TOGETHER,
                                                              config=config,
                                                              convo=convo,
                                                              save_to_file=save_to_file,
-                                                             file_name=file_name)
+                                                             response_file_name=response_file_name)
     else:
         responder = None
     return responder
@@ -50,7 +51,7 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
                                              config=config,
                                              convo=global_vars.convo,
                                              save_to_file=save_llm_response_to_file,
-                                             file_name=llm_response_file)
+                                             response_file_name=llm_response_file)
     if global_vars.responder is None:
         print(f'FATAL: Could not create Chat Reponder for {chat}')
         sys.exit(1)
