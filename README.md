@@ -19,26 +19,32 @@ Please subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) an
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
 
 ## Why Transcribe over other Speech to Text apps ##
-- Use Most of the functionality for FREE
-- Choose between GPT 4.0, 3.5 or other models from OpenAI
-- Upto date with the latest OpenAI libraries, faster
-- Install without python dependencies
+- Use Most of the functionality for **FREE**
+- Choose between GPT 4.0, 3.5 or other inference models from OpenAI, or a plethora of inference models from [Together](https://docs.together.ai/docs/inference-models)
+- Streaming fast responses instead of waiting for a complete response
+- Upto date with the latest OpenAI libraries
+- Install and use without python or other dependencies
+- Choose Audio Inputs (Speaker or Mic or Both)
 - Speech to Text
     - Offline - FREE
     - Online - paid
       - OpenAI Whisper - **(Encouraged)**
       - Deepgram
+- Chat Inference Engine
+    - OpenAI
+    - Together
 - Conversation Summary
 - Prompt customization
-- Manage Audio Input (Speaker or Mic or Both)
 - Save chat history
 - Response Audio
 
 ## Response Generation ##
 Response generation requires a paid account with an OpenAI API key. **Encouraged**
 or Deepgram
+or Together ($25 free Credits)
 
 OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide irrelevant answers if there is not enough conversation content in the beginning.
+Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models)
 
 When using OpenAI, without the OpenAI key, using continuous response gives an error similar to below
 
@@ -102,7 +108,6 @@ https://drive.google.com/file/d/1vJCHv8eEjp6q7HEnCMY5mlX_8Ys2_06u/view?usp=drive
 
 
 Using GPU provides 2-3 times faster reseponse time depending on processing power of GPU.
-CPU only version is 8x smaller in size than GPU version.
 ```
 3. Unzip the files in a folder.
 
