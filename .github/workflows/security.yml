@@ -12,8 +12,7 @@ jobs:
     name: Python ${{ matrix.python-version }} ${{ matrix.os }} 
 
     steps:
-    - uses: actions/checkout@v2
-
+    - uses: actions/checkout@v4
     - name: Security check - Bandit
       uses: ./
       with:
