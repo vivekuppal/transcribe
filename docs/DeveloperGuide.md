@@ -8,6 +8,21 @@ Unit Tests
 python -m unittest discover --verbose .\tests
 ```
 
+## Security Scanning
+
+Install bandit for security scanning
+
+```
+pip install bandit
+```
+
+Run bandit locally
+
+```
+cd app/transcribe
+bandit -r .
+```
+
 ## Creating Windows installs
 
 Install Winrar from https://www.win-rar.com/.

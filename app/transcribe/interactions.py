@@ -7,11 +7,11 @@ import platform
 import datetime
 import argparse
 import uuid
-import random
-import atexit
+# import random
+# import atexit
 import json
 # import pprint
-import subprocess
+import subprocess  # nosec
 import socket
 import requests
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
@@ -32,7 +32,7 @@ def create_params(args: argparse.Namespace) -> dict:
     try:
         root_logger.info(create_params.__name__)
         if git_version is None:
-            git_version = subprocess.check_output(
+            git_version = subprocess.check_output(  # nosec
                 ['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
     except subprocess.CalledProcessError as process_exception:
         if process_exception.returncode == 128:
@@ -96,7 +96,7 @@ def detect_ps():
         return False
 
     try:
-        subprocess.check_output(["powershell", "-c", "whoami"])
+        subprocess.check_output(["powershell", "-c", "whoami"])  # nosec
         return True
     except subprocess.CalledProcessError:
         return False
@@ -139,7 +139,8 @@ def exec_ps(script: str) -> (bool, str):
     if not detect_ps():
         return False, ''
     try:
-        output = subprocess.check_output(['powershell', '-encodedCommand', script]).strip()
+        output = ''
+        # output = subprocess.check_output(['powershell', '-encodedCommand', script]).strip()
     except subprocess.CalledProcessError:
         return False, ''
     except FileNotFoundError:

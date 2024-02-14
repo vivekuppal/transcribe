@@ -4,10 +4,10 @@ on: push
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ windows-latest ]
+        os: [ ubuntu-latest ]
         python-version: [ '3.11.0' ]
     name: Python ${{ matrix.python-version }} ${{ matrix.os }} 
 
