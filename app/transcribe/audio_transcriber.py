@@ -1,6 +1,6 @@
 import sys
 import os
-import subprocess
+import subprocess  # nosec
 import queue
 import time
 import threading
@@ -219,7 +219,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             file_descritor, mod_file_path = tempfile.mkstemp(suffix=".wav")
             os.close(file_descritor)
             # print(f'Convert file {file_path} to 16khz file {mod_file_path}')
-            subprocess.call(["ffmpeg", '-i', file_path, '-ar', '16000', '-ac',
+            subprocess.call(["ffmpeg", '-i', file_path, '-ar', '16000', '-ac',  # nosec
                              '1', '-c:a', 'pcm_s16le', '-y', mod_file_path],
                             stdout=open(file='logs/ffmpeg.txt', mode='a', encoding='utf-8'),
                             stderr=subprocess.STDOUT)

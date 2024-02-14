@@ -178,7 +178,7 @@ def save_api_key(args: argparse.Namespace):
     yml = configuration.Config()
     with open(yml.config_override_file, mode='r', encoding='utf-8') as file:
         try:
-            altered_config = yaml.load(stream=file, Loader=yaml.CLoader)
+            altered_config = yaml.load(stream=file, Loader=yaml.SafeLoader)
         except ImportError as err:
             print(f'Failed to load yaml file: {yml.config_override_file}.')
             print(f'Error: {err}')
