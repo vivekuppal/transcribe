@@ -42,7 +42,7 @@ class Config(Singleton.Singleton):
         """
         try:
             with open(self._default_config_filename, mode='r', encoding='utf-8') as default_config_file:
-                self._default_data = yaml.load(stream=default_config_file, Loader=yaml.CLoader)
+                self._default_data = yaml.load(stream=default_config_file, Loader=yaml.SafeLoader)
 
         except ImportError as err:
             print(f'Failed to load yaml file: {self._default_config_filename}.')
@@ -56,7 +56,7 @@ class Config(Singleton.Singleton):
         try:
             with open(self._override_config_filename, mode='r', encoding='utf-8') as override_config_file:
                 self._override_data = yaml.load(stream=override_config_file,
-                                                Loader=yaml.CLoader)
+                                                Loader=yaml.SafeLoader)
         except ImportError as err:
             print(f'Failed to load yaml file: {self._override_config_filename}.')
             print(f'Error: {err}')
@@ -89,7 +89,7 @@ class Config(Singleton.Singleton):
         yml = Config()
         with open(yml.config_override_file, mode='r', encoding='utf-8') as file:
             try:
-                altered_config = yaml.load(stream=file, Loader=yaml.CLoader)
+                altered_config = yaml.load(stream=file, Loader=yaml.SafeLoader)
                 # Handle empty override file
                 if altered_config is None:
                     altered_config = {}
