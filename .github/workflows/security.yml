@@ -1,0 +1,29 @@
+name: Security checks
+
+on: push
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [ windows-latest ]
+        python-version: [ '3.11.0' ]
+    name: Python ${{ matrix.python-version }} ${{ matrix.os }} 
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Security check - Bandit
+      uses: ./
+      with:
+        python_version: ${{ matrix.python-version }}
+        project_path: .
+        ignore_failure: true
+
+    - name: Security check report artifacts
+      uses: actions/upload-artifact@v1
+      # if: failure()
+      with:
+        name: Security report
+        path: output/security_report.txt
