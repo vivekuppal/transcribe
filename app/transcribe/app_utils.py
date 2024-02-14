@@ -1,5 +1,5 @@
 import sys
-import subprocess
+import subprocess  # nosec
 import threading
 from global_vars import TranscriptionGlobals
 from audio_player import AudioPlayer  # noqa: E402 pylint: disable=C0413
@@ -97,7 +97,7 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
 def start_ffmpeg():
     """Start ffmpeg library"""
     try:
-        subprocess.run(["ffmpeg", "-version"],
+        subprocess.run(["ffmpeg", "-version"],  # nosec
                        stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL,
                        check=True)
