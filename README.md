@@ -79,10 +79,10 @@ Connect on LinkedIn to discuss further.
 
 
 ## Security ##
-- Secret scanning: Continuous Integration with [GitGuardian](https://www.gitguardian.com/)
-- Static Code Analysis: Regular static code scan scan with [Bandit](https://bandit.readthedocs.io/en/latest/)
-- Secure Transmission: All secure communications for any network communications
-- Dependency Security: Strictest security features enabled in the Github repo
+- <b>Secret scanning</b>: Continuous Integration with [GitGuardian](https://www.gitguardian.com/)
+- <b>Static Code Analysis</b>: Regular static code scan scan with [Bandit](https://bandit.readthedocs.io/en/latest/)
+- <b>Secure Transmission</b>: All secure communications for any network communications
+- <b>Dependency Security</b>: All strictest security features enabled in the Github repo
 
 
 ## Developer Guide ##
