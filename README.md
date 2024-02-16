@@ -81,6 +81,8 @@ Connect on LinkedIn to discuss further.
 ## Security ##
 - Continuous Integration with [GitGuardian](https://www.gitguardian.com/)
 - Regular static code scan scan with [Bandit](https://bandit.readthedocs.io/en/latest/)
+- All secure communications for any network communications
+- Strictest security features enabled in the Github repo
 
 
 ## Developer Guide ##
