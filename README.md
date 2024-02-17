@@ -24,6 +24,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
 - Streaming fast responses instead of waiting for a complete response
 - Upto date with the latest OpenAI libraries
 - Install and use without python or other dependencies
+- Security Features
 - Choose Audio Inputs (Speaker or Mic or Both)
 - Speech to Text
     - Offline - FREE
@@ -75,6 +76,14 @@ Connect on LinkedIn to discuss further.
 - [Model Selection](./docs/ModelSelection.md)
 - [Batch Operations](./docs/BatchOperations.md)
 - [Application Configuration](./docs/AppConfig.md)
+
+
+## Security ##
+- <b>Secret scanning</b>: Continuous Integration with [GitGuardian](https://www.gitguardian.com/)
+- <b>Static Code Analysis</b>: Regular static code scan scan with [Bandit](https://bandit.readthedocs.io/en/latest/)
+- <b>Secure Transmission</b>: All secure communications for any network communications
+- <b>Dependency Security</b>: All strictest security features enabled in the Github repo
+
 
 ## Developer Guide ##
 [Developer Guide](./docs/DeveloperGuide.md)
