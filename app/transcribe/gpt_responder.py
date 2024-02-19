@@ -135,10 +135,10 @@ class GPTResponder:
 
         return processed_multi_turn_response
 
-    def create_client(self, api_key: str):
+    def create_client(self, api_key: str, base_url: str = None):
         if self.llm_client is not None:
             self.llm_client.close()
-        self.llm_client = openai.OpenAI(api_key=api_key)
+        self.llm_client = openai.OpenAI(api_key=api_key, base_url=base_url)
 
     def process_response(self, input_str: str) -> str:
         """ Extract relevant data from LLM response.
@@ -224,11 +224,13 @@ class OpenAIResponder(GPTResponder):
                  config: dict,
                  convo: conversation.Conversation,
                  save_to_file: bool = False,
+                 base_url: str = None,
                  response_file_name: str = 'logs/response.txt'):
         root_logger.info(OpenAIResponder.__name__)
         self.config = config
         api_key = self.config['OpenAI']['api_key']
-        self.llm_client = openai.OpenAI(api_key=api_key)
+        base_url = self.config['OpenAI']['base_url']
+        self.llm_client = openai.OpenAI(api_key=api_key, base_url=base_url)
         self.model = self.config['OpenAI']['ai_model']
         print(f'[INFO] Using OpenAI for inference. Model: {self.model}')
         super().__init__(config=self.config,
@@ -248,8 +250,9 @@ class TogetherAIResponder(GPTResponder):
         root_logger.info(TogetherAIResponder.__name__)
         self.config = config
         api_key = self.config['Together']['api_key']
+        base_url = self.config['Together']['base_url']
         self.llm_client = openai.OpenAI(api_key=api_key,
-                                        base_url=self.config['Together']['base_url'])
+                                        base_url=base_url)
         self.model = self.config['Together']['ai_model']
         print(f'[INFO] Using Together for inference. Model: {self.model}')
         super().__init__(config=self.config,
