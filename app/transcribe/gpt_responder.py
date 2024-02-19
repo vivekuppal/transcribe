@@ -138,7 +138,7 @@ class GPTResponder:
     def create_client(self, api_key: str):
         if self.llm_client is not None:
             self.llm_client.close()
-        self.llm_client = openai.OpenAI(api_key=api_key)
+        self.llm_client = openai.OpenAI(api_key=api_key,base_url=base_url)
 
     def process_response(self, input_str: str) -> str:
         """ Extract relevant data from LLM response.
@@ -228,7 +228,7 @@ class OpenAIResponder(GPTResponder):
         root_logger.info(OpenAIResponder.__name__)
         self.config = config
         api_key = self.config['OpenAI']['api_key']
-        self.llm_client = openai.OpenAI(api_key=api_key)
+        self.llm_client = openai.OpenAI(api_key=api_key,base_url=base_url)
         self.model = self.config['OpenAI']['ai_model']
         print(f'[INFO] Using OpenAI for inference. Model: {self.model}')
         super().__init__(config=self.config,
