@@ -191,7 +191,7 @@ class APIWhisperSTTModel(STTModelInterface):
         if stt_model_config["api_key"] is None:
             raise Exception("Attempt to create Open AI Whisper STT Model without an api key.")  # pylint: disable=W0719
         print('[INFO] Using Open AI Whisper API for transcription.')
-        self.stt_client = openai.OpenAI(api_key=stt_model_config["api_key"])
+        self.stt_client = openai.OpenAI(api_key=stt_model_config["api_key"], base_url=base_url)
         # lang parameter is not required for API invocation. This exists solely
         # to support --api option from command line.
         # A better solution is to create a base class for APIWhisperSTTModel,
