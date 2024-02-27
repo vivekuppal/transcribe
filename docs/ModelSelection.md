@@ -5,10 +5,10 @@ Transcribe architecture has two primary components that require model selection
 - LLM Responses
 
 ## Speech to Text
-Speech to text aspect can be done locally or online using the Whisper API. The online option requires the use of `-api` option on command line.
+Speech to text aspect can be done locally or online using the Whisper API. Online Speech to Text requires use of `-api` option on command line.
 
 ### Local Speech to Text
-Local Speech to Text requires model selection. By default the `tiny` model for English is used. This model is part of the downloaded source code. There are many more models available, though they vary by size and computing power required.
+Local Speech to Text requires model selection. By default the `base` model for English is used. This model is downloaded on the first invocation of the application. There are many more models available, though they vary by size and compute power required.
 
 See the help of transcribe `python main.py -h` for further details on local transcription models.
 
