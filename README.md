@@ -76,6 +76,7 @@ Connect on LinkedIn to discuss further.
 - [Model Selection](./docs/ModelSelection.md)
 - [Batch Operations](./docs/BatchOperations.md)
 - [Application Configuration](./docs/AppConfig.md)
+- [OpenAI API Compatible Provider Support](./docs/Providers.md)
 
 
 ## Security ##
