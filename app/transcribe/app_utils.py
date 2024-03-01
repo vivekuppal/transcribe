@@ -158,7 +158,8 @@ def create_transcriber(
             config=config)
     elif name.lower() == 'whisper' and api:
         stt_model_config: dict = {
-            'api_key': config['OpenAI']['api_key']
+            'api_key': config['OpenAI']['api_key'],
+            'timeout': config['OpenAI']['response_request_timeout_seconds']
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_API,
