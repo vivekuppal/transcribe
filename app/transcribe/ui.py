@@ -106,6 +106,8 @@ class UICallbacks:
         if self.global_vars.read_response:
             self.global_vars.audio_player_var.speech_text_available.set()
         self.global_vars.response_textbox.configure(state="normal")
+        if response_string is not None and response_string != '':
+            write_in_textbox(self.global_vars.response_textbox, response_string)
         write_in_textbox(self.global_vars.response_textbox, response_string)
         self.global_vars.response_textbox.configure(state="disabled")
         self.global_vars.response_textbox.see("end")
