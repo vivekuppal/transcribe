@@ -1,6 +1,5 @@
 <img src="assets/Transcribe-2.png" width="100">
 
-
 We are here to help. File issues for problems you encounter and we will resolve them.
 
 ## Source Code Install Video
@@ -15,11 +14,13 @@ Please subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) an
 # 👂🏻️ Transcribe ✍🏼️
 
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
+Share your email in an issue to receive the invite to the community channel.
 
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
 
 ## Why Transcribe over other Speech to Text apps ##
 - Use Most of the functionality for **FREE**
+- Multi Lingual support
 - Choose between GPT 4.0, 3.5 or other inference models from OpenAI, or a plethora of inference models from [Together](https://docs.together.ai/docs/inference-models)
 - Streaming fast responses instead of waiting for a complete response
 - Upto date with the latest OpenAI libraries
@@ -31,9 +32,11 @@ Transcribe provides real time transcription for microphone and speaker output. I
     - Online - paid
       - OpenAI Whisper - **(Encouraged)**
       - Deepgram
-- Chat Inference Engine
+- Chat Inference Engines
     - OpenAI
     - Together
+    - Perplexity
+    - Azure hosted OpenAI
 - Conversation Summary
 - Prompt customization
 - Save chat history
@@ -44,7 +47,7 @@ Response generation requires a paid account with an OpenAI API key. **Encouraged
 or Deepgram
 or Together ($25 free Credits)
 
-OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide irrelevant answers if there is not enough conversation content in the beginning.
+OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide irrelevant answers if there is not enough conversation content at the beginning.
 Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models)
 
 When using OpenAI, without the OpenAI key, using continuous response gives an error similar to below
@@ -69,6 +72,7 @@ Connect on LinkedIn to discuss further.
 
 
 ## Features ##
+- [Multilingual support](./docs/Multilingual.md)
 - [Response Customization](./docs/ResponseCustomization.md)
 - [Audio Customization](./docs/AudioCustomization.md)
 - [Speech Mode](./docs/SpeechMode.md)
@@ -92,7 +96,7 @@ Connect on LinkedIn to discuss further.
 
 ## Software Installation
 
-Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
+Note that installation files are generated every few weeks. Generated binaries will almost always trail the latest codebase available in the repo.
 
 Latest Binary
 - Generated: 2024-01-30
@@ -123,7 +127,7 @@ Using GPU provides 2-3 times faster reseponse time depending on processing power
 
 4. (Optional) Add Open API key in `override.yaml` file in the transcribe directory:
 
-   Create an [OpenAI account](https://openai.com/)
+   Create an [OpenAI account](https://openai.com/) or account from another provider
 
    Add OpenAI API key in `override.yaml` file manually. Open in a text editor and add these lines:
 
@@ -151,9 +155,9 @@ Follow below steps to run transcribe on your local machine.
 
 ### 📋 Prerequisites
 
-- Python >=3.11.0
+- Python >=3.11.0 and < 3.12.0
 - (Optional) An OpenAI API key (set up a paid [OpenAI account](https://platform.openai.com/))
-- Windows OS (Not tested on others as yet)
+- Windows OS (Not tested on others)
 - FFmpeg
 
 Steps to install FFmpeg on your system.
@@ -217,24 +221,8 @@ Run the main script from `app\transcribe\` folder:
 python main.py
 ```
 
-For a better version that also transcribes many non English languages, use:
-
-```
-python main.py --api
-```
-
 Upon initiation, Transcribe will begin transcribing microphone input and speaker output in real-time, optionally generating a suggested response based on the conversation. It is suggested to use continuous response feature after 1-2 minutes, once there is enough content in transcription window to provide enough context to the LLM.
 
-The --api flag uses the online whisper api for transcription. This can significantly enhance transcription  accuracy, and it works in many languages (rather than just English). However, using the Whisper API consumes OpenAI credits and local transcription does not consume credits. This increased cost is attributed to the advanced features and capabilities that Whisper API provides. Despite the additional expense, the substantial improvements in speed and transcription accuracy may make it a worthwhile for your use case.
-
-## ⚡️ Limitations ⚡️
-
-While Transcribe provides real-time transcription and optional response suggestions, there are several known limitations to its functionality to be aware of:
-
-**OpenAI Account**: If a paid OpenAI account with a valid Open API Key is not used, the command window displays the following error message repeatedly, though the application behvaior is not impacted in any way.
-```
-Incorrect API key provided: API_KEY. You can find your API key at https://platform.openai.com/account/api-keys.
-```
 
 ## 👤 License 📖
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -244,5 +232,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Contributions are welcome! Open issues or submit pull requests to improve Transcribe.
 
 ## Videos
-[Install Video](https://www.youtube.com/watch?v=RX86zKdCpMc) Thanks to Fahd Mirza.
-[Fireside chat](https://www.youtube.com/watch?v=vUm-elVkxOI) for Transcribe.
+- [Install Video](https://www.youtube.com/watch?v=RX86zKdCpMc) Thanks to Fahd Mirza.
+- [Fireside chat](https://www.youtube.com/watch?v=vUm-elVkxOI) for Transcribe.
