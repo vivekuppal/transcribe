@@ -1,6 +1,5 @@
 <img src="assets/Transcribe-2.png" width="100">
 
-
 We are here to help. File issues for problems you encounter and we will resolve them.
 
 ## Source Code Install Video
@@ -69,6 +68,7 @@ Connect on LinkedIn to discuss further.
 
 
 ## Features ##
+- [Multilingual support](./docs/Multilingual.md)
 - [Response Customization](./docs/ResponseCustomization.md)
 - [Audio Customization](./docs/AudioCustomization.md)
 - [Speech Mode](./docs/SpeechMode.md)
