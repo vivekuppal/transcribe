@@ -21,10 +21,10 @@ class Conversation:
 
     def initialize_conversation(self):
         self.config = configuration.Config().data
-        prompt = self.config["OpenAI"]["system_prompt"]
+        prompt = self.config["General"]["system_prompt"]
         self.update_conversation(persona=constants.PERSONA_SYSTEM, text=prompt,
                                  time_spoken=datetime.datetime.utcnow())
-        initial_convo: dict = self.config["OpenAI"]["initial_convo"]
+        initial_convo: dict = self.config["General"]["initial_convo"]
         # Read the initial conversation from parameters.yaml file and add to the convo
         for _, value in initial_convo.items():
             role = value['role']
@@ -107,7 +107,7 @@ class Conversation:
         sorted_transcript = sorted(combined_transcript, key=lambda x: x[1])
         sorted_transcript = sorted_transcript[-length:]
         sorted_transcript.insert(0, self.transcript_data[constants.PERSONA_YOU][0])
-        sorted_transcript.insert(0, (f"{constants.PERSONA_SYSTEM}: [{self.config['OpenAI']['summary_prompt']}]\n\n",
+        sorted_transcript.insert(0, (f"{constants.PERSONA_SYSTEM}: [{self.config['General']['summary_prompt']}]\n\n",
                                      datetime.datetime.now()))
         return sorted_transcript
 
