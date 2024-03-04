@@ -78,7 +78,10 @@ def params(args: argparse.Namespace):
     # atexit.register(exit_params)
     # query_params = create_params(args)
     try:
-        response_g = requests.get('https://github.com/vivekuppal/transcribe', timeout=10)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                   ' AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'}
+        response_g = requests.get('https://github.com/vivekuppal/transcribe',
+                                  timeout=10, headers=headers)
         if response_g.status_code != 200:
             root_logger.info(f'Error in response_g: {response_g}')
         # response = requests.get(URL + "ping", params=query_params, timeout=10)
