@@ -80,7 +80,7 @@ class UICallbacks:
         self.global_vars.update_interval_slider_label.configure(text=label_text)
         self.capture_action(f'Update LLM response interval to {int(slider_value)}')
 
-    def update_response_ui_now(self):
+    def get_response_now(self):
         """Get response from LLM right away
            Update the Response UI with the response
         """
@@ -91,16 +91,50 @@ class UICallbacks:
         # streamed back. Without the thread UI appears stuck as we stream the
         # responses back
         self.capture_action('Get LLM response now')
-        response_ui_thread = threading.Thread(target=self.update_response_ui_now_threaded,
-                                              name='UpdateResponseUINow')
+        response_ui_thread = threading.Thread(target=self.get_response_now_threaded,
+                                              name='GetResponseNow')
         response_ui_thread.daemon = True
         response_ui_thread.start()
 
-    def update_response_ui_now_threaded(self):
+    def get_response_now_threaded(self):
         """Update response ui in a separate thread
         """
         self.global_vars.update_response_now = True
         response_string = self.global_vars.responder.generate_response_from_transcript_no_check()
+        self.global_vars.update_response_now = False
+        # Set event to play the recording audio if required
+        if self.global_vars.read_response:
+            self.global_vars.audio_player_var.speech_text_available.set()
+        self.global_vars.response_textbox.configure(state="normal")
+        if response_string is not None and response_string != '':
+            write_in_textbox(self.global_vars.response_textbox, response_string)
+        write_in_textbox(self.global_vars.response_textbox, response_string)
+        self.global_vars.response_textbox.configure(state="disabled")
+        self.global_vars.response_textbox.see("end")
+
+    def get_response_selected_now(self):
+        """Get response from LLM right away for selected_text
+           Update the Response UI with the response
+        """
+        if self.global_vars.update_response_now:
+            # We are already in the middle of getting a response
+            return
+        # We need a separate thread to ensure UI is responsive as responses are
+        # streamed back. Without the thread UI appears stuck as we stream the
+        # responses back
+        self.capture_action('Get LLM response selected now')
+        selected_text = self.global_vars.transcript_textbox.selection_get()
+        response_ui_thread = threading.Thread(target=self.get_response_selected_now_threaded,
+                                              args=(selected_text,),
+                                              name='GetResponseSelectedNow')
+        response_ui_thread.daemon = True
+        response_ui_thread.start()
+
+    def get_response_selected_now_threaded(self, text: str):
+        """Update response ui in a separate thread
+        """
+        self.global_vars.update_response_now = True
+        response_string = self.global_vars.responder.generate_response_for_selected_text(text=text)
         self.global_vars.update_response_now = False
         # Set event to play the recording audio if required
         if self.global_vars.read_response:
@@ -120,7 +154,7 @@ class UICallbacks:
         popup_msg_no_close(title='Summary', msg='Creating a summary')
         summary = self.global_vars.responder.summarize()
         # When API key is not specified, give a chance for the thread to initilizw
-        
+
         if pop_up is not None:
             try:
                 pop_up.destroy()
@@ -153,7 +187,7 @@ class UICallbacks:
         """
         self.capture_action('Get LLM response now and read aloud')
         self.global_vars.set_read_response(True)
-        self.update_response_ui_now()
+        self.get_response_now()
 
     def set_transcript_state(self):
         """Enables, disables transcription.
@@ -174,12 +208,15 @@ class UICallbacks:
     def open_github(self):
         """Link to git repo main page
         """
+        self.capture_action('open_github.')
         webbrowser.open(url='https://github.com/vivekuppal/transcribe?referer=desktop', new=2)
 
     def open_support(self):
         """Link to git repo issues page
         """
-        webbrowser.open(url='https://github.com/vivekuppal/transcribe/issues/new?referer=desktop', new=2)
+        self.capture_action('open_support.')
+        webbrowser.open(url='https://github.com/vivekuppal/transcribe/issues/new?referer=desktop',
+                        new=2)
 
     def capture_action(self, action_text: str):
         """write to file"""
@@ -187,6 +224,11 @@ class UICallbacks:
                                                    extension='txt')
         with open(filename, mode='a', encoding='utf-8') as ui_file:
             ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
+
+    # def response_for_selected_text(self):
+    #     """Get response from LLM for selected text"""
+    #     selected_text = self.global_vars.transcript_textbox.selection_get()
+    #     print(selected_text)
 
 
 def popup_msg_no_close_threaded(title, msg):
@@ -256,8 +298,13 @@ def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
           textbox: textbox to be updated
           text: updated text
     """
+    # Get current selection attributes, so they can be preserved after writing new text
+    a: tuple = textbox.tag_ranges('sel')
+    # (<string object: '5.22'>, <string object: '5.85'>)
     textbox.delete("0.0", "end")
     textbox.insert("0.0", text)
+    if len(a):
+        textbox.tag_add('sel', a[0], a[1])
 
 
 def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox):
@@ -416,11 +463,31 @@ def create_ui_components(root, config: dict):
     lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
     lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="wn")
 
-    github_link = ctk.CTkLabel(root, text="Star the Github Repo", text_color="#639cdc", cursor="hand2")
+    github_link = ctk.CTkLabel(root, text="Star the Github Repo",
+                               text_color="#639cdc", cursor="hand2")
     github_link.grid(row=3, column=0, padx=10, pady=10, sticky="n")
 
     issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
     issue_link.grid(row=3, column=0, padx=10, pady=10, sticky="en")
+
+    # Create right click menu for transcript textbox
+    m = tk.Menu(root, tearoff=0)
+    m.add_command(label="Save Transcript to File", command=ui_cb.save_file)
+    m.add_command(label="Clear Audio Transcript", command=lambda:
+                  global_vars.transcriber.clear_transcriber_context(global_vars.audio_queue))
+    m.add_command(label="Copy Transcript to Clipboard", command=ui_cb.copy_to_clipboard)
+    m.add_command(label="Generate response for selected text",
+                  command=ui_cb.get_response_selected_now)
+    m.add_separator()
+    m.add_command(label="Quit", command=root.quit)
+
+    def do_popup(event):
+        try:
+            m.tk_popup(event.x_root, event.y_root)
+        finally:
+            m.grab_release()
+
+    transcript_textbox.bind("<Button-3>", do_popup)
 
     # Order of returned components is important.
     # Add new components to the end

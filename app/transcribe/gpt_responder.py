@@ -165,6 +165,57 @@ class GPTResponder:
 
         return self.generate_response_from_transcript_no_check()
 
+    def generate_response_for_selected_text(self, text: str):
+        """Ping LLM to get a suggested response right away.
+            Gets a response even if the continuous suggestion option is disabled.
+            Updates the conversation object with the response from LLM.
+        """
+        try:
+            root_logger.info(GPTResponder.generate_response_for_selected_text.__name__)
+            if self.config['OpenAI']['api_key'] in ('', 'API_KEY'):
+                return None
+
+            with duration.Duration(name='OpenAI Chat Completion Selected', screen=False):
+                timeout: int = self.config['OpenAI']['response_request_timeout_seconds']
+                temperature: float = self.config['OpenAI']['temperature']
+                prompt = prompts.create_prompt_for_text(text=text)
+                llm_response = self.llm_client.chat.completions.create(
+                    model=self.model,
+                    messages=prompt,
+                    temperature=temperature,
+                    timeout=timeout,
+                    stream=True
+                )
+
+                # Update conversation with an empty response. This response will be updated
+                # by subsequent updates from the streaming response
+                self._update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                          response="  ", pop=False)
+                collected_messages = ""
+                for chunk in llm_response:
+                    chunk_message = chunk.choices[0].delta  # extract the message
+                    if chunk_message.content:
+                        message_text = chunk_message.content
+                        collected_messages += message_text
+                        # print(f"{message_text}", end="")
+                        self._update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                                  response=collected_messages, pop=True)
+
+        except Exception as exception:
+            print('Error when attempting to get a response from LLM.')
+            print(exception)
+            root_logger.error('Error when attempting to get a response from LLM.')
+            root_logger.exception(exception)
+            return prompts.INITIAL_RESPONSE
+
+        processed_response = collected_messages
+
+        if self.save_response_to_file:
+            with open(file=self.response_file, mode="a", encoding='utf-8') as f:
+                f.write(f'{datetime.datetime.now()} - {processed_response}\n')
+
+        return processed_response
+
     def _update_conversation(self, response, persona, pop=False):
         """Update the internaal conversation state"""
         root_logger.info(GPTResponder._update_conversation.__name__)
