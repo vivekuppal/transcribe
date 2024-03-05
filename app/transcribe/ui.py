@@ -364,6 +364,8 @@ def update_response_ui(responder: gr.GPTResponder,
 
 
 def create_ui_components(root, config: dict):
+    """Create UI for the application
+    """
     root_logger.info(create_ui_components.__name__)
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
@@ -472,22 +474,22 @@ def create_ui_components(root, config: dict):
 
     # Create right click menu for transcript textbox
     m = tk.Menu(root, tearoff=0)
+    m.add_command(label="Generate response for selected text",
+                  command=ui_cb.get_response_selected_now)
     m.add_command(label="Save Transcript to File", command=ui_cb.save_file)
     m.add_command(label="Clear Audio Transcript", command=lambda:
                   global_vars.transcriber.clear_transcriber_context(global_vars.audio_queue))
     m.add_command(label="Copy Transcript to Clipboard", command=ui_cb.copy_to_clipboard)
-    m.add_command(label="Generate response for selected text",
-                  command=ui_cb.get_response_selected_now)
     m.add_separator()
     m.add_command(label="Quit", command=root.quit)
 
-    def do_popup(event):
+    def show_context_menu(event):
         try:
             m.tk_popup(event.x_root, event.y_root)
         finally:
             m.grab_release()
 
-    transcript_textbox.bind("<Button-3>", do_popup)
+    transcript_textbox.bind("<Button-3>", show_context_menu)
 
     # Order of returned components is important.
     # Add new components to the end

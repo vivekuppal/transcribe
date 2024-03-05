@@ -178,7 +178,7 @@ class GPTResponder:
             with duration.Duration(name='OpenAI Chat Completion Selected', screen=False):
                 timeout: int = self.config['OpenAI']['response_request_timeout_seconds']
                 temperature: float = self.config['OpenAI']['temperature']
-                prompt = prompts.create_prompt_for_text(text=text)
+                prompt = prompts.create_prompt_for_text(text=text, config=self.config)
                 llm_response = self.llm_client.chat.completions.create(
                     model=self.model,
                     messages=prompt,
