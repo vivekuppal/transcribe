@@ -49,10 +49,10 @@ or Deepgram
 or Together ($25 free Credits)
 oa Azure
 
-OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide irrelevant answers if there is not enough conversation content at the beginning.
-Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models)
+OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide inaccurate answers if there is not enough conversation content at the beginning.
+Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models). Any of these can be used by making changes to `override.yaml` file.
 
-When using OpenAI, without the OpenAI key, using continuous response gives an error similar to below
+When using OpenAI, without the OpenAI key, using continuous response or any action that requires interaction with the online LLM gives an error similar to below
 
 ```
 Error when attempting to get a response from LLM.
