@@ -36,6 +36,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     filemenu: tk.Menu = None
     update_interval_slider_label: ctk.CTkLabel = None
     response_textbox: ctk.CTkTextbox = None
+    transcript_textbox: ctk.CTkTextbox = None
     start: datetime.datetime = None
     task_worker = None
     main_window = None

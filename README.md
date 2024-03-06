@@ -22,8 +22,9 @@ Transcribe provides real time transcription for microphone and speaker output. I
 - Use Most of the functionality for **FREE**
 - Multi Lingual support
 - Choose between GPT 4.0, 3.5 or other inference models from OpenAI, or a plethora of inference models from [Together](https://docs.together.ai/docs/inference-models)
-- Streaming fast responses instead of waiting for a complete response
+- Streaming fast LLM responses instead of waiting for a complete response
 - Upto date with the latest OpenAI libraries
+- Get LLM responses for selected text
 - Install and use without python or other dependencies
 - Security Features
 - Choose Audio Inputs (Speaker or Mic or Both)
@@ -46,11 +47,12 @@ Transcribe provides real time transcription for microphone and speaker output. I
 Response generation requires a paid account with an OpenAI API key. **Encouraged**
 or Deepgram
 or Together ($25 free Credits)
+oa Azure
 
-OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide irrelevant answers if there is not enough conversation content at the beginning.
-Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models)
+OpenAI gpt-4 model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide inaccurate answers if there is not enough conversation content at the beginning.
+Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models). Any of these can be used by making changes to `override.yaml` file.
 
-When using OpenAI, without the OpenAI key, using continuous response gives an error similar to below
+When using OpenAI, without the OpenAI key, using continuous response or any action that requires interaction with the online LLM gives an error similar to below
 
 ```
 Error when attempting to get a response from LLM.
@@ -75,6 +77,7 @@ Connect on LinkedIn to discuss further.
 - [Multilingual support](./docs/Multilingual.md)
 - [Response Customization](./docs/ResponseCustomization.md)
 - [Audio Customization](./docs/AudioCustomization.md)
+- [Response for selected text](./docs/SelectedResponse.md)
 - [Speech Mode](./docs/SpeechMode.md)
 - [Save Content](./docs/SaveContent.md)
 - [Model Selection](./docs/ModelSelection.md)

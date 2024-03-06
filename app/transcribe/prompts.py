@@ -1,6 +1,21 @@
 # import pprint
+from global_vars import TranscriptionGlobals, T_GLOBALS
+
 
 INITIAL_RESPONSE = '👋 Welcome to Transcribe 🤝'
+global_vars_module: TranscriptionGlobals = T_GLOBALS
+
+
+def create_prompt_for_text(text: str, config: dict):
+    """Get a prompt for the selected text
+    """
+    if text is None or text == '':
+        return None
+    complete_prompt = f'{config["General"]["default_prompt_preamble"]} '\
+        f'{text}'\
+        f'{config["General"]["default_prompt_epilogue"]}'
+    messages = [{"role": "system", "content": complete_prompt}]
+    return messages
 
 
 def create_multiturn_prompt(convo: list[tuple]) -> list[dict[str, str]]:

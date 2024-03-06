@@ -57,7 +57,7 @@ def main():
     T_GLOBALS.main_window = root
     ui_cb = ui.UICallbacks()
     ui_components = ui.create_ui_components(root, config=config)
-    transcript_textbox = ui_components[0]
+    global_vars.transcript_textbox = ui_components[0]
     global_vars.response_textbox = ui_components[1]
     update_interval_slider = ui_components[2]
     global_vars.update_interval_slider_label = ui_components[3]
@@ -92,7 +92,7 @@ def main():
     root.grid_columnconfigure(1, weight=1)
 
     global_vars.freeze_button.configure(command=ui_cb.freeze_unfreeze)
-    response_now_button.configure(command=ui_cb.update_response_ui_now)
+    response_now_button.configure(command=ui_cb.get_response_now)
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     summarize_button.configure(command=ui_cb.summarize)
     update_interval_slider.configure(command=ui_cb.update_interval_slider_label)
@@ -102,7 +102,7 @@ def main():
     github_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
     issue_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
-    ui.update_transcript_ui(global_vars.transcriber, transcript_textbox)
+    ui.update_transcript_ui(global_vars.transcriber, global_vars.transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,
                           global_vars.update_interval_slider_label, update_interval_slider)
 
