@@ -53,11 +53,11 @@ def print_detailed_audio_info(print_func=print):
     for host_api in py_audio.get_host_api_info_generator():
         print_func(
             (
-            f" » "
-            f"{('['+str(host_api['index'])+']').center(8)}|"
-            f"{str(host_api['type']).center(13)}|"
-            f"{str(host_api['deviceCount']).center(15)}|"
-            f"  {host_api['name']}"
+                f" » "
+                f"{('['+str(host_api['index'])+']').center(8)}|"
+                f"{str(host_api['type']).center(13)}|"
+                f"{str(host_api['deviceCount']).center(15)}|"
+                f"  {host_api['name']}"
             )
         )
 
@@ -68,11 +68,11 @@ def print_detailed_audio_info(print_func=print):
     for device in py_audio.get_device_info_generator():
         print_func(
             (
-            f" » "
-            f"{('['+str(device['index'])+']').center(8)}"
-            f"{str(device['hostApi']).center(16)}"
-            f"  {str(device['isLoopbackDevice']).center(10)}"
-            f"  {device['name']}"
+                f" » "
+                f"{('['+str(device['index'])+']').center(8)}"
+                f"{str(device['hostApi']).center(16)}"
+                f"  {str(device['isLoopbackDevice']).center(10)}"
+                f"  {device['name']}"
             )
         )
 
@@ -128,6 +128,8 @@ class BaseRecorder:
         self.enabled = False
 
     def adjust_for_noise(self, device_name, msg):
+        """Adjust based on noise from surroundings.
+        """
         root_logger.info(BaseRecorder.adjust_for_noise.__name__)
         print(f"[INFO] Adjusting for ambient noise from {device_name}. " + msg)
         with self.source:
@@ -135,6 +137,8 @@ class BaseRecorder:
         print(f"[INFO] Completed ambient noise adjustment for {device_name}.")
 
     def record_audio(self, audio_queue: queue.Queue):
+        """Start recording audion from the stream and add data to queue
+        """
         def record_callback(_, audio: sr.AudioData) -> None:
             if self.enabled:
                 data = audio.get_raw_data()

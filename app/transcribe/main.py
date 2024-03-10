@@ -1,5 +1,4 @@
 import sys
-import os
 import time
 import atexit
 import app_utils as au
@@ -109,8 +108,10 @@ def main():
     label_text = f'LLM Response interval: {int(update_interval_slider.get())} seconds'
     global_vars.update_interval_slider_label.configure(text=label_text)
     lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
-    github_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
-    issue_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
+    github_link.bind('<Button-1>', lambda e:
+                     ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
+    issue_link.bind('<Button-1>', lambda e: ui_cb.open_link(
+        'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
     ui.update_transcript_ui(global_vars.transcriber, global_vars.transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,
