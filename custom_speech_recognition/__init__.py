@@ -306,7 +306,7 @@ class AudioFile(AudioSource):
     """
 
     def __init__(self, filename_or_fileobject):
-        assert isinstance(filename_or_fileobject, (type(""), type(u""))) or hasattr(filename_or_fileobject, "read"), "Given audio file must be a filename string or a file-like object"
+        assert isinstance(filename_or_fileobject, (type(''), type(''))) or hasattr(filename_or_fileobject, "read"), "Given audio file must be a filename string or a file-like object"
         self.filename_or_fileobject = filename_or_fileobject
         self.stream = None
         self.DURATION = None

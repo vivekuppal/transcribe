@@ -31,6 +31,19 @@ def merge(first: dict, second: dict, path=[]):
     return first
 
 
+def delete_files(file_list: list) -> bool:
+    """Delete all files in the list
+    """
+    if not file_list:
+        return True
+
+    for file_name in file_list:
+        if os.path.exists(file_name):
+            os.remove(file_name)
+
+    return True
+
+
 def incrementing_filename(filename: str, extension: str):
     """Create a filename with incrementing number depending on the next available
     filename. Include dir path in filename if needed.
