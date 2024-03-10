@@ -67,14 +67,14 @@ class TranscriptionGlobals(Singleton.Singleton):
     def initiate_audio_devices(self, config: dict):
         # Handle mic if it is not disabled in arguments or yaml file
         print('[INFO] Using default microphone.')
-        self.user_audio_recorder = ar.MicRecorder()
+        self.user_audio_recorder = ar.MicRecorder(audio_file_name='mic.wav')
         if not config['General']['disable_mic'] and config['General']['mic_device_index'] != -1:
             print('[INFO] Override default microphone with device specified in parameters file.')
             self.user_audio_recorder.set_device(index=int(config['General']['mic_device_index']))
 
         # Handle speaker if it is not disabled in arguments or yaml file
         print('[INFO] Using default speaker.')
-        self.speaker_audio_recorder = ar.SpeakerRecorder()
+        self.speaker_audio_recorder = ar.SpeakerRecorder(audio_file_name='speaker.wav')
         if not config['General']['disable_speaker'] and config['General']['speaker_device_index'] != -1:
             print('[INFO] Override default speaker with device specified in parameters file.')
             self.speaker_audio_recorder.set_device(index=int(config['General']['speaker_device_index']))

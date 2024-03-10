@@ -31,6 +31,19 @@ def merge(first: dict, second: dict, path=[]):
     return first
 
 
+def delete_files(file_list: list) -> bool:
+    """Delete all files in the list
+    """
+    if not file_list:
+        return True
+
+    for file_name in file_list:
+        if os.path.exists(file_name):
+            os.remove(file_name)
+
+    return True
+
+
 def incrementing_filename(filename: str, extension: str):
     """Create a filename with incrementing number depending on the next available
     filename. Include dir path in filename if needed.
@@ -150,6 +163,10 @@ def download_using_bits(file_url: str, file_path: str):
 
 
 def zip_files_in_folder_with_params(**params):
+    """Zip all files in the specified folder.
+    This method is similar to zip_files_in_folder, can be called in 
+    thread invocations
+    """
     try:
         folder_path = params['folder_path']
         zip_file_name = params['zip_file_name']
@@ -158,7 +175,9 @@ def zip_files_in_folder_with_params(**params):
         print(f'Caught exception in method: {zip_files_in_folder_with_params}')
         print(f'Required argument {ke} not set.')
 
-    zip_files_in_folder(folder_path=folder_path, zip_file_name=zip_file_name, skip_zip_files=skip_zip_files)
+    zip_files_in_folder(folder_path=folder_path,
+                        zip_file_name=zip_file_name,
+                        skip_zip_files=skip_zip_files)
 
 
 def zip_files_in_folder(folder_path: str, zip_file_name: str,

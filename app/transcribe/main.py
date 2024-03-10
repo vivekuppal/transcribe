@@ -1,5 +1,6 @@
 import sys
 import time
+import atexit
 import app_utils as au
 import customtkinter as ctk
 from args import create_args, update_args_config, handle_args_batch_tasks
@@ -9,6 +10,7 @@ import ui  # noqa: E402 pylint: disable=C0413
 import conversation  # noqa: E402 pylint: disable=C0413
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
+from tsutils import utilities as u  # noqa: E402 pylint: disable=C0413
 
 
 def main():
@@ -34,12 +36,19 @@ def main():
     global_vars.transcriber.set_source_properties(mic_source=global_vars.user_audio_recorder.source,
                                                   speaker_source=global_vars.speaker_audio_recorder.source)
 
-    user_stop_func = global_vars.user_audio_recorder.record_into_queue(global_vars.audio_queue)
+    # Remove potential temp files from previous invocation
+    u.delete_files(['speaker.wav', 'speaker.wav.bak', 'mic.wav', 'mic.wav.bak'])
+
+    # Convert raw audio files to real wav file format when program exits
+    atexit.register(global_vars.user_audio_recorder.write_wav_data_to_file)
+    atexit.register(global_vars.speaker_audio_recorder.write_wav_data_to_file)
+
+    user_stop_func = global_vars.user_audio_recorder.record_audio(global_vars.audio_queue)
     global_vars.user_audio_recorder.stop_record_func = user_stop_func
 
     time.sleep(2)
 
-    speaker_stop_func = global_vars.speaker_audio_recorder.record_into_queue(global_vars.audio_queue)
+    speaker_stop_func = global_vars.speaker_audio_recorder.record_audio(global_vars.audio_queue)
     global_vars.speaker_audio_recorder.stop_record_func = speaker_stop_func
 
 #    update_audio_devices(global_vars, config)
@@ -99,8 +108,10 @@ def main():
     label_text = f'LLM Response interval: {int(update_interval_slider.get())} seconds'
     global_vars.update_interval_slider_label.configure(text=label_text)
     lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
-    github_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
-    issue_link.bind('<Button-1>', lambda e: ui_cb.open_link('https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
+    github_link.bind('<Button-1>', lambda e:
+                     ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
+    issue_link.bind('<Button-1>', lambda e: ui_cb.open_link(
+        'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
     ui.update_transcript_ui(global_vars.transcriber, global_vars.transcript_textbox)
     ui.update_response_ui(global_vars.responder, global_vars.response_textbox,

@@ -3,6 +3,8 @@ from datetime import datetime
 import time
 from abc import abstractmethod
 import queue
+import wave
+import os
 import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
@@ -51,11 +53,11 @@ def print_detailed_audio_info(print_func=print):
     for host_api in py_audio.get_host_api_info_generator():
         print_func(
             (
-            f" » "
-            f"{('['+str(host_api['index'])+']').center(8)}|"
-            f"{str(host_api['type']).center(13)}|"
-            f"{str(host_api['deviceCount']).center(15)}|"
-            f"  {host_api['name']}"
+                f" » "
+                f"{('['+str(host_api['index'])+']').center(8)}|"
+                f"{str(host_api['type']).center(13)}|"
+                f"{str(host_api['deviceCount']).center(15)}|"
+                f"  {host_api['name']}"
             )
         )
 
@@ -66,11 +68,11 @@ def print_detailed_audio_info(print_func=print):
     for device in py_audio.get_device_info_generator():
         print_func(
             (
-            f" » "
-            f"{('['+str(device['index'])+']').center(8)}"
-            f"{str(device['hostApi']).center(16)}"
-            f"  {str(device['isLoopbackDevice']).center(10)}"
-            f"  {device['name']}"
+                f" » "
+                f"{('['+str(device['index'])+']').center(8)}"
+                f"{str(device['hostApi']).center(16)}"
+                f"  {str(device['isLoopbackDevice']).center(10)}"
+                f"  {device['name']}"
             )
         )
 
@@ -89,7 +91,7 @@ def print_detailed_audio_info(print_func=print):
 class BaseRecorder:
     """Base class for Speaker, Microphone classes
     """
-    def __init__(self, source, source_name):
+    def __init__(self, source, source_name, audio_file_name: str = None):
         root_logger.info(BaseRecorder.__name__)
         self.recorder = sr.Recognizer()
         self.recorder.energy_threshold = ENERGY_THRESHOLD
@@ -104,6 +106,11 @@ class BaseRecorder:
         self.source_name: str = source_name
         self.config = configuration.Config().data
         self.stop_record_func = None
+        self.audio_file_name = audio_file_name
+        if self.audio_file_name and os.path.exists(self.audio_file_name):
+            os.remove(self.audio_file_name)
+        if self.audio_file_name and os.path.exists(self.audio_file_name+'.bak'):
+            os.remove(self.audio_file_name+'.bak')
 
     @abstractmethod
     def get_name(self):
@@ -121,17 +128,24 @@ class BaseRecorder:
         self.enabled = False
 
     def adjust_for_noise(self, device_name, msg):
+        """Adjust based on noise from surroundings.
+        """
         root_logger.info(BaseRecorder.adjust_for_noise.__name__)
         print(f"[INFO] Adjusting for ambient noise from {device_name}. " + msg)
         with self.source:
             self.recorder.adjust_for_ambient_noise(self.source)
         print(f"[INFO] Completed ambient noise adjustment for {device_name}.")
 
-    def record_into_queue(self, audio_queue: queue.Queue):
+    def record_audio(self, audio_queue: queue.Queue):
+        """Start recording audion from the stream and add data to queue
+        """
         def record_callback(_, audio: sr.AudioData) -> None:
             if self.enabled:
                 data = audio.get_raw_data()
                 audio_queue.put((self.source_name, data, datetime.utcnow()))
+                if self.audio_file_name:
+                    with open(file=self.audio_file_name+'.bak', mode='ab') as file_handle:
+                        file_handle.write(data)
 
         stop_func = self.recorder.listen_in_background(source=self.source,
                                                        source_name=self.source_name,
@@ -139,20 +153,43 @@ class BaseRecorder:
                                                        phrase_time_limit=self.config['General']['transcript_audio_duration_seconds'])
         return stop_func
 
+    def write_wav_data_to_file(self) -> str:
+        """Write the raw input data into a wave file
+        """
+        if self.audio_file_name is None:
+            return
+
+        frame_rate = self.source.SAMPLE_RATE
+        sample_width = self.source.SAMPLE_WIDTH
+        channels = self.source.channels
+
+        with open(file=self.audio_file_name+'.bak', mode='rb') as input_file_handle:
+            data = input_file_handle.read()
+
+        with wave.open(self.audio_file_name, 'wb') as wf:
+            # print(f'{datetime.datetime.now()} - Writing speaker data into file: {file_path}')
+            wf.setnchannels(channels)    # pylint: disable=E1101
+            wf.setsampwidth(sample_width)    # pylint: disable=E1101
+            wf.setframerate(frame_rate)    # pylint: disable=E1101
+            wf.writeframes(data)    # pylint: disable=E1101
+            print(f'datasize: {len(data)}')
+        print(f'filesize: {os.path.getsize(self.audio_file_name)}')
+
 
 class MicRecorder(BaseRecorder):
     """Encapsultes the Microphone device audio input
     """
-    def __init__(self):
+    def __init__(self, source_name='You', audio_file_name: str = None):
         self.source = sr.Microphone(sample_rate=16000)
         self.device_index = self.source.device_index
-        super().__init__(source=self.source, source_name="You")
+        self.device_info = None
+        super().__init__(source=self.source, source_name=source_name, audio_file_name=audio_file_name)
         self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
 
 #    def __init__(self):
 #        root_logger.info(MicRecorder.__name__)
 #        with pyaudio.PyAudio() as py_audio:
-            # WASAPI is windows specific
+#             WASAPI is windows specific
 #            wasapi_info = py_audio.get_host_api_info_by_type(pyaudio.paWASAPI)
 #            self.device_index = wasapi_info["defaultInputDevice"]
 #            default_mic = py_audio.get_device_info_by_index(self.device_index)
@@ -199,7 +236,7 @@ class MicRecorder(BaseRecorder):
 class SpeakerRecorder(BaseRecorder):
     """Encapsultes the Speaer device audio input
     """
-    def __init__(self):
+    def __init__(self, source_name='Speaker', audio_file_name: str = None):
         root_logger.info(SpeakerRecorder.__name__)
         with pyaudio.PyAudio() as p:
             wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
@@ -221,7 +258,7 @@ class SpeakerRecorder(BaseRecorder):
                                sample_rate=int(default_speakers["defaultSampleRate"]),
                                chunk_size=pyaudio.get_sample_size(pyaudio.paInt16),
                                channels=default_speakers["maxInputChannels"])
-        super().__init__(source=source, source_name="Speaker")
+        super().__init__(source=source, source_name=source_name, audio_file_name=audio_file_name)
         print(f'[INFO] Listening to sound from Speaker: {self.get_name()} ')
         # On some devices, speaker adjustment is very slow unless some noise is
         # made from the speakers, though capturing of speaker output is very
