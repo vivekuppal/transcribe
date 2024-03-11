@@ -1,11 +1,12 @@
 <img src="assets/Transcribe-2.png" width="100">
 
-We are here to help. File issues for problems you encounter and we will resolve them.
+
+We are here to help. File [issues](https://github.com/vivekuppal/transcribe/issues) for any problems and we will resolve them.
 
 ## Source Code Install Video
 
-Thanks to [Fahd Mirza](https://www.fahdmirza.com/) for creating an [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
-Please subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
+Thanks to [Fahd Mirza](https://www.fahdmirza.com/) for the [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
+Subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
 
 <a href="https://www.youtube.com/watch?feature=player_embedded&v=RX86zKdCpMc" target="_blank">
  <img src="https://img.youtube.com/vi/RX86zKdCpMc/0.jpg" alt="Watch the video" width="240" height="180"/>
