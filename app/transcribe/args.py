@@ -82,7 +82,13 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
         sys.exit(0)
 
     if args.validate_api_key is not None:
-        if utilities.is_api_key_valid(args.validate_api_key, config):
+        chat_inference_provider = config['General']['chat_inference_provider']
+        if chat_inference_provider == 'openai':
+            base_url = config['OpenAI']['base_url']
+        elif chat_inference_provider == 'together':
+            base_url = config['Together']['base_url']
+
+        if utilities.is_api_key_valid(api_key=args.validate_api_key, base_url=base_url):
             print('The api_key is valid')
             base_url = config['OpenAI']['base_url']
             client = openai.OpenAI(api_key=args.validate_api_key, base_url=base_url)
@@ -90,6 +96,7 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
             print('Available models: ')
             for model in models:
                 print(f'    {model}')
+            client.close()
         else:
             print('The api_key is not valid')
         sys.exit(0)

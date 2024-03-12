@@ -175,8 +175,8 @@ class BaseRecorder:
             wf.setsampwidth(sample_width)    # pylint: disable=E1101
             wf.setframerate(frame_rate)    # pylint: disable=E1101
             wf.writeframes(data)    # pylint: disable=E1101
-            print(f'datasize: {len(data)}')
-        print(f'filesize: {os.path.getsize(self.audio_file_name)}')
+            # print(f'datasize: {len(data)}')
+        # print(f'filesize: {os.path.getsize(self.audio_file_name)}')
 
 
 class MicRecorder(BaseRecorder):

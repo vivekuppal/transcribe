@@ -10,7 +10,7 @@ import interactions  # noqa: E402 pylint: disable=C0413
 from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
 
 
-def create_responder(provider_name: str, config, convo, save_to_file: bool, 
+def create_responder(provider_name: str, config, convo, save_to_file: bool,
                      response_file_name: str):
     """Creates a responder / Inference provider object based on input parameters
     """

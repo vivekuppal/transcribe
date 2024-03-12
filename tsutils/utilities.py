@@ -3,6 +3,7 @@ import os
 import copy
 import subprocess
 import zipfile
+import openai
 
 
 def merge(first: dict, second: dict, path=[]):
@@ -206,16 +207,16 @@ def get_available_models(client: openai.OpenAI) -> list:
     return sorted(return_val)
 
 
-def is_api_key_valid(api_key: str, config: dict) -> bool:
+def is_api_key_valid(api_key: str, base_url) -> bool:
     """Check if it is valid openai compatible openai key for the provider
     """
     openai.api_key = api_key
 
-    base_url = config['OpenAI']['base_url']
     client = openai.OpenAI(api_key=api_key, base_url=base_url)
 
     try:
         client.models.list()
+        client.close()
     except openai.AuthenticationError as e:
         print(e)
         return False

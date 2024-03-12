@@ -441,8 +441,8 @@ def create_ui_components(root, config: dict):
 
     response_enabled = bool(config['General']['continuous_response'])
     b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
-    freeze_button = ctk.CTkButton(root, text=b_text, command=None)
-    freeze_button.grid(row=1, column=1, padx=10, pady=3, sticky="nsew")
+    continuous_response_button = ctk.CTkButton(root, text=b_text, command=None)
+    continuous_response_button.grid(row=1, column=1, padx=10, pady=3, sticky="nsew")
 
     response_now_button = ctk.CTkButton(root, text="Suggest Response Now", command=None)
     response_now_button.grid(row=2, column=1, padx=10, pady=3, sticky="nsew")
@@ -483,6 +483,22 @@ def create_ui_components(root, config: dict):
     m.add_separator()
     m.add_command(label="Quit", command=root.quit)
 
+    chat_inference_provider = config['General']['chat_inference_provider']
+    if chat_inference_provider == 'openai':
+        api_key = config['OpenAI']['api_key']
+        base_url = config['OpenAI']['base_url']
+    elif chat_inference_provider == 'together':
+        api_key = config['Together']['api_key']
+        base_url = config['Together']['base_url']
+
+    if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url):
+        # Disable buttons that interact with backend services
+        continuous_response_button.configure(state='disabled')
+        response_now_button.configure(state='disabled')
+        continuous_response_button.configure(state='disabled')
+        read_response_now_button.configure(state='disabled')
+        summarize_button.configure(state='disabled')
+
     def show_context_menu(event):
         try:
             m.tk_popup(event.x_root, event.y_root)
@@ -494,6 +510,6 @@ def create_ui_components(root, config: dict):
     # Order of returned components is important.
     # Add new components to the end
     return [transcript_textbox, response_textbox, update_interval_slider,
-            update_interval_slider_label, freeze_button, lang_combobox,
+            update_interval_slider_label, continuous_response_button, lang_combobox,
             filemenu, response_now_button, read_response_now_button, editmenu,
             github_link, issue_link, summarize_button]
