@@ -159,6 +159,9 @@ class BaseRecorder:
         if self.audio_file_name is None:
             return
 
+        if not os.path.exists(self.audio_file_name+'.bak'):
+            return
+
         frame_rate = self.source.SAMPLE_RATE
         sample_width = self.source.SAMPLE_WIDTH
         channels = self.source.channels
