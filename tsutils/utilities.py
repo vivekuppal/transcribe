@@ -189,3 +189,35 @@ def zip_files_in_folder(folder_path: str, zip_file_name: str,
             if skip_zip_files and file.endswith(".zip"):
                 continue
             my_zip.write(f'{folder_path}/{file}')
+
+
+def get_available_models(client: openai.OpenAI) -> list:
+    """Get the list of available models from the provider.
+    """
+    try:
+        models = client.models.list()
+        return_val = []
+        for model in models.data:
+            return_val.append(model.id)
+    except openai.AuthenticationError as e:
+        print(e)
+        return None
+
+    return sorted(return_val)
+
+
+def is_api_key_valid(api_key: str, config: dict) -> bool:
+    """Check if it is valid openai compatible openai key for the provider
+    """
+    openai.api_key = api_key
+
+    base_url = config['OpenAI']['base_url']
+    client = openai.OpenAI(api_key=api_key, base_url=base_url)
+
+    try:
+        client.models.list()
+    except openai.AuthenticationError as e:
+        print(e)
+        return False
+
+    return True
