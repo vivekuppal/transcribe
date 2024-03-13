@@ -57,7 +57,7 @@ def main():
     # transcription. This order of initialization results in initialization of Mic, Speaker
     # as well which is not necessary for some batch tasks.
     # This does not have any side effects.
-    handle_args_batch_tasks(args, global_vars)
+    handle_args_batch_tasks(args, global_vars, config)
 
     # Initiate logging
     log_listener = al.initiate_log(config=config)

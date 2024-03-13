@@ -7,6 +7,7 @@ from global_vars import TranscriptionGlobals
 import interactions  # noqa: E402 pylint: disable=C0413
 from tsutils import utilities, duration, configuration  # noqa: E402 pylint: disable=C0413
 from sdk import audio_recorder as ar  # noqa: E402 pylint: disable=C0413
+import openai
 
 
 def create_args() -> argparse.Namespace:
@@ -35,6 +36,9 @@ def create_args() -> argparse.Namespace:
                           help='Save the API key for accessing OpenAI APIs to override.yaml file.\
                             \nSubsequent invocations of the program will not require API key on command line.\
                             \nTo not persist the API key use the -k option.')
+    cmd_args.add_argument('-vk', '--validate_api_key', action='store', default=None,
+                          help='Validate that it is a valid functioning api_key.\
+                           \nWithout the API Key only transcription works.')
     cmd_args.add_argument('-t', '--transcribe', action='store', default=None,
                           help='Transcribe the given audio file to generate text.\
                             \nThis option respects the -m (model) option.\
@@ -64,7 +68,7 @@ def create_args() -> argparse.Namespace:
     return args
 
 
-def handle_args_batch_tasks(args: argparse.Namespace, global_vars: TranscriptionGlobals):
+def handle_args_batch_tasks(args: argparse.Namespace, global_vars: TranscriptionGlobals, config: dict):
     """Handle batch tasks, after which the program will exit."""
     interactions.params(args)
 
@@ -75,6 +79,26 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
 
     if args.save_api_key is not None:
         save_api_key(args)
+        sys.exit(0)
+
+    if args.validate_api_key is not None:
+        chat_inference_provider = config['General']['chat_inference_provider']
+        if chat_inference_provider == 'openai':
+            base_url = config['OpenAI']['base_url']
+        elif chat_inference_provider == 'together':
+            base_url = config['Together']['base_url']
+
+        if utilities.is_api_key_valid(api_key=args.validate_api_key, base_url=base_url):
+            print('The api_key is valid')
+            base_url = config['OpenAI']['base_url']
+            client = openai.OpenAI(api_key=args.validate_api_key, base_url=base_url)
+            models = utilities.get_available_models(client=client)
+            print('Available models: ')
+            for model in models:
+                print(f'    {model}')
+            client.close()
+        else:
+            print('The api_key is not valid')
         sys.exit(0)
 
     if args.transcribe is not None:
