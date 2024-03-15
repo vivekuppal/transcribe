@@ -20,14 +20,26 @@ Run bandit locally
 
 ```
 cd app/transcribe
-bandit -r .
+
+bandit -c ./build/bandit.yaml -r .
+
+To find only high level vulnerabilities run this command
+bandit -ll -c ./build/bandit.yaml -r .
 ```
+
+Snyk scans are executed daily for code analysis
 
 ## Creating Windows installs
 
 Install Winrar from https://www.win-rar.com/.
 
 Winrar is required for generating binaries from python code. If you do not intend to generate binaries and are only writing python code, you do not need to install winrar. 
+
+Install pyInstaller
+
+```
+pip install pyinstaller==6.3.0
+```
 
 In the file ```generate_binary.bat``` replace these paths at the top of the file to paths specific to your machine. 
 

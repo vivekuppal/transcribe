@@ -90,6 +90,7 @@ Connect on LinkedIn to discuss further.
 ## Security ##
 - <b>Secret scanning</b>: Continuous Integration with [GitGuardian](https://www.gitguardian.com/)
 - <b>Static Code Analysis</b>: Regular static code scan scan with [Bandit](https://bandit.readthedocs.io/en/latest/)
+- <b>Static Code Analysis</b>: Incorporate Snyk for daily static analysis of code
 - <b>Secure Transmission</b>: All secure communications for any network communications
 - <b>Dependency Security</b>: All strictest security features enabled in the Github repo
 
