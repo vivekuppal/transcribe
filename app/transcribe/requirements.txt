@@ -1,10 +1,9 @@
 numpy==1.24.3
-openai-whisper
+openai-whisper==20231117
 Wave==0.0.2
 openai==1.13.3
 customtkinter==5.2.2
 PyAudioWPatch==0.2.12.6
-pyinstaller==6.3.0
 pyperclip
 PyYAML
 soundfile
@@ -18,5 +17,5 @@ deepgram-sdk==3.1.0
 #--extra-index-url https://download.pytorch.org/whl/cu118
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch
-bandit
 transformers>=4.36.0 # not directly required, pinned by Snyk to avoid a vulnerability
+bandit==1.7.8
