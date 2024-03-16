@@ -14,3 +14,5 @@ app/transcribe/logs/Transcribe.log
 app/transcribe/logs/response.txt
 app/transcribe/logs/ffmpeg.txt
 app/transcribe/logs/whisper.cpp.txt
+app/transcribe/mic.wav.bak
+app/transcribe/speaker.wav.bak
