@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import argparse
 from argparse import RawTextHelpFormatter
 import yaml
@@ -104,10 +105,11 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
     if args.transcribe is not None:
         with duration.Duration(name='Transcription', log=False, screen=True):
             output_file = args.output_file if args.output_file is not None else "transcription.txt"
+            safe_filename = re.sub('[^0-9a-zA-Z\.]+', '_', output_file)
             print(f'Converting the audio file {args.transcribe} to text.')
             print(f'{args.transcribe} file size '
                   f'{utilities.naturalsize(os.path.getsize(args.transcribe))}.')
-            print(f'Text output will be produced in {output_file}.')
+            print(f'Text output will be produced in {safe_filename}.')
             # For whisper.cpp STT convert the file to 16 khz
             file_path = args.transcribe
             if args.speech_to_text == 'whisper.cpp':
@@ -117,7 +119,7 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
             # process_response can be improved to make the output more palatable to human reading
             text = global_vars.transcriber.stt_model.process_response(results)
             if results is not None and len(text) > 0:
-                with open(output_file, encoding='utf-8', mode='w') as f:
+                with open(safe_filename, encoding='utf-8', mode='w') as f:
                     f.write(f"{text}\n")
                 print('Complete!')
             else:
@@ -128,6 +130,9 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
 
 
 def update_args_config(args: argparse.Namespace, config: dict):
+    """Update internal configuration with any overrides specified as
+    arguments
+    """
     # Command line arg for api_key takes preference over api_key specified in yaml file
     # TODO: We should be able to set deepgram API key from command line as well
     if args.api_key is not None:
