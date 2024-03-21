@@ -210,6 +210,10 @@ def get_available_models(client: openai.OpenAI) -> list:
 def is_api_key_valid(api_key: str, base_url) -> bool:
     """Check if it is valid openai compatible openai key for the provider
     """
+    if base_url == 'https://api.together.xyz':
+        # Together does not support the call client.models.list()
+        return True
+
     openai.api_key = api_key
 
     client = openai.OpenAI(api_key=api_key, base_url=base_url)

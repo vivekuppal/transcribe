@@ -91,7 +91,6 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
 
         if utilities.is_api_key_valid(api_key=args.validate_api_key, base_url=base_url):
             print('The api_key is valid')
-            base_url = config['OpenAI']['base_url']
             client = openai.OpenAI(api_key=args.validate_api_key, base_url=base_url)
             models = utilities.get_available_models(client=client)
             print('Available models: ')
