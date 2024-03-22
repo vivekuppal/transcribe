@@ -15,7 +15,7 @@ chat_completion = client.chat.completions.create(
     },
     {
       'role': 'user',
-      'content': 'Tell me about Fantasy Football',
+      'content': 'Are you online',
     }
   ],
   model='mistralai/Mixtral-8x7B-Instruct-v0.1',
@@ -23,3 +23,4 @@ chat_completion = client.chat.completions.create(
 )
 
 print(chat_completion.choices[0].message.content)
+client.close()

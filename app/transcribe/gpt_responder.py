@@ -49,12 +49,15 @@ class GPTResponder:
 
         chat_inference_provider = self.config['General']['chat_inference_provider']
         if chat_inference_provider == 'openai':
-            api_key = self.config['OpenAI']['api_key']
-            base_url = self.config['OpenAI']['base_url']
+            settings_section = 'OpenAI'
         elif chat_inference_provider == 'together':
-            api_key = self.config['Together']['api_key']
-            base_url = self.config['Together']['base_url']
-        if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url):
+            settings_section = 'Together'
+
+        api_key = self.config[settings_section]['api_key']
+        base_url = self.config[settings_section]['base_url']
+        model = self.config[settings_section]['ai_model']
+
+        if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
             return None
 
         with duration.Duration(name='OpenAI Summarize', screen=False):
@@ -88,13 +91,17 @@ class GPTResponder:
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
             chat_inference_provider = self.config['General']['chat_inference_provider']
+
             if chat_inference_provider == 'openai':
-                api_key = self.config['OpenAI']['api_key']
-                base_url = self.config['OpenAI']['base_url']
+                settings_section = 'OpenAI'
             elif chat_inference_provider == 'together':
-                api_key = self.config['Together']['api_key']
-                base_url = self.config['Together']['base_url']
-            if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url):
+                settings_section = 'Together'
+
+            api_key = self.config[settings_section]['api_key']
+            base_url = self.config[settings_section]['base_url']
+            model = self.config[settings_section]['ai_model']
+
+            if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
             with duration.Duration(name='OpenAI Chat Completion', screen=False):
@@ -187,12 +194,15 @@ class GPTResponder:
             root_logger.info(GPTResponder.generate_response_for_selected_text.__name__)
             chat_inference_provider = self.config['General']['chat_inference_provider']
             if chat_inference_provider == 'openai':
-                api_key = self.config['OpenAI']['api_key']
-                base_url = self.config['OpenAI']['base_url']
+                settings_section = 'OpenAI'
             elif chat_inference_provider == 'together':
-                api_key = self.config['Together']['api_key']
-                base_url = self.config['Together']['base_url']
-            if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url):
+                settings_section = 'Together'
+
+            api_key = self.config[settings_section]['api_key']
+            base_url = self.config[settings_section]['base_url']
+            model = self.config[settings_section]['ai_model']
+
+            if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
             with duration.Duration(name='OpenAI Chat Completion Selected', screen=False):

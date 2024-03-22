@@ -6,6 +6,9 @@ import zipfile
 import openai
 
 
+valid_api_key: bool = False
+
+
 def merge(first: dict, second: dict, path=[]):
     """Recursively merge two dictionaries.
        For keys with different values, values in the second dictionary
@@ -207,22 +210,41 @@ def get_available_models(client: openai.OpenAI) -> list:
     return sorted(return_val)
 
 
-def is_api_key_valid(api_key: str, base_url) -> bool:
+def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
     """Check if it is valid openai compatible openai key for the provider
     """
-    if base_url == 'https://api.together.xyz':
-        # Together does not support the call client.models.list()
+
+    global valid_api_key  # pylint: disable=W0603
+
+    if valid_api_key:
         return True
 
     openai.api_key = api_key
-
     client = openai.OpenAI(api_key=api_key, base_url=base_url)
 
     try:
-        client.models.list()
+        # Ideally models list is the best way to determine if api key is valid
+        # Some of the OpenAI compatible vendors do not support all the methods though
+        # client.models.list()
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    'role': 'system',
+                    'content': 'You are an AI assistant',
+                },
+                {
+                    'role': 'user',
+                    'content': 'Are you online',
+                }
+            ],
+            model=model,
+            max_tokens=1024
+            )
+        assert len(chat_completion.choices[0].message.content) > 0
         client.close()
     except openai.AuthenticationError as e:
         print(e)
         return False
 
+    valid_api_key = True
     return True
