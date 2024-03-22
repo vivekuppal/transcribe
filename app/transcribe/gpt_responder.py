@@ -7,7 +7,7 @@ import prompts
 import conversation
 import constants
 from tsutils import app_logging as al
-from tsutils import duration
+from tsutils import duration, utilities
 
 
 root_logger = al.get_logger()
@@ -47,8 +47,17 @@ class GPTResponder:
         """
         root_logger.info(GPTResponder.summarize.__name__)
 
-        if self.config['OpenAI']['api_key'] in ('', 'API_KEY'):
-            # Cannot summarize without connection to LLM
+        chat_inference_provider = self.config['General']['chat_inference_provider']
+        if chat_inference_provider == 'openai':
+            settings_section = 'OpenAI'
+        elif chat_inference_provider == 'together':
+            settings_section = 'Together'
+
+        api_key = self.config[settings_section]['api_key']
+        base_url = self.config[settings_section]['base_url']
+        model = self.config[settings_section]['ai_model']
+
+        if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
             return None
 
         with duration.Duration(name='OpenAI Summarize', screen=False):
@@ -81,7 +90,18 @@ class GPTResponder:
         """
         try:
             root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
-            if self.config['OpenAI']['api_key'] in ('', 'API_KEY'):
+            chat_inference_provider = self.config['General']['chat_inference_provider']
+
+            if chat_inference_provider == 'openai':
+                settings_section = 'OpenAI'
+            elif chat_inference_provider == 'together':
+                settings_section = 'Together'
+
+            api_key = self.config[settings_section]['api_key']
+            base_url = self.config[settings_section]['base_url']
+            model = self.config[settings_section]['ai_model']
+
+            if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
             with duration.Duration(name='OpenAI Chat Completion', screen=False):
@@ -172,7 +192,17 @@ class GPTResponder:
         """
         try:
             root_logger.info(GPTResponder.generate_response_for_selected_text.__name__)
-            if self.config['OpenAI']['api_key'] in ('', 'API_KEY'):
+            chat_inference_provider = self.config['General']['chat_inference_provider']
+            if chat_inference_provider == 'openai':
+                settings_section = 'OpenAI'
+            elif chat_inference_provider == 'together':
+                settings_section = 'Together'
+
+            api_key = self.config[settings_section]['api_key']
+            base_url = self.config[settings_section]['base_url']
+            model = self.config[settings_section]['ai_model']
+
+            if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
             with duration.Duration(name='OpenAI Chat Completion Selected', screen=False):
@@ -305,7 +335,7 @@ class TogetherAIResponder(GPTResponder):
         self.llm_client = openai.OpenAI(api_key=api_key,
                                         base_url=base_url)
         self.model = self.config['Together']['ai_model']
-        print(f'[INFO] Using Together for inference. Model: {self.model}')
+        print(f'[INFO] Using Together AI for inference. Model: {self.model}')
         super().__init__(config=self.config,
                          convo=convo,
                          save_to_file=save_to_file,

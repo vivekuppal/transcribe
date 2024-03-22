@@ -487,11 +487,13 @@ def create_ui_components(root, config: dict):
     if chat_inference_provider == 'openai':
         api_key = config['OpenAI']['api_key']
         base_url = config['OpenAI']['base_url']
+        model = config['OpenAI']['ai_model']
     elif chat_inference_provider == 'together':
         api_key = config['Together']['api_key']
         base_url = config['Together']['base_url']
+        model = config['Together']['ai_model']
 
-    if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url):
+    if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
         # Disable buttons that interact with backend services
         continuous_response_button.configure(state='disabled')
         response_now_button.configure(state='disabled')

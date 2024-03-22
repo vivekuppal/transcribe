@@ -85,18 +85,22 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
     if args.validate_api_key is not None:
         chat_inference_provider = config['General']['chat_inference_provider']
         if chat_inference_provider == 'openai':
-            base_url = config['OpenAI']['base_url']
+            settings_section = 'OpenAI'
         elif chat_inference_provider == 'together':
-            base_url = config['Together']['base_url']
+            settings_section = 'Together'
 
-        if utilities.is_api_key_valid(api_key=args.validate_api_key, base_url=base_url):
+        base_url = config[settings_section]['base_url']
+        model = config[settings_section]['ai_model']
+
+        if utilities.is_api_key_valid(api_key=args.validate_api_key, base_url=base_url, model=model):
             print('The api_key is valid')
-            base_url = config['OpenAI']['base_url']
             client = openai.OpenAI(api_key=args.validate_api_key, base_url=base_url)
-            models = utilities.get_available_models(client=client)
-            print('Available models: ')
-            for model in models:
-                print(f'    {model}')
+
+            if base_url != 'https://api.together.xyz':
+                models = utilities.get_available_models(client=client)
+                print('Available models: ')
+                for model in models:
+                    print(f'    {model}')
             client.close()
         else:
             print('The api_key is not valid')
