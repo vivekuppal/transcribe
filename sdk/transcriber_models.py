@@ -283,6 +283,9 @@ class DeepgramSTTModel(STTModelInterface):
         # Check for api_key
         if stt_model_config["api_key"] is None:
             raise Exception("Attempt to create Deepgram STT Model without an api key.")  # pylint: disable=W0719
+
+        # This parameter exists primarily to adhere to the interface.
+        # Deepgram does auto language detection.
         self.lang = 'en-US'
 
         print('[INFO] Using Deepgram API for transcription.')
@@ -308,7 +311,8 @@ class DeepgramSTTModel(STTModelInterface):
                 smart_format=True,
                 utterances=True,
                 punctuate=True,
-                paragraphs=True)
+                paragraphs=True,
+                detect_language=True)
 
             response = self.audio_model.listen.prerecorded.v("1").transcribe_file(payload, options)
             # This is not necessary and just a debugging aid

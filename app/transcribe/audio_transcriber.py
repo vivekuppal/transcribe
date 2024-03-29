@@ -134,7 +134,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             except Exception as exception:
                 print(exception)
             finally:
-                # print(f'transcribe_audio_queue: filesize: {os.path.getsize(path)}')
+                # print(f'transcribe_audio_queue: file: {path} filesize: {os.path.getsize(path)}')
                 os.unlink(path)
 
             if text != '' and text.lower() != 'you':

@@ -313,7 +313,8 @@ class OpenAIResponder(GPTResponder):
         base_url = self.config['OpenAI']['base_url']
         self.llm_client = openai.OpenAI(api_key=api_key, base_url=base_url)
         self.model = self.config['OpenAI']['ai_model']
-        print(f'[INFO] Using OpenAI for inference. Model: {self.model}')
+        stt = self.config['General']['stt']
+        print(f'[INFO] Using {stt} for inference. Model: {self.model}')
         super().__init__(config=self.config,
                          convo=convo,
                          save_to_file=save_to_file,

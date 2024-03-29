@@ -20,7 +20,7 @@ def create_args() -> argparse.Namespace:
                           \nThis option requires an API KEY and will consume Open AI credits.')
     cmd_args.add_argument('-e', '--experimental', action='store_true',
                           help='Experimental command line argument. Behavior is undefined.')
-    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default='whisper',
+    cmd_args.add_argument('-stt', '--speech_to_text', action='store', default=None,
                           choices=['whisper', 'whisper.cpp', 'deepgram'],
                           help='Specify the Speech to text Engine.'
                           '\nLocal STT models tend to perform best for response times.'
@@ -163,6 +163,9 @@ def update_args_config(args: argparse.Namespace, config: dict):
 
     if args.speaker_device_index is not None:
         config['General']['speaker_device_index'] = int(args.speaker_device_index)
+
+    if args.speech_to_text is not None:
+        config['General']['stt'] = args.speech_to_text
 
 
 def update_audio_devices(global_vars: TranscriptionGlobals, config: dict):
