@@ -160,7 +160,7 @@ Follow below steps to run transcribe on your local machine.
 
 ### 📋 Prerequisites
 
-- Python >=3.11.0 and < 3.12.0
+- Python >=3.11.0
 - (Optional) An OpenAI API key (set up a paid [OpenAI account](https://platform.openai.com/))
 - Windows OS (Not tested on others)
 - FFmpeg
