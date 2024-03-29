@@ -28,7 +28,8 @@ def main():
         smart_format=True,
         utterances=True,
         punctuate=True,
-        diarize=True)
+        diarize=True,
+        detect_language=True)
 
     response = deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
     print(response.to_json(indent=4))

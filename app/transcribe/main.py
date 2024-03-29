@@ -19,7 +19,6 @@ def main():
     args = create_args()
 
     config = configuration.Config().data
-
     au.start_ffmpeg()
 
     # Initiate global variables
@@ -29,7 +28,7 @@ def main():
 
     update_args_config(args, config)
     global_vars.initiate_audio_devices(config)
-    au.create_transcriber(name=args.speech_to_text,
+    au.create_transcriber(name=config['General']['stt'],
                           config=config,
                           api=bool(config['General']['use_api']),
                           global_vars=global_vars)

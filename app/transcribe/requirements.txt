@@ -17,7 +17,4 @@ deepgram-sdk==3.1.0
 #--extra-index-url https://download.pytorch.org/whl/cu118
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch
-transformers>=4.36.0 # not directly required, pinned by Snyk to avoid a vulnerability
 bandit==1.7.8
-setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
-wheel>=0.38.0 # not directly required, pinned by Snyk to avoid a vulnerability
