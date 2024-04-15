@@ -6,12 +6,12 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
-          //  "args": ["-stt", "deepgram"],
+        //    "args": ["-stt", "deepgram"],
             "justMyCode": false
         }
     ]
