@@ -105,6 +105,7 @@ def detect_ps():
         return False
     except FileNotFoundError:
         print('Please install Powershell or ensure it is in path.')
+        # Remove comment about ffmpeg
         print('Powershell is required to download models and install ffmpeg')
         return False
 
@@ -148,6 +149,7 @@ def exec_ps(script: str) -> (bool, str):
         return False, ''
     except FileNotFoundError:
         print('Please install Powershell or ensure it is in path.')
+        # Remove comment about ffmpeg
         print('Powershell is required to download models and install ffmpeg')
         return False, ''
 

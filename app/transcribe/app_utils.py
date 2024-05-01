@@ -5,6 +5,7 @@ from global_vars import TranscriptionGlobals
 from audio_player import AudioPlayer  # noqa: E402 pylint: disable=C0413
 from gpt_responder import InferenceResponderFactory, InferenceEnum
 from audio_transcriber import WhisperCPPTranscriber, WhisperTranscriber, DeepgramTranscriber
+import static_ffmpeg
 sys.path.append('../..')
 import interactions  # noqa: E402 pylint: disable=C0413
 from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
@@ -97,6 +98,7 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
 def start_ffmpeg():
     """Start ffmpeg library"""
     try:
+        static_ffmpeg.add_paths()
         subprocess.run(["ffmpeg", "-version"],  # nosec
                        stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL,

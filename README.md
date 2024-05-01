@@ -107,6 +107,7 @@ Latest Binary
 - Generated: 2024-01-30
 - Git version: bbe1f4
 
+[comment]: <> (Remove section for install of ffmpeg)
 1. Install ffmpeg
 
 First, install Chocolatey, a package manager for Windows.

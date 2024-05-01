@@ -11,6 +11,7 @@ from abc import abstractmethod
 import wave
 import tempfile
 import pyaudiowpatch as pyaudio
+import static_ffmpeg
 sys.path.append('../..')
 import conversation  # noqa: E402 pylint: disable=C0413
 import constants  # noqa: E402 pylint: disable=C0413
@@ -215,7 +216,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         try:
             # Convert input file to 16khz. That is a requirement for using whisper.cpp
             # ffmpeg -i <input audio filename> -ar 16000 -ac 1 -c:a pcm_s16le -y <output audio file>
-
+            static_ffmpeg.add_paths()
             file_descritor, mod_file_path = tempfile.mkstemp(suffix=".wav")
             os.close(file_descritor)
             # print(f'Convert file {file_path} to 16khz file {mod_file_path}')
