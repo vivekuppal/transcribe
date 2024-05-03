@@ -12,7 +12,8 @@
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
         //    "args": ["-stt", "deepgram"],
-            "justMyCode": false
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.vscode/vscode.env" // This works
         }
     ]
 }

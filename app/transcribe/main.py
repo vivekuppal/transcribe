@@ -28,7 +28,7 @@ def main():
 
     update_args_config(args, config)
     # Initiate DB
-    au.initiate_db()
+    au.initiate_db(global_vars)
     global_vars.initiate_audio_devices(config)
     au.create_transcriber(name=config['General']['stt'],
                           config=config,

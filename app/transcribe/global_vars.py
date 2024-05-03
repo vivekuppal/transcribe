@@ -1,4 +1,5 @@
 import sys
+import os
 import queue
 import datetime
 import tkinter as tk
@@ -19,6 +20,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     """Global constants for audio processing. It is implemented as a Singleton class.
     """
 
+    current_folder: str = None
     audio_queue: queue.Queue = None
     user_audio_recorder: ar.MicRecorder = None
     speaker_audio_recorder: ar.SpeakerRecorder = None
@@ -61,7 +63,10 @@ class TranscriptionGlobals(Singleton.Singleton):
             'skip_zip_files': True
         }
         self.task_worker.add(**zip_params)
-
+        self.current_folder = os.path.dirname(os.path.realpath(__file__))
+        # print(f'Current folder is : {self.current_folder}')
+        # Ensure that vscode.env file is being read correctly
+        # print(f'Env var is: {os.getenv("test_environment_variable")}')
         self._initialized = True
 
     def initiate_audio_devices(self, config: dict):

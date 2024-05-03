@@ -1,5 +1,5 @@
-# import os
 import db.app_invocations as appi
+import logging
 import sqlalchemy as db
 from sqlalchemy import Engine, Connection
 
@@ -8,12 +8,25 @@ class AppDB:
     _tables = [
         'ApplicationInvocations'
     ]
-    _db_file_path = '../logs/app.db'
+    _app_base_folder: str = None
 
-    def __init__(self):
+    def __init__(self, app_base_folder):
+        self._app_base_folder = app_base_folder
+
         # Create DB file if it does not exist
-        engine = db.create_engine('sqlite:///app.db', echo=True)
+        # C:\....\transcribe\app\transcribe
+        engine = db.create_engine(f'sqlite:///{self._app_base_folder}/logs/app.db')
         connection = engine.connect()
+
+        # Initialize DB logger
+        db_log_file_name = f'{self._app_base_folder}/logs/db.log'
+        db_handler = logging.FileHandler(db_log_file_name)
+        db_logger = logging.getLogger('sqlalchemy')
+        db_handler_log_level = logging.INFO
+        db_logger_log_level = logging.DEBUG
+        db_handler.setLevel(db_handler_log_level)
+        db_logger.addHandler(db_handler)
+        db_logger.setLevel(db_logger_log_level)
 
         # Initialize all the tables
         appi.ApplicationInvocations(engine=engine, connection=connection, commit=False)
@@ -21,11 +34,11 @@ class AppDB:
         connection.close()
 
     def initialize_app(self):
-        engine: Engine = db.create_engine('sqlite:///app.db', echo=True)
+        engine: Engine = db.create_engine(f'sqlite:///{self._app_base_folder}/logs/app.db')
         connection: Connection = engine.connect()
         appi.ApplicationInvocations(engine, connection).insert_start_time(engine=engine)
 
-    def shutdown(self):
-        engine = db.create_engine('sqlite:///app.db', echo=True)
+    def shutdown_app(self):
+        engine = db.create_engine(f'sqlite:///{self._app_base_folder}/logs/app.db')
         connection = engine.connect()
         appi.ApplicationInvocations(engine=engine, connection=connection, commit=False).populate_end_time(engine)
