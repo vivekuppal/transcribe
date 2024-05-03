@@ -5,6 +5,8 @@ from global_vars import TranscriptionGlobals
 from audio_player import AudioPlayer  # noqa: E402 pylint: disable=C0413
 from gpt_responder import InferenceResponderFactory, InferenceEnum
 from audio_transcriber import WhisperCPPTranscriber, WhisperTranscriber, DeepgramTranscriber
+from db.app_db import AppDB
+from db.app_invocations import ApplicationInvocations
 sys.path.append('../..')
 import interactions  # noqa: E402 pylint: disable=C0413
 from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
@@ -107,6 +109,13 @@ def start_ffmpeg():
         sys.exit(1)
 
 
+def initiate_db():
+    # Create the DB if it does not exist and then init connections to it
+    adb = AppDB()
+    # Insert a row in ApplicationInvocations table
+    adb.initialize_app()
+
+
 def create_transcriber(
         name: str,
         config: dict,
@@ -172,3 +181,9 @@ def create_transcriber(
             config=config)
     else:
         raise ValueError(f'Unknown transcriber: {name}')
+
+
+def shutdown(global_vars: TranscriptionGlobals):
+    global_vars.user_audio_recorder.write_wav_data_to_file()
+    global_vars.speaker_audio_recorder.write_wav_data_to_file()
+    AppDB().shutdown()

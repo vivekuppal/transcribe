@@ -27,6 +27,8 @@ def main():
     global_vars.convo = conversation.Conversation()
 
     update_args_config(args, config)
+    # Initiate DB
+    au.initiate_db()
     global_vars.initiate_audio_devices(config)
     au.create_transcriber(name=config['General']['stt'],
                           config=config,
@@ -39,8 +41,9 @@ def main():
     u.delete_files(['speaker.wav', 'speaker.wav.bak', 'mic.wav', 'mic.wav.bak'])
 
     # Convert raw audio files to real wav file format when program exits
-    atexit.register(global_vars.user_audio_recorder.write_wav_data_to_file)
-    atexit.register(global_vars.speaker_audio_recorder.write_wav_data_to_file)
+    # atexit.register(global_vars.user_audio_recorder.write_wav_data_to_file)
+    # atexit.register(global_vars.speaker_audio_recorder.write_wav_data_to_file)
+    atexit.register(au.shutdown, global_vars)
 
     user_stop_func = global_vars.user_audio_recorder.record_audio(global_vars.audio_queue)
     global_vars.user_audio_recorder.stop_record_func = user_stop_func
