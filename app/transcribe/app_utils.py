@@ -110,7 +110,8 @@ def start_ffmpeg():
 
 def initiate_db(global_vars: TranscriptionGlobals):
     # Create the DB if it does not exist and then init connections to it
-    adb = AppDB(global_vars.current_folder)
+    adb = AppDB()
+    adb.initialize_db(app_base_folder=global_vars.current_folder)
     # Insert a row in ApplicationInvocations table
     adb.initialize_app()
 
@@ -185,4 +186,4 @@ def create_transcriber(
 def shutdown(global_vars: TranscriptionGlobals):
     global_vars.user_audio_recorder.write_wav_data_to_file()
     global_vars.speaker_audio_recorder.write_wav_data_to_file()
-    AppDB(global_vars.current_folder).shutdown_app()
+    AppDB().shutdown_app()

@@ -1,18 +1,26 @@
+import sys
 import db.app_invocations as appi
 import logging
 import sqlalchemy as db
 from sqlalchemy import Engine, Connection
+sys.path.append('../..')
+from tsutils import Singleton  # noqa: E402 pylint: disable=C0413
+
+# TO DO
+# Add another table to DB
 
 
-class AppDB:
+class AppDB(Singleton.Singleton):
     _tables = [
         'ApplicationInvocations'
     ]
     _app_base_folder: str = None
 
-    def __init__(self, app_base_folder):
-        self._app_base_folder = app_base_folder
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
+    def initialize_db(self, app_base_folder):
+        self._app_base_folder = app_base_folder
         # Create DB file if it does not exist
         # C:\....\transcribe\app\transcribe
         engine = db.create_engine(f'sqlite:///{self._app_base_folder}/logs/app.db')
