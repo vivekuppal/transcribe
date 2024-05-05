@@ -1,27 +1,28 @@
 from typing import Optional
+from datetime import datetime
 import sqlalchemy as db
 from sqlalchemy import func
 from sqlalchemy.sql import text
-from sqlalchemy.orm import Session, DeclarativeBase, Mapped, mapped_column
-from datetime import datetime
+from sqlalchemy.orm import Session, mapped_column, relationship, Mapped
 from sqlalchemy import Engine
+from db import AppDBBase
 
 TABLE_NAME = 'ApplicationInvocations'
 
 
-class Base(DeclarativeBase):
-    pass
-
-
-class Invocation(Base):
+class Invocation(AppDBBase):
+    """One row in the ApplicationInvocations Table"""
     __tablename__ = TABLE_NAME
 
     id: Mapped[int] = mapped_column(primary_key=True)
     StartTime: Mapped[datetime]
     EndTime: Mapped[Optional[datetime]]
+    # Id = mapped_column(Integer, primary_key=True)
+    # StartTime = mapped_column(DateTime)
+    # EndTime = mapped_column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
-        return f"Invocation(id={self.id!r}, StartTime={self.StartTime!r}, EndTime={self.EndTime!r})"
+        return f"Invocation(id={self.Id!r}, StartTime={self.StartTime!r}, EndTime={self.EndTime!r})"
 
 
 class ApplicationInvocations:
@@ -41,16 +42,14 @@ class ApplicationInvocations:
             print(f'Table: {self._table_name} does not exist. Creating table.')
             self.create_table(engine, metadata)
 
-        self.populate_data(engine)
+        self.populate_data()
         if commit:
             connection.commit()
 
     def create_table(self, engine, metadata):
         self._db_table = db.Table(self._table_name, metadata,
                                   db.Column('Id', db.Integer(), db.Identity(start=1), primary_key=True, ),
-                                  db.Column('StartTime', db.Integer(),
-                                            nullable=False,
-                                            default=datetime.utcnow),
+                                  db.Column('StartTime', db.Integer(), nullable=False, default=datetime.utcnow),
                                   db.Column('EndTime', db.Integer(), nullable=True))
 
         metadata.create_all(engine)
@@ -76,5 +75,5 @@ class ApplicationInvocations:
             session.commit()
             session.close()
 
-    def populate_data(engine, connection):
+    def populate_data(self):
         pass
