@@ -18,3 +18,4 @@ deepgram-sdk==3.2.5
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch
 bandit==1.7.8
+setuptools
