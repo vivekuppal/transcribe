@@ -10,24 +10,14 @@ python -m unittest discover --verbose .\tests
 
 ## Security Scanning
 
-Install bandit for security scanning
+We use bandit for security scanning
 
 ```
-pip install bandit
-```
-
-Run bandit locally
-
-```
-cd app/transcribe
-
 bandit -c ./build/bandit.yaml -r .
 
 To find only high level vulnerabilities run this command
 bandit -ll -c ./build/bandit.yaml -r .
 ```
-
-Snyk scans are executed daily for code analysis
 
 ## Creating Windows installs
 
@@ -58,12 +48,12 @@ Run ```generate_binary.bat``` file by replacing paths at the top of the file to 
 
 Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
 Latest Binary
-- Generated: 2023-11-17
-- Git version: 705fc86
+- Generated: 2024-01-30
+- Git version: bbe1f4
 
 1. Download the zip file from
 ```
-https://drive.google.com/file/d/1TtdEkzQyxA8UaXV7rk9LGDTxMtWetjJa/view?usp=drive_link
+https://drive.google.com/file/d/1vJCHv8eEjp6q7HEnCMY5mlX_8Ys2_06u/view?usp=drive_link
 ```
 2. Unzip the files in a folder.
 
