@@ -219,6 +219,9 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
     if valid_api_key:
         return True
 
+    if api_key == 'API_KEY':  # This is the default value
+        return False
+
     openai.api_key = api_key
     client = openai.OpenAI(api_key=api_key, base_url=base_url)
 

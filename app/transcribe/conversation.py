@@ -61,9 +61,11 @@ class Conversation:
                 (persona.lower() == 'you' and len(transcript) > 1)
                 or (persona.lower() != 'you' and len(transcript) > 0)
                 )):
-            transcript.pop()
+            # popped_item = transcript.pop()
+            # print(f'Popped: {popped_item[0].strip()}')
 
         transcript.append((f"{persona}: [{text}]\n\n", time_spoken))
+        # print(f'Adding: {persona}: [{text}]')
         # if (persona.lower() == 'assistant'):
         #    print(f'Assistant Transcript length after completion: {len(transcript)}')
         self.last_update = datetime.datetime.utcnow()
