@@ -38,7 +38,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
     - OpenAI
     - Together
     - Perplexity
-    - Azure hosted OpenAI
+    - Azure hosted OpenAI - Some users have reported requiring code changes to make Azure work. Feedback appreciated.
 - Conversation Summary
 - Prompt customization
 - Save chat history
@@ -187,23 +187,13 @@ Run these commands in a PowerShell window with administrator privileges. For any
    git clone https://github.com/vivekuppal/transcribe
    ```
 
-2. Navigate to `app\transcribe` folder:
+2. Run setup file
 
    ```
-   cd app\transcribe
+   setup.bat
    ```
 
-3. Create a virutal env and install the required packages:
-
-   ```
-   python -m venv venv
-   venv\Scripts\activate.bat
-   pip install -r app\transcribe\requirements.txt
-   ```
-
-   Virutal environments can also be created using conda or a tool of choice.
-   
-4. (Optional) Provide OpenAI API key in `override.yaml` file in the transcribe directory:
+3. (Optional) Provide OpenAI API key in `override.yaml` file in the transcribe directory:
 
    Create the following section in `override.yaml` file
    ```yaml
