@@ -61,8 +61,7 @@ class Conversation:
                 (persona.lower() == 'you' and len(transcript) > 1)
                 or (persona.lower() != 'you' and len(transcript) > 0)
                 )):
-            # popped_item = transcript.pop()
-            # print(f'Popped: {popped_item[0].strip()}')
+            transcript.pop()
 
         transcript.append((f"{persona}: [{text}]\n\n", time_spoken))
         # print(f'Adding: {persona}: [{text}]')
