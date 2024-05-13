@@ -3,6 +3,7 @@ openai-whisper==20231117
 Wave==0.0.2
 openai==1.17.1
 customtkinter==5.2.2
+tkinter-tooltip  # Needed to show tooltips for ctk components
 PyAudioWPatch==0.2.12.6
 pyperclip
 PyYAML
