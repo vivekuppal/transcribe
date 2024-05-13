@@ -225,13 +225,33 @@ class APIWhisperSTTModel(STTModelInterface):
         """
         Returns transcription from the response of transcription.
         """
-        # results['text'] = transcription text
-        # results['language'] = language of transcription
-        # results['segments'] = list of segments.
+        # response['text'] = transcription text
+        # response['language'] = language of transcription
+        # response['segments'] = list of segments.
+        # response['segments']['text'] = text of the segment.
+        # response['segments']['start'] = start time of segment.
+        # response['segments']['end'] = end time of segment.
         # Each segment is a dict
         #
-        # pprint.pprint(results)
+        # for segment in response['segments']:
+        #     start = str(datetime.timedelta(seconds=int(segment['start'])))
+        #     end = str(datetime.timedelta(seconds=int(segment['end'])))
+        #     print(f"{start} - {end}: {segment['text']}")
+        # pprint.pprint(response)
         return response.text.strip()
+
+    def get_sentences(self, wav_file_path) -> dict:
+        """Get transcription from the provided audio file as individual sentences
+        """
+        try:
+            with open(wav_file_path, "rb") as audio_file:
+                result = self.stt_client.audio.transcriptions.create(model='whisper-1', file=audio_file)
+        except Exception as exception:
+            print('Exception in transcribing audio using whisper API.')
+            print(exception)
+            return ''
+
+        return [result.text]
 
 
 class WhisperCPPSTTModel(STTModelInterface):
@@ -349,6 +369,41 @@ class DeepgramSTTModel(STTModelInterface):
                 deep_log.write(response.to_json(indent=4))
 
             return response
+        except Exception as exception:
+            print(exception)
+
+        return None
+
+    def get_sentences(self, wav_file_path: str):
+        """Get transcription from the provided audio file as individual sentences
+        """
+        try:
+            with open(wav_file_path, "rb") as audio_file:
+                buffer_data = audio_file.read()
+
+            payload: FileSource = {
+                "buffer": buffer_data
+                }
+
+            options = PrerecordedOptions(
+                model="nova",
+                smart_format=True,
+                utterances=True,
+                punctuate=True,
+                paragraphs=True,
+                detect_language=True)
+
+            response = self.audio_model.listen.prerecorded.v("1").transcribe_file(payload, options)
+            # This is not necessary and just a debugging aid
+            with open('logs/deep.json', mode='a', encoding='utf-8') as deep_log:
+                deep_log.write(response.to_json(indent=4))
+            results = []
+            for utterance in response.results.utterances:
+                start = str(datetime.timedelta(seconds=int(utterance['start'])))
+                end = str(datetime.timedelta(seconds=int(utterance['end'])))
+                results.append(f"{start} - {end} : {utterance['transcript']}")
+
+            return results
         except Exception as exception:
             print(exception)
 
