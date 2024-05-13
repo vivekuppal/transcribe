@@ -1,5 +1,6 @@
 import sys
 import os
+import datetime
 import json
 import subprocess
 from enum import Enum
@@ -61,6 +62,13 @@ class STTModelInterface:
         pass
 
     @abstractmethod
+    def get_sentences(self, wav_file_path: str):
+        """Get transcription from the provided audio file
+           as individual sentences
+        """
+        pass
+
+    @abstractmethod
     def process_response(self, response) -> str:
         """Extract transcription from the response of the specific STT Model
         """
@@ -115,6 +123,20 @@ class WhisperSTTModel(STTModelInterface):
             print('Could not find the correct model file')
             sys.exit()
 
+    def get_sentences(self, wav_file_path) -> dict:
+        """Get transcription from the provided audio file as individual sentences
+        """
+        result = self.audio_model.transcribe(wav_file_path,
+                                             fp16=False,
+                                             language=self.lang,
+                                             temperature=0)
+        sentences = []
+        for segment in result['segments']:
+            start = str(datetime.timedelta(seconds=int(segment['start'])))
+            end = str(datetime.timedelta(seconds=int(segment['end'])))
+            sentences.append(f"{start} - {end}: {segment['text']}")
+        return sentences
+
     def get_transcription(self, wav_file_path) -> dict:
         """Get transcription from the provided audio file
         """
@@ -149,12 +171,19 @@ class WhisperSTTModel(STTModelInterface):
         """
         Returns transcription from the response of transcription.
         """
-        # results['text'] = transcription text
-        # results['language'] = language of transcription
-        # results['segments'] = list of segments.
+        # response['text'] = transcription text
+        # response['language'] = language of transcription
+        # response['segments'] = list of segments.
+        # response['segments']['text'] = text of the segment.
+        # response['segments']['start'] = start time of segment.
+        # response['segments']['end'] = end time of segment.
         # Each segment is a dict
         #
-        # pprint.pprint(results)
+        # for segment in response['segments']:
+        #     start = str(datetime.timedelta(seconds=int(segment['start'])))
+        #     end = str(datetime.timedelta(seconds=int(segment['end'])))
+        #     print(f"{start} - {end}: {segment['text']}")
+        # pprint.pprint(response)
         return response['text'].strip()
 
 
