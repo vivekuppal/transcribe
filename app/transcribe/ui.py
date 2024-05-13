@@ -5,6 +5,7 @@ import tkinter as tk
 import webbrowser
 import pyperclip
 import customtkinter as ctk
+from tktooltip import ToolTip
 from audio_transcriber import AudioTranscriber
 import prompts
 from global_vars import TranscriptionGlobals, T_GLOBALS
@@ -497,9 +498,22 @@ def create_ui_components(root, config: dict):
         # Disable buttons that interact with backend services
         continuous_response_button.configure(state='disabled')
         response_now_button.configure(state='disabled')
-        continuous_response_button.configure(state='disabled')
         read_response_now_button.configure(state='disabled')
         summarize_button.configure(state='disabled')
+
+        # Add tooltip for disabled buttons
+        ToolTip(continuous_response_button, msg="Add API Key in override.yaml to enable button",
+                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                padx=7, pady=7)
+        ToolTip(response_now_button, msg="Add API Key in override.yaml to enable button",
+                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                padx=7, pady=7)
+        ToolTip(read_response_now_button, msg="Add API Key in override.yaml to enable button",
+                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                padx=7, pady=7)
+        ToolTip(summarize_button, msg="Add API Key in override.yaml to enable button",
+                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                padx=7, pady=7)
 
     def show_context_menu(event):
         try:
