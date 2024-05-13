@@ -501,17 +501,18 @@ def create_ui_components(root, config: dict):
         read_response_now_button.configure(state='disabled')
         summarize_button.configure(state='disabled')
 
+        tt_msg = 'Add API Key in override.yaml to enable button'
         # Add tooltip for disabled buttons
-        ToolTip(continuous_response_button, msg="Add API Key in override.yaml to enable button",
+        ToolTip(continuous_response_button, msg=tt_msg,
                 delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                 padx=7, pady=7)
-        ToolTip(response_now_button, msg="Add API Key in override.yaml to enable button",
+        ToolTip(response_now_button, msg=tt_msg,
                 delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                 padx=7, pady=7)
-        ToolTip(read_response_now_button, msg="Add API Key in override.yaml to enable button",
+        ToolTip(read_response_now_button, msg=tt_msg,
                 delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                 padx=7, pady=7)
-        ToolTip(summarize_button, msg="Add API Key in override.yaml to enable button",
+        ToolTip(summarize_button, msg=tt_msg,
                 delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                 padx=7, pady=7)
 
