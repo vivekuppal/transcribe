@@ -119,12 +119,12 @@ def handle_args_batch_tasks(args: argparse.Namespace, global_vars: Transcription
             if args.speech_to_text == 'whisper.cpp':
                 file_path = global_vars.transcriber.convert_wav_to_16khz_format(args.transcribe)
 
-            results = global_vars.transcriber.stt_model.get_transcription(file_path)
+            results = global_vars.transcriber.stt_model.get_sentences(file_path)
             # process_response can be improved to make the output more palatable to human reading
-            text = global_vars.transcriber.stt_model.process_response(results)
-            if results is not None and len(text) > 0:
+            if results is not None and len(results) > 0:
                 with open(safe_filename, encoding='utf-8', mode='w') as f:
-                    f.write(f"{text}\n")
+                    for sentence in results:
+                        f.write(f"{sentence.strip()}\n")
                 print('Complete!')
             else:
                 print('Error during Transcription!')
