@@ -15,6 +15,6 @@ OpenAI:
 ```
 
 Default `base_url` for OpenAI is `https://api.openai.com/v1`
-Default `ai_model` for OpenAI is `gpt-4`
+Default `ai_model` for OpenAI is `gpt-4o`
 
 Our users have found this to be very useful in countries like Australia and China, where they cannot access the default providers directly or it is cost prohibitive to access these providers.
