@@ -2,13 +2,15 @@ OpenAI:
   api_key: 'API_KEY'
   base_url: 'https://api.openai.com/v1'
 # Possible model values
+# gpt-4o, gpt-4o-2024-05-13
+# gpt-4-turbo, gpt-4-turbo-2024-04-09, gpt-4, gpt-4-0613, gpt-4-32k, gpt-4-32k-0613
 # gpt-3.5-turbo, gpt-3.5-turbo-16k, gpt-3.5-turbo-0613, gpt-3.5-turbo-16k-0613
-# gpt-4, gpt-4-0613, gpt-4-32k, gpt-4-32k-0613
+# 
 # Legacy models
 # text-davinci-003, text-davinci-002, code-davinci-002
 # See this link for available models
 # https://platform.openai.com/docs/models/continuous-model-upgrades
-  ai_model: gpt-4
+  ai_model: gpt-4o
 # Local model file to use for transcription.
 # Can also be specified using the -m parameter on command line of the application
   local_transcripton_model_file: 'base'
