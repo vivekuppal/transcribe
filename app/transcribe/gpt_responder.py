@@ -129,7 +129,8 @@ class GPTResponder:
                 # Update conversation with an empty response. This response will be updated
                 # by subsequent updates from the streaming response
                 self._update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                          response="  ", pop=False)
+                                          response="  ",
+                                          update_previous=False)
                 collected_messages = ""
                 for chunk in multi_turn_response:
                     chunk_message = chunk.choices[0].delta  # extract the message
@@ -138,7 +139,8 @@ class GPTResponder:
                         collected_messages += message_text
                         # print(f"{message_text}", end="")
                         self._update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                                  response=collected_messages, pop=True)
+                                                  response=collected_messages,
+                                                  update_previous=True)
 
         except Exception as exception:
             print('Error when attempting to get a response from LLM.')
@@ -220,7 +222,8 @@ class GPTResponder:
                 # Update conversation with an empty response. This response will be updated
                 # by subsequent updates from the streaming response
                 self._update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                          response="  ", pop=False)
+                                          response="  ",
+                                          update_previous=False)
                 collected_messages = ""
                 for chunk in llm_response:
                     chunk_message = chunk.choices[0].delta  # extract the message
@@ -229,7 +232,8 @@ class GPTResponder:
                         collected_messages += message_text
                         # print(f"{message_text}", end="")
                         self._update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                                  response=collected_messages, pop=True)
+                                                  response=collected_messages,
+                                                  update_previous=True)
 
         except Exception as exception:
             print('Error when attempting to get a response from LLM.')
@@ -246,7 +250,7 @@ class GPTResponder:
 
         return processed_response
 
-    def _update_conversation(self, response, persona, pop=False):
+    def _update_conversation(self, response, persona, update_previous=False):
         """Update the internaal conversation state"""
         root_logger.info(GPTResponder._update_conversation.__name__)
         if response != '':
@@ -254,7 +258,7 @@ class GPTResponder:
             self.conversation.update_conversation(persona=persona,
                                                   text=response,
                                                   time_spoken=datetime.datetime.utcnow(),
-                                                  pop=pop)
+                                                  update_previous=update_previous)
 
     def respond_to_transcriber(self, transcriber):
         """Thread method to continously update the transcript

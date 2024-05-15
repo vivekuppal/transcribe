@@ -162,10 +162,12 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                                                    file_path=path)
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
-                                                  text=first, pop=True)
+                                                  text=first,
+                                                  update_previous=True)
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
-                                                  text=second, pop=False)
+                                                  text=second,
+                                                  update_previous=False)
 
     @abstractmethod
     def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
@@ -343,7 +345,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         else:
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
-                                                  text=text, pop=True)
+                                                  text=text,
+                                                  update_previous=True)
 
     def get_transcript(self, length: int = 0):
         """Get the audio transcript

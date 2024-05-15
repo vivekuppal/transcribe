@@ -47,7 +47,10 @@ class Conversation:
         self.transcript_data[constants.PERSONA_ASSISTANT].clear()
         self.initialize_conversation()
 
-    def update_conversation(self, persona: str, text: str, time_spoken, pop: bool = False):
+    def update_conversation(self, persona: str,
+                            text: str,
+                            time_spoken,
+                            update_previous: bool = False):
         """Update conversation with new data
         Args:
         person: person this part of conversation is attributed to
@@ -69,20 +72,22 @@ class Conversation:
 
         # For persona you, we populate one item from parameters.yaml.
         # Hence do not delete the first item for persona == You
-        if (pop
+        if (update_previous
             and (
                 (persona.lower() == 'you' and len(transcript) > 1)
                 or (persona.lower() != 'you' and len(transcript) > 0)
                 )):
-            # TODO: If we are removing and adding, timestamp should be used for the previous one that we removed
-            transcript.pop()
-            # top = transcript.pop()
+            prev_element = transcript.pop()
+            # Use timestamp of previous element, since it is an update
+            time_spoken = prev_element[1]
             if self._initialized:
-                # print(f'Removed: {top}')
+                # Update DB
+                # print(f'Removed: {prev_element}')
                 # print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_object.update_conversation(inv_id, text, e)
         else:
             if self._initialized:
+                # Insert in DB
                 # print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_object.insert_conversation(inv_id, time_spoken, persona, text, e)
 

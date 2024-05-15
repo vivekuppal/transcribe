@@ -46,9 +46,9 @@ class ApplicationInvocations:
         """Create invocation table.
         """
         self._db_table = sqldb.Table(self._table_name, metadata,
-                                  sqldb.Column('Id', sqldb.Integer(), sqldb.Identity(start=1), primary_key=True, ),
-                                  sqldb.Column('StartTime', sqldb.Integer(), nullable=False, default=datetime.utcnow),
-                                  sqldb.Column('EndTime', sqldb.Integer(), nullable=True))
+                                     sqldb.Column('Id', sqldb.Integer(), sqldb.Identity(start=1), primary_key=True, ),
+                                     sqldb.Column('StartTime', sqldb.Integer(), nullable=False, default=datetime.utcnow),
+                                     sqldb.Column('EndTime', sqldb.Integer(), nullable=True))
 
         metadata.create_all(engine)
 

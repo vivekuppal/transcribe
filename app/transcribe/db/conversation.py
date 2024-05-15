@@ -71,7 +71,6 @@ class Conversations:
     def update_conversation(self, invocation_id, convo_text, engine):
         """Insert a conversation entry
         """
-        # Get max convo_id
         # print('DB Update conversation')
         try:
             with Session(engine) as session:
