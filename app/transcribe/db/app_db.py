@@ -66,12 +66,8 @@ class AppDB(Singleton.Singleton):
         db_logger.setLevel(db_logger_log_level)
 
         # Initialize all the tables
-        self._tables['ApplicationInvocations'] = appi.ApplicationInvocations(engine=self._engine,
-                                                                             connection=connection,
-                                                                             commit=False)
-        self._tables['Conversations'] = conversation.Conversations(db_context,
-                                                                   self._engine,
-                                                                   commit=False)
+        self._tables['ApplicationInvocations'] = appi.ApplicationInvocations(engine=self._engine)
+        self._tables['Conversations'] = conversation.Conversations(engine=self._engine)
         connection.commit()
         connection.close()
 
@@ -102,8 +98,4 @@ class AppDB(Singleton.Singleton):
         """Application shutdown
         """
         engine = db.create_engine(f'sqlite:///{self._db_context["db_file_path"]}')
-        # connection = engine.connect()
         self._tables['ApplicationInvocations'].populate_end_time(engine)
-        # Get the list of tuples that encapsulate the conversation
-        # data = []
-        # conversation.Conversations(engine, connection).save_conversations(engine, data)

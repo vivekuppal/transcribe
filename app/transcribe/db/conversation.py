@@ -28,16 +28,8 @@ class Conversations:
     """
     _table_name = TABLE_NAME
     _db_table = None
-    _engine = None
 
-    def __init__(self, db_context: dict, engine=None, commit: bool = True):
-        if engine is None:
-            if self._engine is None:
-                # db_context = DB_CONTEXT.get_context()
-                self._engine = sqldb.create_engine(f'sqlite:///{db_context["db_file_path"]}')
-            engine = self._engine
-        connection = engine.connect()
-
+    def __init__(self, engine):
         # Create table if it does not exist in DB
         try:
             metadata = sqldb.MetaData()
@@ -49,10 +41,10 @@ class Conversations:
             self.create_table(engine, metadata)
 
         self.populate_data()
-        if commit:
-            connection.commit()
 
     def create_table(self, engine: Engine, metadata):
+        """Create conversation table in DB.
+        """
         self._db_table = sqldb.Table(self._table_name, metadata,
                                      Column('Id', Integer(), sqldb.Identity(start=1), primary_key=True),
                                      Column("InvocationId", Integer, nullable=False),
@@ -81,72 +73,22 @@ class Conversations:
         """Insert a conversation entry
         """
         # Get max convo_id
-        print('DB Update conversation')
+        # print('DB Update conversation')
         try:
             with Session(engine) as session:
+                # Get row id we need to update
                 query = text(f'SELECT MAX(Id) from Conversations where InvocationId = {invocation_id}')
                 result = session.execute(query)
                 rows = result.fetchall()
                 convo_id = rows[0][0]
-                # get the id from above query
-                # stmt = update(self._db_table).where([{
-                #     'Id': convo_id, 'InvocationId': invocation_id}]).values([{
-                #         'Text': text}])
+
+                # Update the row
                 query = text(f'UPDATE Conversations SET Text = "{convo_text}" WHERE Id = {convo_id}')
-                # stmt = update(self._db_table).where(
-                #     Conversation.Id == convo_id
-                # ).values(
-                #     {"Text": convo_text}
-                # )
-
-            # stmt = insert(self._db_table).values([{
-            #     'InvocationId': invocation_id,
-            #     'SpokenTime': spoken_time,
-            #     'Speaker': speaker_name,
-            #     'Text': text}])
-
-            # with Session(engine) as session:
                 session.execute(query)
                 session.commit()
                 session.close()
         except Exception as ex:
             print(ex)
-
-    @staticmethod
-    def save_conversations(engine: Engine, data: list):
-        # InvocationId is the current invocation
-        # Data is a list of tuples.
-        # Each tuple is of the format (InvocationId, time in utc, speaker, Text)
-
-        # TODO: Will have to create engine here
-
-        # Get current invocation id
-        meta = sqldb.MetaData()
-        meta.reflect(engine)
-        convo_table = meta.tables['Conversations']
-
-        inv_id = 6
-
-        data = [(inv_id, datetime.utcnow(), 'You', 'Text 1'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 2'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 3'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 4'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 5'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 6'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 7'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 8'),
-                (inv_id, datetime.utcnow(), 'You', 'Text 9')]
-
-        stmt = insert(convo_table).values([{
-            'InvocationId': inv_id,
-            'SpokenTime': stime,
-            'Speaker': speaker,
-            'Text': text} for inv_id, stime, speaker, text in data])
-
-        with Session(engine) as session:
-            session.execute(stmt)
-            session.commit()
-            session.close()
 
     def populate_data(self):
         pass

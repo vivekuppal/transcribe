@@ -29,12 +29,11 @@ class ApplicationInvocations:
     _db_table = None
     _invocation_id: int = None
 
-    def __init__(self, engine, connection, commit: bool = True):
+    def __init__(self, engine):
         # Create table if it does not exist in DB
         try:
             metadata = db.MetaData()
             self._db_table = db.Table(self._table_name, metadata, autoload_with=engine)
-            # metadata.create_all(engine)
         except db.exc.NoSuchTableError:
             # If table does not exist, create the table
             self._db_table = None
@@ -42,8 +41,6 @@ class ApplicationInvocations:
             self.create_table(engine, metadata)
 
         self.populate_data()
-        if commit:
-            connection.commit()
 
     def create_table(self, engine, metadata):
         """Create invocation table.

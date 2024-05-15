@@ -75,14 +75,15 @@ class Conversation:
                 or (persona.lower() != 'you' and len(transcript) > 0)
                 )):
             # TODO: If we are removing and adding, timestamp should be used for the previous one that we removed
-            top = transcript.pop()
+            transcript.pop()
+            # top = transcript.pop()
             if self._initialized:
-                print(f'Removed: {top}')
-                print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
+                # print(f'Removed: {top}')
+                # print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_object.update_conversation(inv_id, text, e)
         else:
             if self._initialized:
-                print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
+                # print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_object.insert_conversation(inv_id, time_spoken, persona, text, e)
 
         new_element = f"{persona}: [{text}]\n\n"
