@@ -1,7 +1,7 @@
 from datetime import datetime
 import sqlalchemy as sqldb
 from sqlalchemy import Column, Integer, String, DateTime
-# from sqlalchemy.sql import text
+from sqlalchemy.sql import text
 from sqlalchemy.orm import Session, mapped_column
 from sqlalchemy import Engine, insert
 # from db import DB_CONTEXT
@@ -63,24 +63,54 @@ class Conversations:
 
         metadata.create_all(engine)
 
-    def insert_conversation(self, invocation_id, spoken_time, speaker_name, text, engine):
+    def insert_conversation(self, invocation_id, spoken_time, speaker_name, convo_text, engine):
         """Insert a conversation entry
         """
-        # TODO: How to get engine object, since it is called from app classes and not AppDB
-        # How to get invocation_id from AppDB
-        # Referencing AppDB class here results in circular dependency
-        # Referncing AppDB in app classes results in app classes aware of DB internals
-        # Get current application invocation id from AppDB class
         stmt = insert(self._db_table).values([{
             'InvocationId': invocation_id,
             'SpokenTime': spoken_time,
             'Speaker': speaker_name,
-            'Text': text}])
+            'Text': convo_text}])
 
         with Session(engine) as session:
             session.execute(stmt)
             session.commit()
             session.close()
+
+    def update_conversation(self, invocation_id, convo_text, engine):
+        """Insert a conversation entry
+        """
+        # Get max convo_id
+        print('DB Update conversation')
+        try:
+            with Session(engine) as session:
+                query = text(f'SELECT MAX(Id) from Conversations where InvocationId = {invocation_id}')
+                result = session.execute(query)
+                rows = result.fetchall()
+                convo_id = rows[0][0]
+                # get the id from above query
+                # stmt = update(self._db_table).where([{
+                #     'Id': convo_id, 'InvocationId': invocation_id}]).values([{
+                #         'Text': text}])
+                query = text(f'UPDATE Conversations SET Text = "{convo_text}" WHERE Id = {convo_id}')
+                # stmt = update(self._db_table).where(
+                #     Conversation.Id == convo_id
+                # ).values(
+                #     {"Text": convo_text}
+                # )
+
+            # stmt = insert(self._db_table).values([{
+            #     'InvocationId': invocation_id,
+            #     'SpokenTime': spoken_time,
+            #     'Speaker': speaker_name,
+            #     'Text': text}])
+
+            # with Session(engine) as session:
+                session.execute(query)
+                session.commit()
+                session.close()
+        except Exception as ex:
+            print(ex)
 
     @staticmethod
     def save_conversations(engine: Engine, data: list):

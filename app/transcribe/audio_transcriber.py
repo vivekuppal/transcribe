@@ -11,8 +11,7 @@ from abc import abstractmethod
 import wave
 import tempfile
 import pyaudiowpatch as pyaudio
-from db import AppDB as appdb
-from db import conversation as dbc
+# from db import AppDB as appdb
 sys.path.append('../..')
 import conversation  # noqa: E402 pylint: disable=C0413
 import constants  # noqa: E402 pylint: disable=C0413
@@ -341,12 +340,6 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
                                                   text=text)
-            # Save this phrase in DB
-            # Get conversation object from AppDB Object
-            inv_id = appdb().get_invocation_id()
-            e = appdb().get_engine()
-            convo_object = appdb().get_object('Conversations')
-            convo_object.insert_conversation(inv_id, time_spoken, who_spoke, text, e)
         else:
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,

@@ -2,6 +2,7 @@ import sys
 from heapq import merge
 import datetime
 import constants
+from db import AppDB as appdb
 sys.path.append('../..')
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
@@ -10,6 +11,7 @@ class Conversation:
     """Encapsulates the complete conversation.
     Has text from Speakers, Microphone, LLM, Instructions to LLM
     """
+    _initialized: bool = False
 
     def __init__(self):
         self.transcript_data = {constants.PERSONA_SYSTEM: [],
@@ -20,6 +22,8 @@ class Conversation:
         self.initialize_conversation()
 
     def initialize_conversation(self):
+        """Populate initial app data for conversation object
+        """
         self.config = configuration.Config().data
         prompt = self.config["General"]["system_prompt"]
         self.update_conversation(persona=constants.PERSONA_SYSTEM, text=prompt,
@@ -32,6 +36,7 @@ class Conversation:
             self.update_conversation(persona=role, text=content,
                                      time_spoken=datetime.datetime.utcnow())
         self.last_update: datetime.datetime = datetime.datetime.utcnow()
+        self._initialized = True
 
     def clear_conversation_data(self):
         """Clear all conversation data
@@ -49,7 +54,15 @@ class Conversation:
         text: Actual words
         time_spoken: Time at which conversation happened, this is typically reported in local time
         """
+
         transcript = self.transcript_data[persona]
+
+        # DB is not available at the time conversation object is being initialized.
+        if self._initialized:
+            inv_id = appdb().get_invocation_id()
+            e = appdb().get_engine()
+            convo_object = appdb().get_object('Conversations')
+
         # if (persona.lower() == 'assistant'):
         #     print(f'Assistant Transcript length to begin with: {len(transcript)}')
         #     print(f'append: {text}')
@@ -61,9 +74,20 @@ class Conversation:
                 (persona.lower() == 'you' and len(transcript) > 1)
                 or (persona.lower() != 'you' and len(transcript) > 0)
                 )):
-            transcript.pop()
+            # TODO: If we are removing and adding, timestamp should be used for the previous one that we removed
+            top = transcript.pop()
+            if self._initialized:
+                print(f'Removed: {top}')
+                print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
+                convo_object.update_conversation(inv_id, text, e)
+        else:
+            if self._initialized:
+                print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
+                convo_object.insert_conversation(inv_id, time_spoken, persona, text, e)
 
-        transcript.append((f"{persona}: [{text}]\n\n", time_spoken))
+        new_element = f"{persona}: [{text}]\n\n"
+        # print(f'Added: {time_spoken} - {new_element}')
+        transcript.append((new_element, time_spoken))
         # if (persona.lower() == 'assistant'):
         #    print(f'Assistant Transcript length after completion: {len(transcript)}')
         self.last_update = datetime.datetime.utcnow()
@@ -112,7 +136,7 @@ class Conversation:
         return sorted_transcript
 
     def get_merged_conversation_response(self, length: int = 0) -> list:
-        """Creates a prompt to be sent to LLM (OpenAI by default) to get 
+        """Creates a prompt to be sent to LLM (OpenAI by default) to get
            a contextual response.
            length: Get the last length elements from the audio transcript.
            Initial summary prompt is always part of the return value

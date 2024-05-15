@@ -22,9 +22,8 @@ def main():
     au.start_ffmpeg()
 
     # Initiate global variables
-    # Two calls to GlobalVars.TranscriptionGlobals is on purpose
     global_vars = T_GLOBALS
-    global_vars.convo = conversation.Conversation()
+    # global_vars.convo = conversation.Conversation()
 
     update_args_config(args, config)
     # Initiate DB
