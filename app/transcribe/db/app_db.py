@@ -1,17 +1,15 @@
 import sys
+import logging
 import db.app_invocations as appi
 from db import conversation
-import logging
-import sqlalchemy as db
+import sqlalchemy as sqldb
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session
 sys.path.append('../..')
 from tsutils import Singleton  # noqa: E402 pylint: disable=C0413
 
 # TO DO
 # Add another table to DB
 # Create a common base class for tables may be
-# Test with unicode to ensure that unicode strings can be saved in the conversation DB
 # Handle the case of clearing the conversation
 
 
@@ -27,7 +25,10 @@ class AppDB(Singleton.Singleton):
         adb.initialize_db(app_base_folder)
         adb.initialize_app()
     """
-    # Dictionary of Table name to Table object values
+    # Dictionary of Table name to Table objects
+    # Table objects are populated in InitializeDB method.
+    # No other class should instantiate any of the table objects, rather use the
+    # objects from AppDB class.
     _tables = {
         'ApplicationInvocations': None,
         'Conversations': None
@@ -52,7 +53,7 @@ class AppDB(Singleton.Singleton):
         # Create DB file if it does not exist
         # C:\....\transcribe\app\transcribe
         db_file_path = self._db_context["db_file_path"]
-        self._engine = db.create_engine(f'sqlite:///{db_file_path}')
+        self._engine = sqldb.create_engine(f'sqlite:///{db_file_path}')
         connection = self._engine.connect()
 
         # Initialize DB logger
@@ -79,7 +80,7 @@ class AppDB(Singleton.Singleton):
     def initialize_app(self):
         """Application initialization
         """
-        engine: Engine = db.create_engine(f'sqlite:///{self._db_context["db_file_path"]}')
+        engine: Engine = sqldb.create_engine(f'sqlite:///{self._db_context["db_file_path"]}')
         # Insert any necessary data in tables
         self._tables['ApplicationInvocations'].insert_start_time(engine=engine)
 
@@ -89,13 +90,17 @@ class AppDB(Singleton.Singleton):
         return self._tables['ApplicationInvocations'].get_invocation_id()
 
     def get_engine(self) -> Engine:
+        """Get DB Engine object
+        """
         return self._engine
 
     def get_object(self, name):
+        """Get corresponding table object
+        """
         return self._tables[name]
 
     def shutdown_app(self):
         """Application shutdown
         """
-        engine = db.create_engine(f'sqlite:///{self._db_context["db_file_path"]}')
+        engine = sqldb.create_engine(f'sqlite:///{self._db_context["db_file_path"]}')
         self._tables['ApplicationInvocations'].populate_end_time(engine)

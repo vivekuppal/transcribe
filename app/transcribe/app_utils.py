@@ -188,5 +188,4 @@ def create_transcriber(
 def shutdown(global_vars: TranscriptionGlobals):
     global_vars.user_audio_recorder.write_wav_data_to_file()
     global_vars.speaker_audio_recorder.write_wav_data_to_file()
-    # Grab all data from conversations and insert in Conversations Table
     AppDB().shutdown_app()

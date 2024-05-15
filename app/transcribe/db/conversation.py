@@ -1,4 +1,3 @@
-from datetime import datetime
 import sqlalchemy as sqldb
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import text

@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-import sqlalchemy as db
+import sqlalchemy as sqldb
 from sqlalchemy.sql import text
 from sqlalchemy.orm import Session, mapped_column, Mapped
 from sqlalchemy import Engine
@@ -32,9 +32,9 @@ class ApplicationInvocations:
     def __init__(self, engine):
         # Create table if it does not exist in DB
         try:
-            metadata = db.MetaData()
-            self._db_table = db.Table(self._table_name, metadata, autoload_with=engine)
-        except db.exc.NoSuchTableError:
+            metadata = sqldb.MetaData()
+            self._db_table = sqldb.Table(self._table_name, metadata, autoload_with=engine)
+        except sqldb.exc.NoSuchTableError:
             # If table does not exist, create the table
             self._db_table = None
             print(f'Table: {self._table_name} does not exist. Creating table.')
@@ -45,10 +45,10 @@ class ApplicationInvocations:
     def create_table(self, engine, metadata):
         """Create invocation table.
         """
-        self._db_table = db.Table(self._table_name, metadata,
-                                  db.Column('Id', db.Integer(), db.Identity(start=1), primary_key=True, ),
-                                  db.Column('StartTime', db.Integer(), nullable=False, default=datetime.utcnow),
-                                  db.Column('EndTime', db.Integer(), nullable=True))
+        self._db_table = sqldb.Table(self._table_name, metadata,
+                                  sqldb.Column('Id', sqldb.Integer(), sqldb.Identity(start=1), primary_key=True, ),
+                                  sqldb.Column('StartTime', sqldb.Integer(), nullable=False, default=datetime.utcnow),
+                                  sqldb.Column('EndTime', sqldb.Integer(), nullable=True))
 
         metadata.create_all(engine)
 
