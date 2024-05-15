@@ -792,7 +792,8 @@ class DeepgramTranscriber(AudioTranscriber):
             # Keep the last 2 paragraphs. Prune everything else
             num_paragraphs_to_keep = DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD
         else:
-            # print(f'Number of paras {num_paragraphs} less than or equal to threshold {DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD}. Skip pruning.')
+            # print(f'Number of paras {num_paragraphs} less than or equal to threshold '\
+            # '{DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD}. Skip pruning.')
             return [False, 0, 0]
 
         # determine prune percent based on how much speech we need to keep

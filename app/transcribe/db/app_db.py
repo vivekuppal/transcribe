@@ -8,8 +8,6 @@ sys.path.append('../..')
 from tsutils import Singleton  # noqa: E402 pylint: disable=C0413
 
 # TO DO
-# Add another table to DB
-# Create a common base class for tables may be
 # Handle the case of clearing the conversation
 
 
