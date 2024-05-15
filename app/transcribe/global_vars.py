@@ -20,7 +20,6 @@ class TranscriptionGlobals(Singleton.Singleton):
     """Global constants for audio processing. It is implemented as a Singleton class.
     """
 
-    current_folder: str = None
     audio_queue: queue.Queue = None
     user_audio_recorder: ar.MicRecorder = None
     speaker_audio_recorder: ar.SpeakerRecorder = None
@@ -42,6 +41,10 @@ class TranscriptionGlobals(Singleton.Singleton):
     start: datetime.datetime = None
     task_worker = None
     main_window = None
+    db_file_path: str = None
+    # Current working directory
+    current_working_dir: str = None
+    db_context: dict = None
 
     convo: conversation.Conversation = None
     _initialized: bool = None
@@ -63,13 +66,23 @@ class TranscriptionGlobals(Singleton.Singleton):
             'skip_zip_files': True
         }
         self.task_worker.add(**zip_params)
-        self.current_folder = os.path.dirname(os.path.realpath(__file__))
-        # print(f'Current folder is : {self.current_folder}')
+        self.current_working_dir = os.path.dirname(os.path.realpath(__file__))
+        # print(f'Current folder is : {self.current_working_dir}')
         # Ensure that vscode.env file is being read correctly
         # print(f'Env var is: {os.getenv("test_environment_variable")}')
+        self.db_file_path = self.current_working_dir + '/logs/app.db'
+        self.db_context = {}
+        self.db_context['db_file_path'] = self.db_file_path
+        self.db_context['current_working_dir'] = self.current_working_dir
+        self.db_context['db_log_file'] = f'{self.current_working_dir}/logs/db.log'
         self._initialized = True
 
+    def set_transcriber(self, transcriber):
+        self.transcriber = transcriber
+
     def initiate_audio_devices(self, config: dict):
+        """Initialize the necessary audio devices
+        """
         # Handle mic if it is not disabled in arguments or yaml file
         print('[INFO] Using default microphone.')
         self.user_audio_recorder = ar.MicRecorder(audio_file_name='mic.wav')
@@ -85,6 +98,8 @@ class TranscriptionGlobals(Singleton.Singleton):
             self.speaker_audio_recorder.set_device(index=int(config['General']['speaker_device_index']))
 
     def set_read_response(self, value: bool):
+        """Signal that the response will be read aloud
+        """
         self.read_response = value
         self.audio_player_var.read_response = value
 

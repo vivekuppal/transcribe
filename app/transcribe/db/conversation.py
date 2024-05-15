@@ -1,27 +1,26 @@
-from typing import Optional
 from datetime import datetime
 import sqlalchemy as sqldb
 from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.sql import text
+# from sqlalchemy.sql import text
 from sqlalchemy.orm import Session, mapped_column
 from sqlalchemy import Engine, insert
-from db import AppDBBase
+# from db import DB_CONTEXT
 
 TABLE_NAME = 'Conversations'
 
 
-class Conversation(AppDBBase):
+class Conversation():
     """One row in the Conversations Table"""
     __tablename__ = TABLE_NAME
 
-    Id = mapped_column(Integer, primary_key=True)
+    Id = mapped_column(Integer, primary_key=True, autoincrement=True)
     InvocationId = mapped_column(Integer, nullable=False)
     SpokenTime = mapped_column(DateTime, nullable=False)
     Speaker = mapped_column(String(40), nullable=False)
     Text = mapped_column(String, nullable=False)
 
     def __repr__(self) -> str:
-        return f"Invocation(id={self.id!r}, StartTime={self.StartTime!r}, EndTime={self.EndTime!r})"
+        return f"Invocation(id={self.Id!r}, SpokenTime={self.SpokenTime!r}, Speaker={self.Speaker!r}, Text={self.Text!r})"
 
 
 class Conversations:
@@ -29,8 +28,16 @@ class Conversations:
     """
     _table_name = TABLE_NAME
     _db_table = None
+    _engine = None
 
-    def __init__(self, engine, connection, commit: bool = True):
+    def __init__(self, db_context: dict, engine=None, commit: bool = True):
+        if engine is None:
+            if self._engine is None:
+                # db_context = DB_CONTEXT.get_context()
+                self._engine = sqldb.create_engine(f'sqlite:///{db_context["db_file_path"]}')
+            engine = self._engine
+        connection = engine.connect()
+
         # Create table if it does not exist in DB
         try:
             metadata = sqldb.MetaData()
@@ -56,9 +63,32 @@ class Conversations:
 
         metadata.create_all(engine)
 
-    def insert_conversations(self, engine: Engine):
+    def insert_conversation(self, invocation_id, spoken_time, speaker_name, text, engine):
+        """Insert a conversation entry
+        """
+        # TODO: How to get engine object, since it is called from app classes and not AppDB
+        # How to get invocation_id from AppDB
+        # Referencing AppDB class here results in circular dependency
+        # Referncing AppDB in app classes results in app classes aware of DB internals
+        # Get current application invocation id from AppDB class
+        stmt = insert(self._db_table).values([{
+            'InvocationId': invocation_id,
+            'SpokenTime': spoken_time,
+            'Speaker': speaker_name,
+            'Text': text}])
+
+        with Session(engine) as session:
+            session.execute(stmt)
+            session.commit()
+            session.close()
+
+    @staticmethod
+    def save_conversations(engine: Engine, data: list):
         # InvocationId is the current invocation
-        # Time, Speaker, Text has to be extracted from the conversation
+        # Data is a list of tuples.
+        # Each tuple is of the format (InvocationId, time in utc, speaker, Text)
+
+        # TODO: Will have to create engine here
 
         # Get current invocation id
         meta = sqldb.MetaData()

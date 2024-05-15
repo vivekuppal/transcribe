@@ -111,8 +111,8 @@ def start_ffmpeg():
 def initiate_db(global_vars: TranscriptionGlobals):
     # Create the DB if it does not exist and then init connections to it
     adb = AppDB()
-    adb.initialize_db(app_base_folder=global_vars.current_folder)
-    # Insert a row in ApplicationInvocations table
+    adb.initialize_db(db_context=global_vars.db_context)
+    # Do any application initialization activities
     adb.initialize_app()
 
 
@@ -132,7 +132,8 @@ def create_transcriber(
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.DEEPGRAM_API,
             stt_model_config=stt_model_config)
-        global_vars.transcriber = DeepgramTranscriber(
+
+        t = DeepgramTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -145,7 +146,7 @@ def create_transcriber(
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_CPP,
             stt_model_config=stt_model_config)
-        global_vars.transcriber = WhisperCPPTranscriber(
+        t = WhisperCPPTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -159,7 +160,7 @@ def create_transcriber(
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_LOCAL,
             stt_model_config=stt_model_config)
-        global_vars.transcriber = WhisperTranscriber(
+        t = WhisperTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -173,7 +174,7 @@ def create_transcriber(
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_API,
             stt_model_config=stt_model_config)
-        global_vars.transcriber = WhisperTranscriber(
+        t = WhisperTranscriber(
             global_vars.user_audio_recorder.source,
             global_vars.speaker_audio_recorder.source,
             model,
@@ -181,9 +182,11 @@ def create_transcriber(
             config=config)
     else:
         raise ValueError(f'Unknown transcriber: {name}')
+    global_vars.set_transcriber(t)
 
 
 def shutdown(global_vars: TranscriptionGlobals):
     global_vars.user_audio_recorder.write_wav_data_to_file()
     global_vars.speaker_audio_recorder.write_wav_data_to_file()
+    # Grab all data from conversations and insert in Conversations Table
     AppDB().shutdown_app()

@@ -1,25 +1,22 @@
 from typing import Optional
 from datetime import datetime
 import sqlalchemy as db
-from sqlalchemy import func
 from sqlalchemy.sql import text
-from sqlalchemy.orm import Session, mapped_column, relationship, Mapped
+from sqlalchemy.orm import Session, mapped_column, Mapped
 from sqlalchemy import Engine
-from db import AppDBBase
+# from db import AppDBBase
 
 TABLE_NAME = 'ApplicationInvocations'
 
 
-class Invocation(AppDBBase):
-    """One row in the ApplicationInvocations Table"""
+class Invocation():
+    """One row in the ApplicationInvocations Table
+    """
     __tablename__ = TABLE_NAME
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    Id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     StartTime: Mapped[datetime]
     EndTime: Mapped[Optional[datetime]]
-    # Id = mapped_column(Integer, primary_key=True)
-    # StartTime = mapped_column(DateTime)
-    # EndTime = mapped_column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
         return f"Invocation(id={self.Id!r}, StartTime={self.StartTime!r}, EndTime={self.EndTime!r})"
@@ -30,12 +27,14 @@ class ApplicationInvocations:
     """
     _table_name = TABLE_NAME
     _db_table = None
+    _invocation_id: int = None
 
     def __init__(self, engine, connection, commit: bool = True):
         # Create table if it does not exist in DB
         try:
             metadata = db.MetaData()
             self._db_table = db.Table(self._table_name, metadata, autoload_with=engine)
+            # metadata.create_all(engine)
         except db.exc.NoSuchTableError:
             # If table does not exist, create the table
             self._db_table = None
@@ -47,6 +46,8 @@ class ApplicationInvocations:
             connection.commit()
 
     def create_table(self, engine, metadata):
+        """Create invocation table.
+        """
         self._db_table = db.Table(self._table_name, metadata,
                                   db.Column('Id', db.Integer(), db.Identity(start=1), primary_key=True, ),
                                   db.Column('StartTime', db.Integer(), nullable=False, default=datetime.utcnow),
@@ -55,25 +56,33 @@ class ApplicationInvocations:
         metadata.create_all(engine)
 
     def insert_start_time(self, engine: Engine):
+        """Set the time application was started.
+        """
         try:
             query = text(f'INSERT INTO {self._table_name} (StartTime) VALUES("{datetime.utcnow()}")')
             with Session(engine) as session:
-                session.execute(query)
+                result = session.execute(query)
+                self._invocation_id = result.lastrowid
                 session.commit()
                 session.close()
         except Exception as ex:
             print(ex)
 
     def populate_end_time(self, engine):
+        """Set the time application was shutdown
+        """
         with Session(engine) as session:
-            row = session.query(Invocation.id, func.max(Invocation.id))
-            result = row.all()
-            # get the id from above query
-            row_id = result[0][0]
-            query = text(f'UPDATE {self._table_name} Set EndTime ="{datetime.utcnow()}" where id = {row_id}')
+            row_id = self.get_invocation_id(engine)
+            query = text(f'UPDATE {self._table_name} Set EndTime ="{datetime.utcnow()}" where Id = {row_id}')
             session.execute(query)
             session.commit()
             session.close()
+
+    def get_invocation_id(self) -> int:
+        """Get the invocation id of this instance of the application.
+           This id is constant for a specific run of the application.
+        """
+        return self._invocation_id
 
     def populate_data(self):
         pass
