@@ -94,6 +94,7 @@ class Conversation:
         new_element = f"{persona}: [{text}]\n\n"
         # print(f'Added: {time_spoken} - {new_element}')
         transcript.append((new_element, time_spoken))
+
         # if (persona.lower() == 'assistant'):
         #    print(f'Assistant Transcript length after completion: {len(transcript)}')
         self.last_update = datetime.datetime.utcnow()
