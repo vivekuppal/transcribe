@@ -72,7 +72,7 @@ class ApplicationInvocations:
         """Set the time application was shutdown
         """
         with Session(engine) as session:
-            row_id = self.get_invocation_id(engine)
+            row_id = self.get_invocation_id()
             query = text(f'UPDATE {self._table_name} Set EndTime ="{datetime.utcnow()}" where Id = {row_id}')
             session.execute(query)
             session.commit()
