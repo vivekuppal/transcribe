@@ -80,6 +80,9 @@ class Conversations:
                 rows = result.fetchall()
                 convo_id = rows[0][0]
 
+                if convo_id is None:
+                    return
+
                 # Update the row
                 query = text(f'UPDATE Conversations SET Text = "{convo_text}" WHERE Id = {convo_id}')
                 session.execute(query)

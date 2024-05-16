@@ -26,6 +26,10 @@ class Conversation:
         """
         self.config = configuration.Config().data
         prompt = self.config["General"]["system_prompt"]
+        response_lang = self.config["OpenAI"]["response_lang"]
+        if response_lang is not None:
+            prompt += f'.  Respond exclusively in {response_lang}.'
+
         self.update_conversation(persona=constants.PERSONA_SYSTEM, text=prompt,
                                  time_spoken=datetime.datetime.utcnow())
         initial_convo: dict = self.config["General"]["initial_convo"]

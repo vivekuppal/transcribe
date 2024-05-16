@@ -70,14 +70,15 @@ def main():
     update_interval_slider = ui_components[2]
     global_vars.update_interval_slider_label = ui_components[3]
     global_vars.freeze_button = ui_components[4]
-    lang_combobox = ui_components[5]
-    global_vars.filemenu = ui_components[6]
-    response_now_button = ui_components[7]
-    read_response_now_button = ui_components[8]
-    global_vars.editmenu = ui_components[9]
-    github_link = ui_components[10]
-    issue_link = ui_components[11]
-    summarize_button = ui_components[12]
+    audio_lang_combobox = ui_components[5]
+    response_lang_combobox = ui_components[6]
+    global_vars.filemenu = ui_components[7]
+    response_now_button = ui_components[8]
+    read_response_now_button = ui_components[9]
+    global_vars.editmenu = ui_components[10]
+    github_link = ui_components[11]
+    issue_link = ui_components[12]
+    summarize_button = ui_components[13]
 
     # disable speaker/microphone on startup
     if config['General']['disable_speaker']:
@@ -106,7 +107,8 @@ def main():
     update_interval_slider.configure(command=ui_cb.update_interval_slider_label)
     label_text = f'LLM Response interval: {int(update_interval_slider.get())} seconds'
     global_vars.update_interval_slider_label.configure(text=label_text)
-    lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
+    audio_lang_combobox.configure(command=ui_cb.set_audio_language)
+    response_lang_combobox.configure(command=ui_cb.set_response_language)
     global_vars.transcriber.stt_model.set_lang(config['OpenAI']['audio_lang'])
     github_link.bind('<Button-1>', lambda e:
                      ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))

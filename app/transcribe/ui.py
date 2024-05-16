@@ -14,6 +14,7 @@ import gpt_responder as gr
 from tsutils.language import LANGUAGES_DICT
 from tsutils import utilities
 from tsutils import app_logging as al
+from tsutils import configuration
 
 
 root_logger = al.get_logger()
@@ -228,6 +229,35 @@ class UICallbacks:
         with open(filename, mode='a', encoding='utf-8') as ui_file:
             ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
 
+    def set_audio_language(self, lang: str):
+        """Alter audio language in memory and persist it in config file
+        """
+        self.global_vars.transcriber.stt_model.set_lang(lang)
+        config_obj = configuration.Config()
+        # Save config
+        altered_config: dict = {'OpenAI': {'audio_lang': lang}}
+        config_obj.add_override_value(altered_config)
+
+    def set_response_language(self, lang: str):
+        """Alter response language in memory and persist it in config file
+        """
+        config_obj = configuration.Config()
+        altered_config: dict = {'OpenAI': {'response_lang': lang}}
+        # Save config
+        config_obj.add_override_value(altered_config)
+        config_data = config_obj.data
+
+        # Create a new system prompt
+        prompt = config_data["General"]["system_prompt"]
+        response_lang = config_data["OpenAI"]["response_lang"]
+        if response_lang is not None:
+            prompt += f'.  Respond exclusively in {response_lang}.'
+        convo = self.global_vars.convo
+        convo.update_conversation(persona=constants.PERSONA_SYSTEM,
+                                  text=prompt,
+                                  time_spoken=datetime.datetime.utcnow(),
+                                  update_previous=True)
+
     # def response_for_selected_text(self):
     #     """Get response from LLM for selected text"""
     #     selected_text = self.global_vars.transcript_textbox.selection_get()
@@ -436,50 +466,58 @@ def create_ui_components(root, config: dict):
 
     transcript_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
                                         text_color='#FFFCF2', wrap="word")
-    transcript_textbox.grid(row=0, column=0, padx=10, pady=20, sticky="nsew")
+    transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=20, sticky="nsew")
 
     response_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
                                       text_color='#639cdc', wrap="word")
-    response_textbox.grid(row=0, column=1, padx=10, pady=20, sticky="nsew")
+    response_textbox.grid(row=0, column=2, padx=10, pady=20, sticky="nsew")
     response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
 
     response_enabled = bool(config['General']['continuous_response'])
     b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
     continuous_response_button = ctk.CTkButton(root, text=b_text, command=None)
-    continuous_response_button.grid(row=1, column=1, padx=10, pady=3, sticky="nsew")
+    continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
 
     response_now_button = ctk.CTkButton(root, text="Suggest Response Now", command=None)
-    response_now_button.grid(row=2, column=1, padx=10, pady=3, sticky="nsew")
+    response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
 
     read_response_now_button = ctk.CTkButton(root, text="Suggest Response and Read", command=None)
-    read_response_now_button.grid(row=3, column=1, padx=10, pady=3, sticky="nsew")
+    read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
 
     summarize_button = ctk.CTkButton(root, text="Summarize", command=None)
-    summarize_button.grid(row=4, column=1, padx=10, pady=3, sticky="nsew")
+    summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
 
     update_interval_slider_label = ctk.CTkLabel(root, text="", font=("Arial", 12),
                                                 text_color="#FFFCF2")
-    update_interval_slider_label.grid(row=1, column=0, padx=10, pady=3, sticky="nsew")
+    update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
     update_interval_slider = ctk.CTkSlider(root, from_=1, to=30, width=300, height=20,
                                            number_of_steps=9)
     update_interval_slider.set(config['General']['llm_response_interval'])
-    update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+    update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
 
     audio_lang_label = ctk.CTkLabel(root, text="Audio Lang: ", font=("Arial", 12), text_color="#FFFCF2")
-    audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="wn")
+    audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="nw")
 
     audio_lang = config['OpenAI']['audio_lang']
-    lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
-    lang_combobox.set(audio_lang)
-    lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="n")
+    audio_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
+    audio_lang_combobox.set(audio_lang)
+    audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="ne")
+
+    response_lang_label = ctk.CTkLabel(root, text="Response Lang: ", font=("Arial", 12), text_color="#FFFCF2")
+    response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
+
+    response_lang = config['OpenAI']['response_lang']
+    response_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
+    response_lang_combobox.set(response_lang)
+    response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, sticky="ne")
 
     github_link = ctk.CTkLabel(root, text="Star the Github Repo",
                                text_color="#639cdc", cursor="hand2")
-    github_link.grid(row=4, column=0, padx=10, pady=10, sticky="wn")
+    github_link.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="wn")
 
     issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
-    issue_link.grid(row=4, column=0, padx=10, pady=10, sticky="n")
+    issue_link.grid(row=4, column=1, columnspan=2, padx=10, pady=10, sticky="nw")
 
     # Create right click menu for transcript textbox
     m = tk.Menu(root, tearoff=0)
@@ -535,6 +573,6 @@ def create_ui_components(root, config: dict):
     # Order of returned components is important.
     # Add new components to the end
     return [transcript_textbox, response_textbox, update_interval_slider,
-            update_interval_slider_label, continuous_response_button, lang_combobox,
-            filemenu, response_now_button, read_response_now_button, editmenu,
+            update_interval_slider_label, continuous_response_button, audio_lang_combobox,
+            response_lang_combobox, filemenu, response_now_button, read_response_now_button, editmenu,
             github_link, issue_link, summarize_button]

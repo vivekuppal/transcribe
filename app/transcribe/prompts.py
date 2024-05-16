@@ -19,6 +19,9 @@ def create_prompt_for_text(text: str, config: dict):
     complete_prompt = f'{config["General"]["default_prompt_preamble"]} '\
         f'{text}'\
         f'{config["General"]["default_prompt_epilogue"]}'
+    response_lang = config["OpenAI"]["response_lang"]
+    if response_lang is not None:
+        complete_prompt += f'.  Respond exclusively in {response_lang}.'
     messages = [{"role": "system", "content": complete_prompt}]
     return messages
 
