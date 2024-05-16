@@ -444,17 +444,10 @@ def create_ui_components(root, config: dict):
     # Add "Disable Microphone" menu item to file menu
     editmenu.add_command(label="Disable Microphone", command=lambda: ui_cb.enable_disable_microphone(editmenu))
 
-    # See example of add_radiobutton() at https://www.plus2net.com/python/tkinter-menu.php
-    # Radiobutton would be a good way to display different languages
-    # lang_menu = tk.Menu(menubar, tearoff=False)
-    # for lang in LANGUAGES_DICT.values():
-    #    model.change_lang
-    #    lang_menu.add_command(label=lang, command=model.change_lang)
-    # editmenu.add_cascade(menu=lang_menu, label='Languages')
-
     # Add the edit menu to the menu bar
     menubar.add_cascade(label="Edit", menu=editmenu)
 
+    # Create help menu, add items in help menu
     helpmenu = tk.Menu(menubar, tearoff=False)
     helpmenu.add_command(label="Github Repo", command=ui_cb.open_github)
     helpmenu.add_command(label="Star the Github repo", command=ui_cb.open_github)
@@ -466,35 +459,35 @@ def create_ui_components(root, config: dict):
 
     transcript_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
                                         text_color='#FFFCF2', wrap="word")
-    transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=20, sticky="nsew")
+    transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
     response_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
                                       text_color='#639cdc', wrap="word")
-    response_textbox.grid(row=0, column=2, padx=10, pady=20, sticky="nsew")
+    response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
     response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
 
     response_enabled = bool(config['General']['continuous_response'])
     b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
-    continuous_response_button = ctk.CTkButton(root, text=b_text, command=None)
+    continuous_response_button = ctk.CTkButton(root, text=b_text)
     continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
 
-    response_now_button = ctk.CTkButton(root, text="Suggest Response Now", command=None)
+    response_now_button = ctk.CTkButton(root, text="Suggest Response Now")
     response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
 
-    read_response_now_button = ctk.CTkButton(root, text="Suggest Response and Read", command=None)
+    read_response_now_button = ctk.CTkButton(root, text="Suggest Response and Read")
     read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
 
-    summarize_button = ctk.CTkButton(root, text="Summarize", command=None)
+    summarize_button = ctk.CTkButton(root, text="Summarize")
     summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
 
     update_interval_slider_label = ctk.CTkLabel(root, text="", font=("Arial", 12),
                                                 text_color="#FFFCF2")
     update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
-    update_interval_slider = ctk.CTkSlider(root, from_=1, to=30, width=300, height=20,
-                                           number_of_steps=9)
+    update_interval_slider = ctk.CTkSlider(root, from_=1, to=30, width=300,  # height=5,
+                                           number_of_steps=29)
     update_interval_slider.set(config['General']['llm_response_interval'])
-    update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+    update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
     audio_lang_label = ctk.CTkLabel(root, text="Audio Lang: ", font=("Arial", 12), text_color="#FFFCF2")
     audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="nw")
@@ -502,7 +495,7 @@ def create_ui_components(root, config: dict):
     audio_lang = config['OpenAI']['audio_lang']
     audio_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
     audio_lang_combobox.set(audio_lang)
-    audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="ne")
+    audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
 
     response_lang_label = ctk.CTkLabel(root, text="Response Lang: ", font=("Arial", 12), text_color="#FFFCF2")
     response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
@@ -510,14 +503,14 @@ def create_ui_components(root, config: dict):
     response_lang = config['OpenAI']['response_lang']
     response_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
     response_lang_combobox.set(response_lang)
-    response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, sticky="ne")
+    response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
 
     github_link = ctk.CTkLabel(root, text="Star the Github Repo",
                                text_color="#639cdc", cursor="hand2")
-    github_link.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="wn")
+    github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
 
     issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
-    issue_link.grid(row=4, column=1, columnspan=2, padx=10, pady=10, sticky="nw")
+    issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
 
     # Create right click menu for transcript textbox
     m = tk.Menu(root, tearoff=0)
@@ -573,6 +566,6 @@ def create_ui_components(root, config: dict):
     # Order of returned components is important.
     # Add new components to the end
     return [transcript_textbox, response_textbox, update_interval_slider,
-            update_interval_slider_label, continuous_response_button, audio_lang_combobox,
-            response_lang_combobox, filemenu, response_now_button, read_response_now_button, editmenu,
-            github_link, issue_link, summarize_button]
+            update_interval_slider_label, continuous_response_button,
+            audio_lang_combobox, response_lang_combobox, filemenu, response_now_button,
+            read_response_now_button, editmenu, github_link, issue_link, summarize_button]
