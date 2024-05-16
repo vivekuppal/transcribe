@@ -11,6 +11,7 @@ from abc import abstractmethod
 import wave
 import tempfile
 import pyaudiowpatch as pyaudio
+# from db import AppDB as appdb
 sys.path.append('../..')
 import conversation  # noqa: E402 pylint: disable=C0413
 import constants  # noqa: E402 pylint: disable=C0413
@@ -33,6 +34,7 @@ AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45
 
 
 class AudioTranscriber:   # pylint: disable=C0115, R0902
+
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
                  config: dict):
@@ -160,10 +162,12 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                                                    file_path=path)
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
-                                                  text=first, pop=True)
+                                                  text=first,
+                                                  update_previous=True)
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
-                                                  text=second, pop=False)
+                                                  text=second,
+                                                  update_previous=False)
 
     @abstractmethod
     def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
@@ -341,7 +345,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         else:
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
-                                                  text=text, pop=True)
+                                                  text=text,
+                                                  update_previous=True)
 
     def get_transcript(self, length: int = 0):
         """Get the audio transcript
@@ -787,7 +792,8 @@ class DeepgramTranscriber(AudioTranscriber):
             # Keep the last 2 paragraphs. Prune everything else
             num_paragraphs_to_keep = DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD
         else:
-            # print(f'Number of paras {num_paragraphs} less than or equal to threshold {DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD}. Skip pruning.')
+            # print(f'Number of paras {num_paragraphs} less than or equal to threshold '\
+            # '{DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD}. Skip pruning.')
             return [False, 0, 0]
 
         # determine prune percent based on how much speech we need to keep

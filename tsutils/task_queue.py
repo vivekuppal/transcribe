@@ -9,6 +9,7 @@ class TaskQueueEnum(Enum):
     """Type of tasks that can be put in task queue
     """
     ZIP_TASK = 1
+    DB_CLEAN = 2
 
 
 class TaskQueue:
@@ -24,7 +25,7 @@ class TaskQueue:
     def task_exec_thread(self):
         while True:
             # Wait atleast 20s between two tasks
-            time.sleep(5)
+            time.sleep(20)
             queue_item = self.task_list.get()
             try:
                 task_type = queue_item['task_type']

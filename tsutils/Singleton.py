@@ -1,5 +1,5 @@
 class Singleton(object):
-    """ Restricts the instantiation of this class and all its derived classes 
+    """ Restricts the instantiation of this class and all its derived classes
     to a singular instance.
     """
     _instance = None

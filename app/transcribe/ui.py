@@ -18,7 +18,9 @@ from tsutils import app_logging as al
 
 root_logger = al.get_logger()
 UI_FONT_SIZE = 20
-last_transcript_ui_update_time: datetime.datetime = datetime.datetime.utcnow()
+# Order of initialization can be unpredictable in python based on where imports are placed.
+# Setting it to None so comparison is deterministic in update_transcript_ui method
+last_transcript_ui_update_time: datetime.datetime = None
 global_vars_module: TranscriptionGlobals = T_GLOBALS
 pop_up = None
 
@@ -321,7 +323,8 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
     if global_vars_module is None:
         global_vars_module = TranscriptionGlobals()
 
-    if last_transcript_ui_update_time < global_vars_module.convo.last_update:
+    # None comparison is for initialization
+    if last_transcript_ui_update_time is None or last_transcript_ui_update_time < global_vars_module.convo.last_update:
         transcript_string = transcriber.get_transcript()
         write_in_textbox(textbox, transcript_string)
         textbox.see("end")

@@ -1,11 +1,16 @@
 # import pprint
 from global_vars import TranscriptionGlobals, T_GLOBALS
 
-
+# TODO: Welcome string needs to be moved to parameters.yaml file, so it can be localized for different languages
 INITIAL_RESPONSE = '👋 Welcome to Transcribe 🤝'
+# INITIAL_RESPONSE = '👋欢迎转录🤝'
 global_vars_module: TranscriptionGlobals = T_GLOBALS
 
 
+# TODO:
+# This is used only in case of selected text.
+# This needs to change to be similar to multiturn prompt in that it
+# uses initial_convo: first, second from parameters.yaml file
 def create_prompt_for_text(text: str, config: dict):
     """Get a prompt for the selected text
     """
