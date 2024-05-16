@@ -47,7 +47,8 @@ class UICallbacks:
            Does not include responses from assistant.
         """
         root_logger.info(UICallbacks.save_file.__name__)
-        filename = ctk.filedialog.asksaveasfilename(defaultextension='.txt', title='Save Transcription',
+        filename = ctk.filedialog.asksaveasfilename(defaultextension='.txt',
+                                                    title='Save Transcription',
                                                     filetypes=[("Text Files", "*.txt")])
         self.capture_action(f'Save transcript to file:{filename}')
         if filename == '':
@@ -170,7 +171,8 @@ class UICallbacks:
 
             pop_up = None
         if summary is None:
-            popup_msg_close_button(title='Summary', msg='Failed to get summary. Please check you have a valid API key.')
+            popup_msg_close_button(title='Summary',
+                                   msg='Failed to get summary. Please check you have a valid API key.')
             return
         # Enhancement here would be to get a streaming summary
         popup_msg_close_button(title='Summary', msg=summary)
@@ -257,11 +259,6 @@ class UICallbacks:
                                   text=prompt,
                                   time_spoken=datetime.datetime.utcnow(),
                                   update_previous=True)
-
-    # def response_for_selected_text(self):
-    #     """Get response from LLM for selected text"""
-    #     selected_text = self.global_vars.transcript_textbox.selection_get()
-    #     print(selected_text)
 
 
 def popup_msg_no_close_threaded(title, msg):
@@ -457,10 +454,12 @@ def create_ui_components(root, config: dict):
     # Add the menu bar to the main window
     root.config(menu=menubar)
 
+    # Speech to Text textbox
     transcript_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
                                         text_color='#FFFCF2', wrap="word")
     transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
+    # LLM Response textbox
     response_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
                                       text_color='#639cdc', wrap="word")
     response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
@@ -480,6 +479,7 @@ def create_ui_components(root, config: dict):
     summarize_button = ctk.CTkButton(root, text="Summarize")
     summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
 
+    # Continuous LLM Response label, and slider
     update_interval_slider_label = ctk.CTkLabel(root, text="", font=("Arial", 12),
                                                 text_color="#FFFCF2")
     update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
@@ -489,7 +489,10 @@ def create_ui_components(root, config: dict):
     update_interval_slider.set(config['General']['llm_response_interval'])
     update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
-    audio_lang_label = ctk.CTkLabel(root, text="Audio Lang: ", font=("Arial", 12), text_color="#FFFCF2")
+    # Speech to text language selection label, dropdown
+    audio_lang_label = ctk.CTkLabel(root, text="Audio Lang: ",
+                                    font=("Arial", 12),
+                                    text_color="#FFFCF2")
     audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="nw")
 
     audio_lang = config['OpenAI']['audio_lang']
@@ -497,7 +500,10 @@ def create_ui_components(root, config: dict):
     audio_lang_combobox.set(audio_lang)
     audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
 
-    response_lang_label = ctk.CTkLabel(root, text="Response Lang: ", font=("Arial", 12), text_color="#FFFCF2")
+    # LLM Response language selection label, dropdown
+    response_lang_label = ctk.CTkLabel(root,
+                                       text="Response Lang: ",
+                                       font=("Arial", 12), text_color="#FFFCF2")
     response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
 
     response_lang = config['OpenAI']['response_lang']
@@ -512,7 +518,8 @@ def create_ui_components(root, config: dict):
     issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
     issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
 
-    # Create right click menu for transcript textbox
+    # Create right click menu for transcript textbox.
+    # This displays only inside the speech to text textbox
     m = tk.Menu(root, tearoff=0)
     m.add_command(label="Generate response for selected text",
                   command=ui_cb.get_response_selected_now)
@@ -541,7 +548,7 @@ def create_ui_components(root, config: dict):
         summarize_button.configure(state='disabled')
 
         tt_msg = 'Add API Key in override.yaml to enable button'
-        # Add tooltip for disabled buttons
+        # Add tooltips for disabled buttons
         ToolTip(continuous_response_button, msg=tt_msg,
                 delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                 padx=7, pady=7)

@@ -109,6 +109,7 @@ def main():
     global_vars.update_interval_slider_label.configure(text=label_text)
     audio_lang_combobox.configure(command=ui_cb.set_audio_language)
     response_lang_combobox.configure(command=ui_cb.set_response_language)
+    # Set the response lang in STT Model.
     global_vars.transcriber.stt_model.set_lang(config['OpenAI']['audio_lang'])
     github_link.bind('<Button-1>', lambda e:
                      ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))

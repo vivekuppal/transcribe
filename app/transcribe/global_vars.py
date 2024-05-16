@@ -1,3 +1,5 @@
+"""Global context for the application
+"""
 import sys
 import os
 import queue
@@ -78,6 +80,8 @@ class TranscriptionGlobals(Singleton.Singleton):
         self._initialized = True
 
     def set_transcriber(self, transcriber):
+        """Set Transcriber to be used across the application.
+        """
         self.transcriber = transcriber
 
     def initiate_audio_devices(self, config: dict):
@@ -95,7 +99,8 @@ class TranscriptionGlobals(Singleton.Singleton):
         self.speaker_audio_recorder = ar.SpeakerRecorder(audio_file_name='speaker.wav')
         if not config['General']['disable_speaker'] and config['General']['speaker_device_index'] != -1:
             print('[INFO] Override default speaker with device specified in parameters file.')
-            self.speaker_audio_recorder.set_device(index=int(config['General']['speaker_device_index']))
+            self.speaker_audio_recorder.set_device(index=int(
+                config['General']['speaker_device_index']))
 
     def set_read_response(self, value: bool):
         """Signal that the response will be read aloud
