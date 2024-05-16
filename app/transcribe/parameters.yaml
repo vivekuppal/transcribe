@@ -18,6 +18,8 @@ OpenAI:
 # List of languages available for openAI is available at
 # https://platform.openai.com/docs/guides/speech-to-text/supported-languages
   response_lang: English
+# Interpret the audio from speakers, mic to be in this language
+  audio_lang: English
 
 # Request timeout for any response requests made to openAI API
   response_request_timeout_seconds: 10
@@ -77,7 +79,7 @@ General:
   stt: whisper
   continuous_response: True
   # The interval at which to ping the LLM for response
-  response_interval: 10
+  llm_response_interval: 10
 
 # This is equivalent to -c argument on command line
 # Command line argument takes precedence over value specified in parameters.yaml

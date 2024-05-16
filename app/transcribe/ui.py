@@ -461,20 +461,25 @@ def create_ui_components(root, config: dict):
                                                 text_color="#FFFCF2")
     update_interval_slider_label.grid(row=1, column=0, padx=10, pady=3, sticky="nsew")
 
-    update_interval_slider = ctk.CTkSlider(root, from_=1, to=10, width=300, height=20,
+    update_interval_slider = ctk.CTkSlider(root, from_=1, to=30, width=300, height=20,
                                            number_of_steps=9)
-    update_interval_slider.set(config['General']['response_interval'])
+    update_interval_slider.set(config['General']['llm_response_interval'])
     update_interval_slider.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
+    audio_lang_label = ctk.CTkLabel(root, text="Audio Lang: ", font=("Arial", 12), text_color="#FFFCF2")
+    audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="wn")
+
+    audio_lang = config['OpenAI']['audio_lang']
     lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
-    lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="wn")
+    lang_combobox.set(audio_lang)
+    lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, sticky="n")
 
     github_link = ctk.CTkLabel(root, text="Star the Github Repo",
                                text_color="#639cdc", cursor="hand2")
-    github_link.grid(row=3, column=0, padx=10, pady=10, sticky="n")
+    github_link.grid(row=4, column=0, padx=10, pady=10, sticky="wn")
 
     issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
-    issue_link.grid(row=3, column=0, padx=10, pady=10, sticky="en")
+    issue_link.grid(row=4, column=0, padx=10, pady=10, sticky="n")
 
     # Create right click menu for transcript textbox
     m = tk.Menu(root, tearoff=0)

@@ -107,6 +107,7 @@ def main():
     label_text = f'LLM Response interval: {int(update_interval_slider.get())} seconds'
     global_vars.update_interval_slider_label.configure(text=label_text)
     lang_combobox.configure(command=global_vars.transcriber.stt_model.set_lang)
+    global_vars.transcriber.stt_model.set_lang(config['OpenAI']['audio_lang'])
     github_link.bind('<Button-1>', lambda e:
                      ui_cb.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
     issue_link.bind('<Button-1>', lambda e: ui_cb.open_link(
