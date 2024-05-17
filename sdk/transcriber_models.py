@@ -59,20 +59,20 @@ class STTModelInterface:
     def get_transcription(self, wav_file_path: str):
         """Get transcription from the provided audio file
         """
-        pass
+        pass  # pylint: disable=W0107
 
     @abstractmethod
     def get_sentences(self, wav_file_path: str):
         """Get transcription from the provided audio file
            as individual sentences
         """
-        pass
+        pass  # pylint: disable=W0107
 
     @abstractmethod
     def process_response(self, response) -> str:
         """Extract transcription from the response of the specific STT Model
         """
-        pass
+        pass  # pylint: disable=W0107
 
 
 class WhisperSTTModel(STTModelInterface):
@@ -322,6 +322,11 @@ class WhisperCPPSTTModel(STTModelInterface):
             text += segment["text"]
         # print(f'Transcript: {text}')
         return text
+
+    def get_sentences(self, wav_file_path: str):
+        """Not Implemented
+        """
+        raise Exception('Method not implemnted')  # pylint: disable=W0719
 
 
 class DeepgramSTTModel(STTModelInterface):

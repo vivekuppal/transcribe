@@ -36,7 +36,7 @@ class GPTResponder:
         root_logger.info(GPTResponder.__name__)
         # This var is used by UI to populate the response textbox
         self.response = prompts.INITIAL_RESPONSE
-        self.response_interval = 2
+        self.llm_response_interval = 2
         self.conversation = convo
         self.config = config
         self.save_response_to_file = save_to_file
@@ -278,17 +278,17 @@ class GPTResponder:
                 end_time = time.time()  # Measure end time
                 execution_time = end_time - start_time  # Calculate time to execute the function
 
-                remaining_time = self.response_interval - execution_time
+                remaining_time = self.llm_response_interval - execution_time
                 if remaining_time > 0:
                     time.sleep(remaining_time)
             else:
-                time.sleep(self.response_interval)
+                time.sleep(self.llm_response_interval)
 
     def update_response_interval(self, interval):
         """Change the interval for pinging LLM
         """
         root_logger.info(GPTResponder.update_response_interval.__name__)
-        self.response_interval = interval
+        self.llm_response_interval = interval
 
     def _pretty_print_openai_request(self, message: str):
         """Format the openAI request in a nice print format"""

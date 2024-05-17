@@ -1,3 +1,5 @@
+"""Utility methods to support main.py file
+"""
 import sys
 import subprocess  # nosec
 import threading
@@ -109,6 +111,8 @@ def start_ffmpeg():
 
 
 def initiate_db(global_vars: TranscriptionGlobals):
+    """Set up DB for use by application.
+    """
     # Create the DB if it does not exist and then init connections to it
     adb = AppDB()
     adb.initialize_db(db_context=global_vars.db_context)
@@ -186,6 +190,8 @@ def create_transcriber(
 
 
 def shutdown(global_vars: TranscriptionGlobals):
+    """Activities to be performed right before application shutdown.
+    """
     global_vars.user_audio_recorder.write_wav_data_to_file()
     global_vars.speaker_audio_recorder.write_wav_data_to_file()
     AppDB().shutdown_app()

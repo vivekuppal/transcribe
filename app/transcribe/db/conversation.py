@@ -3,7 +3,6 @@ from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import text
 from sqlalchemy.orm import Session, mapped_column
 from sqlalchemy import Engine, insert
-# from db import DB_CONTEXT
 
 TABLE_NAME = 'Conversations'
 
@@ -19,7 +18,8 @@ class Conversation():
     Text = mapped_column(String, nullable=False)
 
     def __repr__(self) -> str:
-        return f"Invocation(id={self.Id!r}, SpokenTime={self.SpokenTime!r}, Speaker={self.Speaker!r}, Text={self.Text!r})"
+        return f"Invocation(id={self.Id!r}, SpokenTime={self.SpokenTime!r}," \
+               f"Speaker={self.Speaker!r}, Text={self.Text!r})"
 
 
 class Conversations:
@@ -45,7 +45,8 @@ class Conversations:
         """Create conversation table in DB.
         """
         self._db_table = sqldb.Table(self._table_name, metadata,
-                                     Column('Id', Integer(), sqldb.Identity(start=1), primary_key=True),
+                                     Column('Id', Integer(), sqldb.Identity(start=1),
+                                            primary_key=True),
                                      Column("InvocationId", Integer, nullable=False),
                                      Column('SpokenTime', sqldb.Integer(), nullable=False),
                                      Column('Speaker', String(40), nullable=False),
@@ -75,13 +76,20 @@ class Conversations:
         try:
             with Session(engine) as session:
                 # Get row id we need to update
-                query = text(f'SELECT MAX(Id) from Conversations where InvocationId = {invocation_id}')
+                query = text(f'SELECT MAX(Id) '
+                             f'FROM Conversations '
+                             f'WHERE InvocationId = {invocation_id}')
                 result = session.execute(query)
                 rows = result.fetchall()
                 convo_id = rows[0][0]
 
+                if convo_id is None:
+                    return
+
                 # Update the row
-                query = text(f'UPDATE Conversations SET Text = "{convo_text}" WHERE Id = {convo_id}')
+                query = text(f'UPDATE Conversations '
+                             f'SET Text = "{convo_text}" '
+                             f'WHERE Id = {convo_id}')
                 session.execute(query)
                 session.commit()
                 session.close()
@@ -89,4 +97,6 @@ class Conversations:
             print(ex)
 
     def populate_data(self):
-        pass
+        """Not Implemented
+        """
+        pass   # pylint: disable=W0107

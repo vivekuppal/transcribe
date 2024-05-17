@@ -22,7 +22,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
 ## Why Transcribe over other Speech to Text apps ##
 - Use Most of the functionality for **FREE**
 - Multi Lingual support
-- Choose between GPT 4.0, 3.5 or other inference models from OpenAI, or a plethora of inference models from [Together](https://docs.together.ai/docs/inference-models)
+- Choose between GPT 4o, 4, 3.5 or other inference models from OpenAI, or a plethora of inference models from [Together](https://docs.together.ai/docs/inference-models)
 - Streaming fast LLM responses instead of waiting for a complete response
 - Upto date with the latest OpenAI libraries
 - Get LLM responses for selected text

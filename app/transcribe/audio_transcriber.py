@@ -1,3 +1,5 @@
+"""Encapsulates all Speech to Text functionality
+"""
 import sys
 import os
 import subprocess  # nosec
@@ -12,9 +14,9 @@ import wave
 import tempfile
 import pyaudiowpatch as pyaudio
 # from db import AppDB as appdb
-sys.path.append('../..')
 import conversation  # noqa: E402 pylint: disable=C0413
 import constants  # noqa: E402 pylint: disable=C0413
+sys.path.append('../..')
 import custom_speech_recognition as sr  # noqa: E402 pylint: disable=C0413
 from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
 from tsutils import duration  # noqa: E402 pylint: disable=C0413
@@ -93,6 +95,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         self.conversation = convo
 
     def set_source_properties(self, mic_source=None, speaker_source=None):
+        """Resets the audio source properties stored in internal data structures.
+        """
         if mic_source is not None:
             self.audio_sources_properties['You']['sample_rate'] = mic_source.SAMPLE_RATE
             self.audio_sources_properties['You']['sample_width'] = mic_source.SAMPLE_WIDTH
@@ -191,7 +195,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         in format of results. It is implemented in each transcriber specific class.
         """
 
-    def write_wav_data_to_file(self, data, channels, sample_width, frame_rate, file_path='', ) -> str:
+    def write_wav_data_to_file(self, data, channels,
+                               sample_width, frame_rate, file_path='', ) -> str:
         """Write the data as a wave file
         """
         if file_path == '':
@@ -443,8 +448,9 @@ class WhisperTranscriber(AudioTranscriber):
         # print(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
 
         if len_segments > WHISPER_SEGMENT_PRUNE_THRESHOLD:
-            # print(f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.')
-            root_logger.info(f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.')
+            log_msg = f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.'
+            # print(log_msg)
+            root_logger.info(log_msg)
         else:
             # print(f'Segments: {len_segments}. Skip pruning.')
             return (False, 0, 0)
@@ -474,7 +480,8 @@ class WhisperTranscriber(AudioTranscriber):
 
         if prune_percent == 0:
             root_logger.info(f'Total segments ({len_segments}) is more than prune threshold'
-                             f' ({WHISPER_SEGMENT_PRUNE_THRESHOLD}), but could not find segment endings.')
+                             f' ({WHISPER_SEGMENT_PRUNE_THRESHOLD}), but could not find'
+                             f' segment endings.')
 
             # Attempt to determine prune percent based on audio duration
             if original_duration > AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS:
@@ -631,8 +638,9 @@ class WhisperCPPTranscriber(AudioTranscriber):
         # print(f'Segments: {len_segments}. Speech length: {len_speech_ms} milliseconds.')
 
         if len_segments > WHISPERCPP_SEGMENT_PRUNE_THRESHOLD:
-            # print(f'Attempt Prune segments: {len_segments - WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}.')
-            root_logger.info(f'Attempt Prune segments: {len_segments - WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}.')
+            log_msg = f'Attempt Prune segments: {len_segments-WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}.'
+            # print(log_msg)
+            root_logger.info(log_msg)
         else:
             # print(f'Segments: {len_segments}. Skip pruning.')
             return (False, 0, 0)
@@ -659,7 +667,8 @@ class WhisperCPPTranscriber(AudioTranscriber):
 
         if prune_percent == 0:
             root_logger.info(f'Total segments ({len_segments}) is more than prune threshold'
-                             f' ({WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}), but could not find segment endings.')
+                             f' ({WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}), but could not find'
+                             f' segment endings.')
 
             segment_id = 0
             # Attempt to determine prune percent based on audio duration
@@ -800,7 +809,8 @@ class DeepgramTranscriber(AudioTranscriber):
         # First paragraph we will keep is
         beginning_para = para_list[-DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD]
         start_time = float(beginning_para.sentences[0].start)
-        # print(f"First para to keep, start time: {start_time}. Para text: {beginning_para['sentences'][0]['text']}.")
+        # print(f"First para to keep, start time: {start_time}.")
+        # print(f"Para text: {beginning_para['sentences'][0]['text']}.")
         prune_percent = start_time / speech_duration
 
         # Incorporate AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS into pruning calculations

@@ -56,7 +56,7 @@ class AppDB(Singleton.Singleton):
 
         # Initialize DB logger
         db_log_file_name = f'{self._db_context["db_log_file"]}'
-        db_handler = logging.FileHandler(db_log_file_name)
+        db_handler = logging.FileHandler(db_log_file_name, encoding='utf-8')
         db_logger = logging.getLogger('sqlalchemy')
         db_handler_log_level = logging.INFO
         db_logger_log_level = logging.DEBUG
