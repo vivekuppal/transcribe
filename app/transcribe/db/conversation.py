@@ -1,6 +1,6 @@
 import sqlalchemy as sqldb
 from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.sql import text
+from sqlalchemy.sql import update
 from sqlalchemy.orm import Session, mapped_column
 from sqlalchemy import Engine, insert
 
@@ -28,7 +28,7 @@ class Conversations:
     _table_name = TABLE_NAME
     _db_table = None
 
-    def __init__(self, engine):
+    def __init__(self, engine: Engine):
         # Create table if it does not exist in DB
         try:
             metadata = sqldb.MetaData()
@@ -55,7 +55,10 @@ class Conversations:
 
         metadata.create_all(engine)
 
-    def insert_conversation(self, invocation_id, spoken_time, speaker_name, convo_text, engine):
+    def insert_conversation(self, invocation_id: int,
+                            spoken_time,
+                            speaker_name: str, convo_text: str,
+                            engine: Engine):
         """Insert a conversation entry
         """
         stmt = insert(self._db_table).values([{
@@ -69,28 +72,24 @@ class Conversations:
             session.commit()
             session.close()
 
-    def update_conversation(self, invocation_id, convo_text, engine):
+    def update_conversation(self,
+                            invocation_id: int,
+                            conversation_id: int,
+                            convo_text: str,
+                            engine: Engine):
         """Insert a conversation entry
         """
         # print('DB Update conversation')
+        if conversation_id is None:
+            return
+
         try:
             with Session(engine) as session:
-                # Get row id we need to update
-                query = text(f'SELECT MAX(Id) '
-                             f'FROM Conversations '
-                             f'WHERE InvocationId = {invocation_id}')
-                result = session.execute(query)
-                rows = result.fetchall()
-                convo_id = rows[0][0]
+                stmt = update(self._db_table).where(
+                    self._db_table.c['Id'] == invocation_id).values(
+                        Text=convo_text)
 
-                if convo_id is None:
-                    return
-
-                # Update the row
-                query = text(f'UPDATE Conversations '
-                             f'SET Text = "{convo_text}" '
-                             f'WHERE Id = {convo_id}')
-                session.execute(query)
+                session.execute(stmt)
                 session.commit()
                 session.close()
         except Exception as ex:

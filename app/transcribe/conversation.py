@@ -67,8 +67,9 @@ class Conversation:
         # DB is not available at the time conversation object is being initialized.
         if self._initialized:
             inv_id = appdb().get_invocation_id()
-            e = appdb().get_engine()
+            engine = appdb().get_engine()
             convo_object = appdb().get_object('Conversations')
+            convo_id = appdb().get_invocation_id()
 
         # if (persona.lower() == 'assistant'):
         #     print(f'Assistant Transcript length to begin with: {len(transcript)}')
@@ -88,12 +89,12 @@ class Conversation:
                 # Update DB
                 # print(f'Removed: {prev_element}')
                 # print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
-                convo_object.update_conversation(inv_id, text, e)
+                convo_object.update_conversation(inv_id, convo_id, text, engine)
         else:
             if self._initialized:
                 # Insert in DB
                 # print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
-                convo_object.insert_conversation(inv_id, time_spoken, persona, text, e)
+                convo_object.insert_conversation(inv_id, time_spoken, persona, text, engine)
 
         new_element = f"{persona}: [{text}]\n\n"
         # print(f'Added: {time_spoken} - {new_element}')
