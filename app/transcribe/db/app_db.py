@@ -1,9 +1,11 @@
 import sys
 import logging
-import db.app_invocations as appi
-from db import conversation
 import sqlalchemy as sqldb
 from sqlalchemy import Engine
+import db.app_invocations as appi
+from db import conversation as convo
+from db import llm_responses as lresp
+from db import summaries as s
 sys.path.append('../..')
 from tsutils import Singleton  # noqa: E402 pylint: disable=C0413
 
@@ -28,8 +30,10 @@ class AppDB(Singleton.Singleton):
     # No other class should instantiate any of the table objects, rather use the
     # objects from AppDB class.
     _tables = {
-        'ApplicationInvocations': None,
-        'Conversations': None
+        appi.TABLE_NAME: None,
+        convo.TABLE_NAME: None,
+        lresp.TABLE_NAME: None,
+        s.TABLE_NAME: None
     }
 
     # db_file_path
@@ -65,8 +69,10 @@ class AppDB(Singleton.Singleton):
         db_logger.setLevel(db_logger_log_level)
 
         # Initialize all the tables
-        self._tables['ApplicationInvocations'] = appi.ApplicationInvocations(engine=self._engine)
-        self._tables['Conversations'] = conversation.Conversations(engine=self._engine)
+        self._tables[appi.TABLE_NAME] = appi.ApplicationInvocations(engine=self._engine)
+        self._tables[convo.TABLE_NAME] = convo.Conversations(engine=self._engine)
+        self._tables[lresp.TABLE_NAME] = lresp.LLMResponses(engine=self._engine)
+        self._tables[s.TABLE_NAME] = s.Summaries(engine=self._engine)
         connection.commit()
         connection.close()
 
@@ -80,12 +86,12 @@ class AppDB(Singleton.Singleton):
         """
         engine: Engine = sqldb.create_engine(f'sqlite:///{self._db_context["db_file_path"]}')
         # Insert any necessary data in tables
-        self._tables['ApplicationInvocations'].insert_start_time(engine=engine)
+        self._tables[appi.TABLE_NAME].insert_start_time(engine=engine)
 
     def get_invocation_id(self) -> int:
         """Get the invocation id for this invocation of the application.
         """
-        return self._tables['ApplicationInvocations'].get_invocation_id()
+        return self._tables[appi.TABLE_NAME].get_invocation_id()
 
     def get_engine(self) -> Engine:
         """Get DB Engine object
@@ -101,4 +107,4 @@ class AppDB(Singleton.Singleton):
         """Application shutdown
         """
         engine = sqldb.create_engine(f'sqlite:///{self._db_context["db_file_path"]}')
-        self._tables['ApplicationInvocations'].populate_end_time(engine)
+        self._tables[appi.TABLE_NAME].populate_end_time(engine)

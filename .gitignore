@@ -7,6 +7,7 @@ uid.lock
 transcription.txt
 app/transcribe/models/ggml-base.bin
 app/transcribe/models/base.pt
+app/transcribe/models/large-v3.pt
 app/transcribe/logs/transcript-*.txt
 app/transcribe/logs/transcript-*.zip
 app/transcribe/logs/ui-*.txt
