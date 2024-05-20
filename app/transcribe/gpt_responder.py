@@ -6,6 +6,8 @@ import openai
 import prompts
 import conversation
 import constants
+from db import AppDB as appdb
+from db import llm_responses as llmrdb
 from tsutils import app_logging as al
 from tsutils import duration, utilities
 
@@ -65,6 +67,7 @@ class GPTResponder:
             temperature: float = self.config['OpenAI']['temperature']
             prompt_content = self.conversation.get_merged_conversation_summary()
             prompt_api_message = prompts.create_multiturn_prompt(prompt_content)
+            last_convo_id = int(prompt_content[-1][2])
             # self._pretty_print_openai_request(prompt_api_message)
             summary_response = self.llm_client.chat.completions.create(
                     model=self.model,
@@ -80,6 +83,12 @@ class GPTResponder:
                     message_text = chunk_message.content
                     collected_messages += message_text
                     # print(f'{message_text}', end="")
+
+            # insert in DB
+            inv_id = appdb().get_invocation_id()
+            engine = appdb().get_engine()
+            summary_obj = appdb().get_object('Summaries')
+            summary_obj.insert_summary(inv_id, last_convo_id, collected_messages, engine)
 
         return collected_messages
 
@@ -109,6 +118,7 @@ class GPTResponder:
                 temperature: float = self.config['OpenAI']['temperature']
                 multiturn_prompt_content = self.conversation.get_merged_conversation_response(
                     length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
+                last_convo_id = int(multiturn_prompt_content[-1][2])
                 multiturn_prompt_api_message = prompts.create_multiturn_prompt(
                     multiturn_prompt_content)
                 # Multi turn response is very effective when continuous mode is off.
@@ -141,6 +151,12 @@ class GPTResponder:
                         self._update_conversation(persona=constants.PERSONA_ASSISTANT,
                                                   response=collected_messages,
                                                   update_previous=True)
+
+                # Insert response in DB
+                inv_id = appdb().get_invocation_id()
+                engine = appdb().get_engine()
+                llmr_obj: llmrdb.LLMResponses = appdb().get_object(llmrdb.TABLE_NAME)
+                llmr_obj.insert_response(inv_id, last_convo_id, collected_messages, engine)
 
         except Exception as exception:
             print('Error when attempting to get a response from LLM.')

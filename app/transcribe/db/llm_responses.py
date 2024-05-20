@@ -1,7 +1,6 @@
 import datetime
 import sqlalchemy as sqldb
 from sqlalchemy import Column, Integer, String, MetaData, DateTime
-from sqlalchemy.sql import update
 from sqlalchemy.orm import Session, mapped_column
 from sqlalchemy import Engine, insert
 
@@ -61,21 +60,25 @@ class LLMResponses:
 
         metadata.create_all(engine)
 
-    def insert_response(self, invocation_id: int,
+    def insert_response(self,
+                        invocation_id: int,
                         conversation_id: int,
                         text: str,
-                        engine: Engine):
+                        engine: Engine) -> int:
         """Insert a response entry
         """
         stmt = insert(self._db_table).values([{
             'InvocationId': invocation_id,
             'ConversationId': conversation_id,
-            'Text': text}])
+            'Text': text,
+            'CreatedTime': datetime.datetime.utcnow()}])
 
         with Session(engine) as session:
-            session.execute(stmt)
+            result = session.execute(stmt)
             session.commit()
             session.close()
+
+        return result.lastrowid
 
     def populate_data(self):
         """Not Implemented

@@ -158,7 +158,7 @@ class UICallbacks:
         print('Summarizing...')
         popup_msg_no_close(title='Summary', msg='Creating a summary')
         summary = self.global_vars.responder.summarize()
-        # When API key is not specified, give a chance for the thread to initilizw
+        # When API key is not specified, give a chance for the thread to initilize
 
         if pop_up is not None:
             try:
@@ -174,6 +174,7 @@ class UICallbacks:
             popup_msg_close_button(title='Summary',
                                    msg='Failed to get summary. Please check you have a valid API key.')
             return
+
         # Enhancement here would be to get a streaming summary
         popup_msg_close_button(title='Summary', msg=summary)
 

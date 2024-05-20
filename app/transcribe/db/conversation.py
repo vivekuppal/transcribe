@@ -1,6 +1,6 @@
 import sqlalchemy as sqldb
 from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.sql import update
+from sqlalchemy.sql import update, text
 from sqlalchemy.orm import Session, mapped_column
 from sqlalchemy import Engine, insert
 
@@ -58,7 +58,7 @@ class Conversations:
     def insert_conversation(self, invocation_id: int,
                             spoken_time,
                             speaker_name: str, convo_text: str,
-                            engine: Engine):
+                            engine: Engine) -> int:
         """Insert a conversation entry
         """
         stmt = insert(self._db_table).values([{
@@ -68,9 +68,23 @@ class Conversations:
             'Text': convo_text}])
 
         with Session(engine) as session:
-            session.execute(stmt)
+            result = session.execute(stmt)
             session.commit()
             session.close()
+
+        # print(f'Returning conversation id as {result.lastrowid}')
+        return result.lastrowid
+
+    def get_max_convo_id(self, engine: Engine) -> int:
+        """Get rowid of last conversation rowinserted in DB
+        """
+        stmt = text(f'SELECT MAX(Id) from {self._table_name}')
+        with Session(engine) as session:
+            result = session.execute(stmt)
+            convo_id = result.all()[0][0]
+            session.commit()
+            session.close()
+        return convo_id
 
     def update_conversation(self,
                             invocation_id: int,
