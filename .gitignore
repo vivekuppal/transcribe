@@ -1,6 +1,5 @@
 __pycache__/
 .venv/
-*.wav
 venv
 output
 uid.lock
@@ -17,6 +16,8 @@ app/transcribe/logs/ffmpeg.txt
 app/transcribe/logs/db.log
 app/transcribe/logs/app.db
 app/transcribe/logs/whisper.cpp.txt
-app/transcribe/mic.wav.bak
-app/transcribe/speaker.wav.bak
+app/transcribe/logs/mic.wav
+app/transcribe/logs/mic.wav.bak
+app/transcribe/logs/speaker.wav
+app/transcribe/logs/speaker.wav.bak
 app/transcribe/logs/deep.json
