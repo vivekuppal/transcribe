@@ -75,10 +75,10 @@ class Conversations:
         # print(f'Returning conversation id as {result.lastrowid}')
         return result.lastrowid
 
-    def get_max_convo_id(self, engine: Engine) -> int:
+    def get_max_convo_id(self, engine: Engine, speaker: str) -> int:
         """Get rowid of last conversation rowinserted in DB
         """
-        stmt = text(f'SELECT MAX(Id) from {self._table_name}')
+        stmt = text(f'SELECT MAX(Id) from {self._table_name} where speaker = "{speaker}"')
         with Session(engine) as session:
             result = session.execute(stmt)
             convo_id = result.all()[0][0]
@@ -87,7 +87,6 @@ class Conversations:
         return convo_id
 
     def update_conversation(self,
-                            invocation_id: int,
                             conversation_id: int,
                             convo_text: str,
                             engine: Engine):
@@ -100,7 +99,7 @@ class Conversations:
         try:
             with Session(engine) as session:
                 stmt = update(self._db_table).where(
-                    self._db_table.c['Id'] == invocation_id).values(
+                    self._db_table.c['Id'] == conversation_id).values(
                         Text=convo_text)
 
                 session.execute(stmt)

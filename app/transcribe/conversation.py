@@ -70,7 +70,7 @@ class Conversation:
             inv_id = appdb().get_invocation_id()
             engine = appdb().get_engine()
             convo_object: convodb.Conversations = appdb().get_object(convodb.TABLE_NAME)
-            convo_id = convo_object.get_max_convo_id(engine=engine)
+            convo_id = convo_object.get_max_convo_id(engine=engine, speaker=persona)
 
         # if (persona.lower() == 'assistant'):
         #     print(f'Assistant Transcript length to begin with: {len(transcript)}')
@@ -90,7 +90,7 @@ class Conversation:
                 # Update DB
                 # print(f'Removed: {prev_element}')
                 # print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
-                convo_object.update_conversation(inv_id, convo_id, text, engine)
+                convo_object.update_conversation(convo_id, text, engine)
         else:
             if self._initialized:
                 # Insert in DB
