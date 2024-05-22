@@ -4,8 +4,12 @@
 
 Unit Tests
 
+Run all unit tests
 ```
+cd transcribe
 python -m unittest discover --verbose .\tests
+cd transcribe\app\transcribe
+run_tests.bat
 ```
 
 ## Security Scanning

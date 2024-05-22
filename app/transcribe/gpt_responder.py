@@ -6,8 +6,10 @@ import openai
 import prompts
 import conversation
 import constants
-from db import AppDB as appdb
-from db import llm_responses as llmrdb
+from db import (
+    AppDB as appdb,
+    llm_responses as llmrdb,
+    summaries as s)
 from tsutils import app_logging as al
 from tsutils import duration, utilities
 
@@ -87,7 +89,7 @@ class GPTResponder:
             # insert in DB
             inv_id = appdb().get_invocation_id()
             engine = appdb().get_engine()
-            summary_obj = appdb().get_object('Summaries')
+            summary_obj = appdb().get_object(s.TABLE_NAME)
             summary_obj.insert_summary(inv_id, last_convo_id, collected_messages, engine)
 
         return collected_messages
@@ -118,6 +120,7 @@ class GPTResponder:
                 temperature: float = self.config['OpenAI']['temperature']
                 multiturn_prompt_content = self.conversation.get_merged_conversation_response(
                     length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
+                # convo_id from the last conversation tuple
                 last_convo_id = int(multiturn_prompt_content[-1][2])
                 multiturn_prompt_api_message = prompts.create_multiturn_prompt(
                     multiturn_prompt_content)
