@@ -79,8 +79,15 @@ class UICallbacks:
         editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
         self.capture_action(f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input')
 
-    def update_interval_slider_label(self, slider_value):
-        """Update interval slider label to match the slider value"""
+    def update_interval_slider_value(self, slider_value):
+        """Update interval slider label to match the slider value
+           Update the config value
+        """
+        config_obj = configuration.Config()
+        # Save config
+        altered_config: dict = {'General': {'llm_response_interval': int(slider_value)}}
+        config_obj.add_override_value(altered_config)
+
         label_text = f'LLM Response interval: {int(slider_value)} seconds'
         self.global_vars.update_interval_slider_label.configure(text=label_text)
         self.capture_action(f'Update LLM response interval to {int(slider_value)}')

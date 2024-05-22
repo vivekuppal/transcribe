@@ -104,7 +104,7 @@ def main():
     response_now_button.configure(command=ui_cb.get_response_now)
     read_response_now_button.configure(command=ui_cb.update_response_ui_and_read_now)
     summarize_button.configure(command=ui_cb.summarize)
-    update_interval_slider.configure(command=ui_cb.update_interval_slider_label)
+    update_interval_slider.configure(command=ui_cb.update_interval_slider_value)
     label_text = f'LLM Response interval: {int(update_interval_slider.get())} seconds'
     global_vars.update_interval_slider_label.configure(text=label_text)
     audio_lang_combobox.configure(command=ui_cb.set_audio_language)
