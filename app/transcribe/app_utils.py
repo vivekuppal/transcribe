@@ -68,7 +68,8 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
 
     # Convert response from text to sound and play to user
     audio_response_thread = threading.Thread(target=global_vars.audio_player_var.play_audio_loop,
-                                             name='AudioResponse')
+                                             name='AudioResponse',
+                                             args=(config,))
     audio_response_thread.daemon = True
     audio_response_thread.start()
 

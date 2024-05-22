@@ -229,3 +229,6 @@ Contributions are welcome! Open issues or submit pull requests to improve Transc
 ## Videos
 - [Install Video](https://www.youtube.com/watch?v=RX86zKdCpMc) Thanks to Fahd Mirza.
 - [Fireside chat](https://www.youtube.com/watch?v=vUm-elVkxOI) for Transcribe.
+
+## Acknowledgements
+This project started out as a fork of [ecoute](https://github.com/SevaSk/ecoute/). It has diverged significantly from the original implementation so we decided to remove the link to ecoute.

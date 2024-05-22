@@ -14,7 +14,8 @@ class TestAudioFile(unittest.TestCase):
 
     def test_get_segment(self):
         r = sr.Recognizer()
-        with sr.AudioFile(path.join(path.dirname(path.realpath(__file__)), "audio-mono-32-bit-44100Hz.wav")) as source: audio = r.record(source)
+        with sr.AudioFile(path.join(path.dirname(path.realpath(__file__)), "audio-mono-32-bit-44100Hz.wav")) as source:
+            audio = r.record(source)
         self.assertEqual(audio.get_raw_data(), audio.get_segment().get_raw_data())
         self.assertEqual(audio.get_raw_data()[8:], audio.get_segment(0.022675738 * 2).get_raw_data())
         self.assertEqual(audio.get_raw_data()[:16], audio.get_segment(None, 0.022675738 * 4).get_raw_data())
@@ -22,7 +23,8 @@ class TestAudioFile(unittest.TestCase):
 
     def test_wav_mono_8_bit(self):
         r = sr.Recognizer()
-        with sr.AudioFile(path.join(path.dirname(path.realpath(__file__)), "audio-mono-8-bit-44100Hz.wav")) as source: audio = r.record(source)
+        with sr.AudioFile(path.join(path.dirname(path.realpath(__file__)), "audio-mono-8-bit-44100Hz.wav")) as source:
+            audio = r.record(source)
         self.assertIsInstance(audio, sr.AudioData)
         self.assertEqual(audio.sample_rate, 44100)
         self.assertEqual(audio.sample_width, 1)

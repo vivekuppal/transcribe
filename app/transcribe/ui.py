@@ -79,8 +79,15 @@ class UICallbacks:
         editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
         self.capture_action(f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input')
 
-    def update_interval_slider_label(self, slider_value):
-        """Update interval slider label to match the slider value"""
+    def update_interval_slider_value(self, slider_value):
+        """Update interval slider label to match the slider value
+           Update the config value
+        """
+        config_obj = configuration.Config()
+        # Save config
+        altered_config: dict = {'General': {'llm_response_interval': int(slider_value)}}
+        config_obj.add_override_value(altered_config)
+
         label_text = f'LLM Response interval: {int(slider_value)} seconds'
         self.global_vars.update_interval_slider_label.configure(text=label_text)
         self.capture_action(f'Update LLM response interval to {int(slider_value)}')
@@ -158,7 +165,7 @@ class UICallbacks:
         print('Summarizing...')
         popup_msg_no_close(title='Summary', msg='Creating a summary')
         summary = self.global_vars.responder.summarize()
-        # When API key is not specified, give a chance for the thread to initilizw
+        # When API key is not specified, give a chance for the thread to initilize
 
         if pop_up is not None:
             try:
@@ -174,6 +181,7 @@ class UICallbacks:
             popup_msg_close_button(title='Summary',
                                    msg='Failed to get summary. Please check you have a valid API key.')
             return
+
         # Enhancement here would be to get a streaming summary
         popup_msg_close_button(title='Summary', msg=summary)
 

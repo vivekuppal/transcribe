@@ -2,7 +2,7 @@ import sys
 from heapq import merge
 import datetime
 import constants
-from db import AppDB as appdb
+from db import AppDB as appdb, conversation as convodb
 sys.path.append('../..')
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
@@ -63,13 +63,14 @@ class Conversation:
         """
 
         transcript = self.transcript_data[persona]
+        convo_id = None
 
         # DB is not available at the time conversation object is being initialized.
         if self._initialized:
             inv_id = appdb().get_invocation_id()
             engine = appdb().get_engine()
-            convo_object = appdb().get_object('Conversations')
-            convo_id = appdb().get_invocation_id()
+            convo_object: convodb.Conversations = appdb().get_object(convodb.TABLE_NAME)
+            convo_id = convo_object.get_max_convo_id(engine=engine, speaker=persona)
 
         # if (persona.lower() == 'assistant'):
         #     print(f'Assistant Transcript length to begin with: {len(transcript)}')
@@ -89,16 +90,16 @@ class Conversation:
                 # Update DB
                 # print(f'Removed: {prev_element}')
                 # print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
-                convo_object.update_conversation(inv_id, convo_id, text, engine)
+                convo_object.update_conversation(convo_id, text, engine)
         else:
             if self._initialized:
                 # Insert in DB
                 # print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
-                convo_object.insert_conversation(inv_id, time_spoken, persona, text, engine)
+                convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text, engine)
 
         new_element = f"{persona}: [{text}]\n\n"
         # print(f'Added: {time_spoken} - {new_element}')
-        transcript.append((new_element, time_spoken))
+        transcript.append((new_element, time_spoken, convo_id))
 
         # if (persona.lower() == 'assistant'):
         #    print(f'Assistant Transcript length after completion: {len(transcript)}')
@@ -130,7 +131,7 @@ class Conversation:
         return "".join([t[0] for t in combined_transcript])
 
     def get_merged_conversation_summary(self, length: int = 0) -> list:
-        """Creates a prompt to be sent to LLM (OpenAI by default) for summarizing 
+        """Creates a prompt to be sent to LLM (OpenAI by default) for summarizing
            the conversation.
            length: Get the last length elements from the audio transcript.
            Initial system prompt is always part of the return value
@@ -144,7 +145,7 @@ class Conversation:
         sorted_transcript = sorted_transcript[-length:]
         sorted_transcript.insert(0, self.transcript_data[constants.PERSONA_YOU][0])
         sorted_transcript.insert(0, (f"{constants.PERSONA_SYSTEM}: [{self.config['General']['summary_prompt']}]\n\n",
-                                     datetime.datetime.now()))
+                                     datetime.datetime.now(), -1))
         return sorted_transcript
 
     def get_merged_conversation_response(self, length: int = 0) -> list:

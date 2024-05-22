@@ -1,6 +1,6 @@
 import sqlalchemy as sqldb
 from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.sql import update
+from sqlalchemy.sql import update, text
 from sqlalchemy.orm import Session, mapped_column
 from sqlalchemy import Engine, insert
 
@@ -58,7 +58,7 @@ class Conversations:
     def insert_conversation(self, invocation_id: int,
                             spoken_time,
                             speaker_name: str, convo_text: str,
-                            engine: Engine):
+                            engine: Engine) -> int:
         """Insert a conversation entry
         """
         stmt = insert(self._db_table).values([{
@@ -68,12 +68,25 @@ class Conversations:
             'Text': convo_text}])
 
         with Session(engine) as session:
-            session.execute(stmt)
+            result = session.execute(stmt)
             session.commit()
             session.close()
 
+        # print(f'Returning conversation id as {result.lastrowid}')
+        return result.lastrowid
+
+    def get_max_convo_id(self, engine: Engine, speaker: str) -> int:
+        """Get rowid of last conversation rowinserted in DB
+        """
+        stmt = text(f'SELECT MAX(Id) from {self._table_name} where speaker = "{speaker}"')
+        with Session(engine) as session:
+            result = session.execute(stmt)
+            convo_id = result.all()[0][0]
+            session.commit()
+            session.close()
+        return convo_id
+
     def update_conversation(self,
-                            invocation_id: int,
                             conversation_id: int,
                             convo_text: str,
                             engine: Engine):
@@ -86,7 +99,7 @@ class Conversations:
         try:
             with Session(engine) as session:
                 stmt = update(self._db_table).where(
-                    self._db_table.c['Id'] == invocation_id).values(
+                    self._db_table.c['Id'] == conversation_id).values(
                         Text=convo_text)
 
                 session.execute(stmt)

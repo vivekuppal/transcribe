@@ -40,7 +40,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
                  config: dict):
-        root_logger.info(AudioTranscriber.__name__)
+        root_logger.info(self.__class__.__name__)
         # Transcript_data should be replaced with the conversation object.
         # We do not need to store transcription in 2 different places.
         # self.transcript_data = {"You": [], "Speaker": []}
@@ -112,7 +112,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         Args:
           audio_queue: queue object with reference to audio files
         """
-        root_logger.info(AudioTranscriber.transcribe_audio_queue)
+        root_logger.info(self.__class__.__name__)
         while True:
             who_spoke, data, time_spoken = audio_queue.get()
             root_logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} '
