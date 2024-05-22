@@ -1,2 +1,2 @@
-SET PYTHONPATH=%cd%;%cd%\..\..
-python -m unittest discover --verbose .\tests
+SET PYTHONPATH=%cd%;%cd%\db;%cd%\..\..
+python -m unittest discover --verbose

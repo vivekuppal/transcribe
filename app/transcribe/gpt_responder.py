@@ -177,6 +177,8 @@ class GPTResponder:
         return processed_multi_turn_response
 
     def create_client(self, api_key: str, base_url: str = None):
+        """Create OpenAI API compatible client
+        """
         if self.llm_client is not None:
             self.llm_client.close()
         self.llm_client = openai.OpenAI(api_key=api_key, base_url=base_url)

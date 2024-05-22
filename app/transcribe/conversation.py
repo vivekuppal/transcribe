@@ -131,7 +131,7 @@ class Conversation:
         return "".join([t[0] for t in combined_transcript])
 
     def get_merged_conversation_summary(self, length: int = 0) -> list:
-        """Creates a prompt to be sent to LLM (OpenAI by default) for summarizing 
+        """Creates a prompt to be sent to LLM (OpenAI by default) for summarizing
            the conversation.
            length: Get the last length elements from the audio transcript.
            Initial system prompt is always part of the return value

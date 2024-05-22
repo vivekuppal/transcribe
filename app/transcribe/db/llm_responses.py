@@ -35,20 +35,20 @@ class LLMResponses:
     def __init__(self, engine):
         # Create table if it does not exist in DB
         try:
-            metadata = sqldb.MetaData()
-            self._db_table = sqldb.Table(self._table_name, metadata, autoload_with=engine)
+            self._metadata = sqldb.MetaData()
+            self._db_table = sqldb.Table(self._table_name, self._metadata, autoload_with=engine)
         except sqldb.exc.NoSuchTableError:
             # If table does not exist, create the table
             self._db_table = None
             print(f'Table: {self._table_name} does not exist. Creating table.')
-            self.create_table(engine, metadata)
+            self.create_table(engine)
 
         self.populate_data()
 
-    def create_table(self, engine: Engine, metadata: MetaData):
+    def create_table(self, engine: Engine):
         """Create LLMResponses table in DB.
         """
-        self._db_table = sqldb.Table(self._table_name, metadata,
+        self._db_table = sqldb.Table(self._table_name, self._metadata,
                                      Column('Id', Integer(), sqldb.Identity(start=1),
                                             primary_key=True),
                                      Column('CreatedTime', DateTime, nullable=False,
@@ -58,7 +58,7 @@ class LLMResponses:
                                      Column('Text', String, nullable=False),
                                      )
 
-        metadata.create_all(engine)
+        self._metadata.create_all(engine)
 
     def insert_response(self,
                         invocation_id: int,
