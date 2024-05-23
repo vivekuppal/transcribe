@@ -36,7 +36,8 @@ class GPTResponder:
                  config: dict,
                  convo: conversation.Conversation,
                  save_to_file: bool = False,
-                 file_name: str = 'logs/response.txt'):
+                 file_name: str = 'logs/response.txt',
+                 openai_module=openai):
         root_logger.info(GPTResponder.__name__)
         # This var is used by UI to populate the response textbox
         self.response = prompts.INITIAL_RESPONSE
@@ -45,6 +46,7 @@ class GPTResponder:
         self.config = config
         self.save_response_to_file = save_to_file
         self.response_file = file_name
+        self.openai_module = openai_module
 
     def summarize(self) -> str:
         """Ping LLM to get a summary of the conversation.
@@ -88,9 +90,8 @@ class GPTResponder:
 
             # insert in DB
             inv_id = appdb().get_invocation_id()
-            engine = appdb().get_engine()
             summary_obj = appdb().get_object(s.TABLE_NAME)
-            summary_obj.insert_summary(inv_id, last_convo_id, collected_messages, engine)
+            summary_obj.insert_summary(inv_id, last_convo_id, collected_messages)
 
         return collected_messages
 
@@ -157,9 +158,8 @@ class GPTResponder:
 
                 # Insert response in DB
                 inv_id = appdb().get_invocation_id()
-                engine = appdb().get_engine()
                 llmr_obj: llmrdb.LLMResponses = appdb().get_object(llmrdb.TABLE_NAME)
-                llmr_obj.insert_response(inv_id, last_convo_id, collected_messages, engine)
+                llmr_obj.insert_response(inv_id, last_convo_id, collected_messages)
 
         except Exception as exception:
             print('Error when attempting to get a response from LLM.')
@@ -177,36 +177,77 @@ class GPTResponder:
         return processed_multi_turn_response
 
     def create_client(self, api_key: str, base_url: str = None):
-        """Create OpenAI API compatible client
         """
-        if self.llm_client is not None:
-            self.llm_client.close()
-        self.llm_client = openai.OpenAI(api_key=api_key, base_url=base_url)
+        Create and initialize an OpenAI API compatible client.
+
+        Args:
+            api_key (str): The API key for authentication.
+            base_url (str, optional): The base URL for the API. Defaults to None.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If the API key is invalid.
+            ConnectionError: If the client fails to connect.
+        """
+        if not api_key:
+            raise ValueError("API key is required")
+
+        try:
+            if self.llm_client is not None:
+                self.llm_client.close()
+            self.llm_client = self.openai_module.OpenAI(api_key=api_key, base_url=base_url)
+        except Exception as e:
+            raise ConnectionError(f"Failed to create OpenAI client: {e}")
 
     def process_response(self, input_str: str) -> str:
-        """ Extract relevant data from LLM response.
         """
+        Processes a given input string by extracting relevant data from LLM response.
+
+        Args:
+            input_str (str): The input string containing LLM response data.
+
+        Returns:
+            str: A processed string with irrelevant content removed.
+        """
+        if input_str is None:
+            raise ValueError("input_str cannot be None")
+
         lines = input_str.split(sep='\n')
-        response = ''
+        response_lines = []
+
         for line in lines:
             # Skip any responses that contain content like
             # Speaker 1: <Some statement>
             # This is generated content added by OpenAI that can be skipped
             if 'Speaker' in line and ':' in line:
                 continue
-            response = response + line.strip().strip('[').strip(']')
+            response_lines.append(line.strip().strip('[').strip(']'))
 
+        # Create a list and then use that to create a string for
+        # performance reasons, since strings are immutable in python
+        response = ''.join(response_lines)
         return response
 
     def generate_response_from_transcript(self) -> str:
-        """Ping OpenAI LLM model to get response from the Assistant
         """
-        root_logger.info(GPTResponder.generate_response_from_transcript.__name__)
+        Pings the OpenAI LLM model to get a response from the Assistant.
+
+        Logs the method call and checks if the feature is enabled before
+        proceeding with response generation.
+
+        Returns:
+            str: The response from the OpenAI LLM model.
+            Returns an empty string if the feature is disabled.
+        """
+        root_logger.info("generate_response_from_transcript called")
 
         if not self.enabled:
             return ''
 
         return self.generate_response_from_transcript_no_check()
+
 
     def generate_response_for_selected_text(self, text: str):
         """Ping LLM to get a suggested response right away.
