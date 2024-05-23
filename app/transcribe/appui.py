@@ -26,6 +26,8 @@ pop_up = None
 
 
 class AppUI:
+    """Encapsulates all UI functionality for the app
+    """
     global_vars: TranscriptionGlobals
     ui_filename: str = None
 
@@ -35,9 +37,16 @@ class AppUI:
         self.root = ctk.CTk()
         self.global_vars.main_window = self.root
         self.create_ui_components(config=config)
-        self.set_audio_device_menus()
+        self.set_audio_device_menus(config=config)
+
+    def start(self):
+        """Start showing the UI
+        """
+        self.root.mainloop()
 
     def create_ui_components(self, config: dict):
+        """Create all UI components
+        """
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
         self.root.title("Transcribe")
