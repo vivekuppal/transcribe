@@ -43,38 +43,41 @@ class AppUI:
         menubar = tk.Menu(root)
 
         # Create a file menu
-        filemenu = tk.Menu(menubar, tearoff=False)
+        self.filemenu = tk.Menu(menubar, tearoff=False)
 
         # Add a "Save" menu item to the file menu
-        filemenu.add_command(label="Save Transcript to File", command=self.save_file)
+        self.filemenu.add_command(label="Save Transcript to File", command=self.save_file)
 
         # Add a "Pause" menu item to the file menu
-        filemenu.add_command(label="Pause Transcription", command=self.set_transcript_state)
+        self.filemenu.add_command(label="Pause Transcription", command=self.set_transcript_state)
 
         # Add a "Quit" menu item to the file menu
-        filemenu.add_command(label="Quit", command=root.quit)
+        self.filemenu.add_command(label="Quit", command=root.quit)
 
         # Add the file menu to the menu bar
-        menubar.add_cascade(label="File", menu=filemenu)
+        menubar.add_cascade(label="File", menu=self.filemenu)
 
         # Create an edit menu
-        editmenu = tk.Menu(menubar, tearoff=False)
+        self.editmenu = tk.Menu(menubar, tearoff=False)
 
         # Add a "Clear Audio Transcript" menu item to the file menu
-        editmenu.add_command(label="Clear Audio Transcript", command=lambda:
-                             self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue))
+        self.editmenu.add_command(label="Clear Audio Transcript", command=lambda:
+                                  self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue))
 
         # Add a "Copy To Clipboard" menu item to the file menu
-        editmenu.add_command(label="Copy Transcript to Clipboard", command=self.copy_to_clipboard)
+        self.editmenu.add_command(label="Copy Transcript to Clipboard",
+                                  command=self.copy_to_clipboard)
 
         # Add "Disable Speaker" menu item to file menu
-        editmenu.add_command(label="Disable Speaker", command=lambda: self.enable_disable_speaker(editmenu))
+        self.editmenu.add_command(label="Disable Speaker",
+                                  command=lambda: self.enable_disable_speaker(self.editmenu))
 
         # Add "Disable Microphone" menu item to file menu
-        editmenu.add_command(label="Disable Microphone", command=lambda: self.enable_disable_microphone(editmenu))
+        self.editmenu.add_command(label="Disable Microphone",
+                                  command=lambda: self.enable_disable_microphone(self.editmenu))
 
         # Add the edit menu to the menu bar
-        menubar.add_cascade(label="Edit", menu=editmenu)
+        menubar.add_cascade(label="Edit", menu=self.editmenu)
 
         # Create help menu, add items in help menu
         helpmenu = tk.Menu(menubar, tearoff=False)
@@ -87,39 +90,39 @@ class AppUI:
         root.config(menu=menubar)
 
         # Speech to Text textbox
-        transcript_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
-                                            text_color='#FFFCF2', wrap="word")
-        transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        self.transcript_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
+                                                 text_color='#FFFCF2', wrap="word")
+        self.transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
         # LLM Response textbox
-        response_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
-                                          text_color='#639cdc', wrap="word")
-        response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
-        response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
+        self.response_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
+                                               text_color='#639cdc', wrap="word")
+        self.response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
+        self.response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
 
         response_enabled = bool(config['General']['continuous_response'])
         b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
-        continuous_response_button = ctk.CTkButton(root, text=b_text)
-        continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
+        self.continuous_response_button = ctk.CTkButton(root, text=b_text)
+        self.continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
 
-        response_now_button = ctk.CTkButton(root, text="Suggest Response Now")
-        response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
+        self.response_now_button = ctk.CTkButton(root, text="Suggest Response Now")
+        self.response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
 
-        read_response_now_button = ctk.CTkButton(root, text="Suggest Response and Read")
-        read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
+        self.read_response_now_button = ctk.CTkButton(root, text="Suggest Response and Read")
+        self.read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
 
-        summarize_button = ctk.CTkButton(root, text="Summarize")
-        summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
+        self.summarize_button = ctk.CTkButton(root, text="Summarize")
+        self.summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
 
         # Continuous LLM Response label, and slider
-        update_interval_slider_label = ctk.CTkLabel(root, text="", font=("Arial", 12),
-                                                    text_color="#FFFCF2")
-        update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider_label = ctk.CTkLabel(root, text="", font=("Arial", 12),
+                                                         text_color="#FFFCF2")
+        self.update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
-        update_interval_slider = ctk.CTkSlider(root, from_=1, to=30, width=300,  # height=5,
-                                               number_of_steps=29)
-        update_interval_slider.set(config['General']['llm_response_interval'])
-        update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider = ctk.CTkSlider(root, from_=1, to=30, width=300,  # height=5,
+                                                    number_of_steps=29)
+        self.update_interval_slider.set(config['General']['llm_response_interval'])
+        self.update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
         # Speech to text language selection label, dropdown
         audio_lang_label = ctk.CTkLabel(root, text="Audio Lang: ",
@@ -128,9 +131,9 @@ class AppUI:
         audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="nw")
 
         audio_lang = config['OpenAI']['audio_lang']
-        audio_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
-        audio_lang_combobox.set(audio_lang)
-        audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
+        self.audio_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
+        self.audio_lang_combobox.set(audio_lang)
+        self.audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
 
         # LLM Response language selection label, dropdown
         response_lang_label = ctk.CTkLabel(root,
@@ -139,16 +142,16 @@ class AppUI:
         response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
 
         response_lang = config['OpenAI']['response_lang']
-        response_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
-        response_lang_combobox.set(response_lang)
-        response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
+        self.response_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
+        self.response_lang_combobox.set(response_lang)
+        self.response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
 
-        github_link = ctk.CTkLabel(root, text="Star the Github Repo",
-                                   text_color="#639cdc", cursor="hand2")
-        github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
+        self.github_link = ctk.CTkLabel(root, text="Star the Github Repo",
+                                        text_color="#639cdc", cursor="hand2")
+        self.github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
 
-        issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
-        issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
+        self.issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
+        self.issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
 
         # Create right click menu for transcript textbox.
         # This displays only inside the speech to text textbox
@@ -174,25 +177,33 @@ class AppUI:
 
         if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
             # Disable buttons that interact with backend services
-            continuous_response_button.configure(state='disabled')
-            response_now_button.configure(state='disabled')
-            read_response_now_button.configure(state='disabled')
-            summarize_button.configure(state='disabled')
+            self.continuous_response_button.configure(state='disabled')
+            self.response_now_button.configure(state='disabled')
+            self.read_response_now_button.configure(state='disabled')
+            self.summarize_button.configure(state='disabled')
 
             tt_msg = 'Add API Key in override.yaml to enable button'
             # Add tooltips for disabled buttons
-            ToolTip(continuous_response_button, msg=tt_msg,
+            ToolTip(self.continuous_response_button, msg=tt_msg,
                     delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                     padx=7, pady=7)
-            ToolTip(response_now_button, msg=tt_msg,
+            ToolTip(self.response_now_button, msg=tt_msg,
                     delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                     padx=7, pady=7)
-            ToolTip(read_response_now_button, msg=tt_msg,
+            ToolTip(self.read_response_now_button, msg=tt_msg,
                     delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                     padx=7, pady=7)
-            ToolTip(summarize_button, msg=tt_msg,
+            ToolTip(self.summarize_button, msg=tt_msg,
                     delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                     padx=7, pady=7)
+
+        def show_context_menu(event):
+            try:
+                m.tk_popup(event.x_root, event.y_root)
+            finally:
+                m.grab_release()
+
+        self.transcript_textbox.bind("<Button-3>", show_context_menu)
 
     def copy_to_clipboard(self):
         """Copy transcription text data to clipboard.
@@ -230,28 +241,28 @@ class AppUI:
             # Invert the state
             self.global_vars.responder.enabled = not self.global_vars.responder.enabled
             self.capture_action(f'{"Enabled " if self.global_vars.responder.enabled else "Disabled "} continuous LLM responses')
-            self.global_vars.freeze_button.configure(
+            self.continuous_response_button.configure(
                 text="Suggest Responses Continuously" if not self.global_vars.responder.enabled else "Do Not Suggest Responses Continuously"
             )
         except Exception as e:
             logger.error(f"Error toggling responder state: {e}")
 
-    def enable_disable_speaker(self, editmenu):
+    def enable_disable_speaker(self):
         """Toggles the state of speaker
         """
         try:
             self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
-            editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
+            self.editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
             self.capture_action(f'{"Enabled " if self.global_vars.speaker_audio_recorder.enabled else "Disabled "} speaker input')
         except Exception as e:
             logger.error(f"Error toggling speaker state: {e}")
 
-    def enable_disable_microphone(self, editmenu):
+    def enable_disable_microphone(self):
         """Toggles the state of microphone
         """
         try:
             self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
-            editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
+            self.editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
             self.capture_action(f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input')
         except Exception as e:
             logger.error(f"Error toggling microphone state: {e}")
@@ -267,7 +278,7 @@ class AppUI:
             config_obj.add_override_value(altered_config)
 
             label_text = f'LLM Response interval: {int(slider_value)} seconds'
-            self.global_vars.update_interval_slider_label.configure(text=label_text)
+            self.update_interval_slider_label.configure(text=label_text)
             self.capture_action(f'Update LLM response interval to {int(slider_value)}')
         except Exception as e:
             logger.error(f"Error updating slider value: {e}")
@@ -463,3 +474,136 @@ class AppUI:
                                       update_previous=True)
         except Exception as e:
             logger.error(f"Error setting response language: {e}")
+
+
+def popup_msg_no_close_threaded(title, msg):
+    """Create a pop up with no close button.
+    """
+    global pop_up  # pylint: disable=W0603
+    try:
+        popup = ctk.CTkToplevel(T_GLOBALS.main_window)
+        popup.geometry("100x50")
+        popup.title(title)
+        label = ctk.CTkLabel(popup, text=msg, font=("Arial", 12),
+                             text_color="#FFFCF2")
+        label.pack(side="top", fill="x", pady=10)
+        pop_up = popup
+        popup.lift()
+    except Exception as e:
+        # Sometimes get the error - calling Tcl from different apartment
+        logger.info('Exception in popup_msg_no_close_threaded')
+        logger.info(e)
+        return
+
+
+def popup_msg_no_close(title: str, msg: str):
+    """Create a popup that the caller is responsible for closing
+    using the destroy method
+    """
+    kwargs = {}
+    kwargs['title'] = title
+    kwargs['msg'] = msg
+    pop_ui_thread = threading.Thread(target=popup_msg_no_close_threaded,
+                                     name='Pop up thread',
+                                     kwargs=kwargs)
+    pop_ui_thread.daemon = True
+    pop_ui_thread.start()
+    # Give a chance for the thread to initialize
+    # When API key is not specified, need the thread to initialize to
+    # allow summarize window to show and ultimately be closed.
+    time.sleep(0.1)
+
+
+def popup_msg_close_button(title: str, msg: str):
+    """Create a popup that the caller is responsible for closing
+    using the destroy method
+    """
+    popup = ctk.CTkToplevel(T_GLOBALS.main_window)
+    popup.geometry("380x710")
+    popup.title(title)
+    txtbox = ctk.CTkTextbox(popup, width=350, height=600, font=("Arial", UI_FONT_SIZE),
+                            text_color='#FFFCF2', wrap="word")
+    txtbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+    txtbox.insert("0.0", msg)
+
+    def copy_summary_to_clipboard():
+        pyperclip.copy(txtbox.cget("text"))
+
+    copy_button = ctk.CTkButton(popup, text="Copy to Clipboard", command=copy_summary_to_clipboard)
+    copy_button.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+
+    close_button = ctk.CTkButton(popup, text="Close", command=popup.destroy)
+    close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+    popup.lift()
+
+
+def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
+    """Update the text of textbox with the given text
+        Args:
+          textbox: textbox to be updated
+          text: updated text
+    """
+    # Get current selection attributes, so they can be preserved after writing new text
+    a: tuple = textbox.tag_ranges('sel')
+    # (<string object: '5.22'>, <string object: '5.85'>)
+    textbox.delete("0.0", "end")
+    textbox.insert("0.0", text)
+    if len(a):
+        textbox.tag_add('sel', a[0], a[1])
+
+
+def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox):
+    """Update the text of transcription textbox with the given text
+        Args:
+          transcriber: AudioTranscriber Object
+          textbox: textbox to be updated
+    """
+
+    global last_transcript_ui_update_time  # pylint: disable=W0603
+    global global_vars_module  # pylint: disable=W0603
+
+    if global_vars_module is None:
+        global_vars_module = TranscriptionGlobals()
+
+    # None comparison is for initialization
+    if last_transcript_ui_update_time is None or last_transcript_ui_update_time < global_vars_module.convo.last_update:
+        transcript_string = transcriber.get_transcript()
+        write_in_textbox(textbox, transcript_string)
+        textbox.see("end")
+        last_transcript_ui_update_time = datetime.datetime.utcnow()
+
+    textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,
+                  update_transcript_ui, transcriber, textbox)
+
+
+def update_response_ui(responder: gr.GPTResponder,
+                       textbox: ctk.CTkTextbox,
+                       update_interval_slider_label: ctk.CTkLabel,
+                       update_interval_slider: ctk.CTkSlider):
+    """Update the text of response textbox with the given text
+        Args:
+          textbox: textbox to be updated
+          text: updated text
+    """
+    global global_vars_module  # pylint: disable=W0603
+
+    if global_vars_module is None:
+        global_vars_module = TranscriptionGlobals()
+
+    # global_vars_module.responder.enabled --> This is continous response mode from LLM
+    # global_vars_module.update_response_now --> Get Response now from LLM
+    if global_vars_module.responder.enabled or global_vars_module.update_response_now:
+        response = responder.response
+
+        textbox.configure(state="normal")
+        write_in_textbox(textbox, response)
+        textbox.configure(state="disabled")
+        textbox.see("end")
+
+        update_interval = int(update_interval_slider.get())
+        # responder.update_response_interval(update_interval)
+        update_interval_slider_label.configure(text=f'LLM Response interval: '
+                                               f'{update_interval} seconds')
+
+    textbox.after(300, update_response_ui, responder, textbox,
+                  update_interval_slider_label, update_interval_slider)
