@@ -118,7 +118,8 @@ def exit_params():
     query_params['duration'] = duration
     try:
         # save transcript
-        filename = utilities.incrementing_filename(filename='logs/transcript',
+        data_dir = utilities.get_data_path(app_name='Transcribe')
+        filename = utilities.incrementing_filename(filename=f'{data_dir}/logs/transcript',
                                                    extension='txt')
 
         with open(file=filename, mode="w", encoding='utf-8') as file_handle:

@@ -4,6 +4,7 @@ import copy
 import subprocess
 import zipfile
 import openai
+from appdirs import user_data_dir
 
 
 valid_api_key: bool = False
@@ -251,3 +252,38 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
 
     valid_api_key = True
     return True
+
+
+def ensure_directory_exists(directory_path: str):
+    """
+    Ensure that a directory exists. If it does not exist, create it.
+
+    Args:
+        directory_path (str): The path to the directory to check or create.
+
+    Returns:
+        None
+    """
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        print(f"Directory '{directory_path}' created.")
+    else:
+        print(f"Directory '{directory_path}' already exists.")
+
+
+def get_data_path(app_name, filename=''):
+    """
+    Get the full path to the data file in the user data directory.
+    These files are created inside the Roaming profile.
+
+    Args:
+        app_name (str): Specific folder inside the data dir like Log, Db, Cache
+        filename (str): The name of the file.
+
+    Returns:
+        str: The full path to the data file.
+    """
+    data_dir = user_data_dir(app_name, appauthor='viveku', roaming=True)
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    return os.path.join(data_dir, filename)

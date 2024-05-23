@@ -35,7 +35,12 @@ def main():
                                                   speaker_source=global_vars.speaker_audio_recorder.source)
 
     # Remove potential temp files from previous invocation
-    u.delete_files(['speaker.wav', 'speaker.wav.bak', 'mic.wav', 'mic.wav.bak'])
+    data_dir = u.get_data_path(app_name='Transcribe')
+    u.delete_files([
+        f'{data_dir}/logs/speaker.wav',
+        f'{data_dir}/logs/speaker.wav.bak',
+        f'{data_dir}/logs/mic.wav',
+        f'{data_dir}/logs/mic.wav.bak'])
 
     # Convert raw audio files to real wav file format when program exits
     # atexit.register(global_vars.user_audio_recorder.write_wav_data_to_file)

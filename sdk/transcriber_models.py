@@ -22,7 +22,7 @@ class STTEnum(Enum):
     DEEPGRAM_API = 4
 
 
-MODELS_DIR = './models/'
+MODELS_DIR = f"{utilities.get_data_path(app_name='Transcribe')}/models/"
 
 
 class STTModelFactory:
@@ -83,7 +83,7 @@ class WhisperSTTModel(STTModelInterface):
         self.lang = 'en'
         model_filename = MODELS_DIR + self.model + ".pt"
         self.model_name = self.model + ".pt"
-        self.model_filename = os.path.join(os.getcwd(), model_filename)
+        self.model_filename = os.path.join(MODELS_DIR, model_filename)
         self.download_model()
         self.audio_model = whisper.load_model(self.model_filename)
         print(f'[INFO] Speech To Text - Whisper using GPU: {str(torch.cuda.is_available())}')
@@ -95,6 +95,7 @@ class WhisperSTTModel(STTModelInterface):
         if os.path.exists(self.model_filename):
             return
         print(f'Could not find the transcription model file: {self.model_filename}')
+        utilities.ensure_directory_exists(MODELS_DIR)
         if self.model == 'tiny':
             file_url = 'https://openaipublic.azureedge.net/main/whisper/models/65147644a518d12f04e32d6f3b26facc3f8dd46e5390956a9424a650c0ce22b9/' + self.model_name
             utilities.download_using_bits(file_url=file_url, file_path=self.model_filename)
@@ -267,6 +268,7 @@ class WhisperCPPSTTModel(STTModelInterface):
 
         if not os.path.isfile(self.model_filename):
             print(f'Could not find the transcription model file: {self.model_filename}')
+            utilities.ensure_directory_exists(MODELS_DIR)
             file_url = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/' + model + '.bin'
             utilities.download_using_bits(file_url=file_url, file_path=self.model_filename)
 

@@ -3,6 +3,7 @@ import logging
 from logging import handlers
 import logging.config
 import constants
+from tsutils import utilities
 
 root_logger: logging.Logger = logging.getLogger(name=constants.LOG_NAME)
 AUDIO_PLAYER_LOGGER: str = 'audio_player'
@@ -22,7 +23,8 @@ def initiate_log(config: dict) -> handlers.QueueListener:
     Returns:
         handlers.QueueListener: The logging queue listener.
     """
-    log_file_name = config['General']['log_file']
+    data_dir = utilities.get_data_path(app_name='Transcribe')
+    log_file_name = f"{data_dir}/{config['General']['log_file']}"
     setup_logging(log_file_name)
     que = queue.Queue(-1)
     queue_handler = handlers.QueueHandler(que)
