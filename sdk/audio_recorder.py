@@ -14,7 +14,7 @@ from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False
 
-root_logger = al.get_logger()
+logger = al.get_module_logger(al.AUDIO_RECORDER_LOGGER)
 
 
 # https://people.csail.mit.edu/hubert/pyaudio/docs/#id6
@@ -92,7 +92,7 @@ class BaseRecorder:
     """Base class for Speaker, Microphone classes
     """
     def __init__(self, source, source_name, audio_file_name: str = None):
-        root_logger.info(BaseRecorder.__name__)
+        logger.info(BaseRecorder.__name__)
         self.recorder = sr.Recognizer()
         self.recorder.energy_threshold = ENERGY_THRESHOLD
         self.recorder.dynamic_energy_threshold = DYNAMIC_ENERGY_THRESHOLD
@@ -130,7 +130,7 @@ class BaseRecorder:
     def adjust_for_noise(self, device_name, msg):
         """Adjust based on noise from surroundings.
         """
-        root_logger.info(BaseRecorder.adjust_for_noise.__name__)
+        logger.info(BaseRecorder.adjust_for_noise.__name__)
         print(f"[INFO] Adjusting for ambient noise from {device_name}. " + msg)
         with self.source:
             self.recorder.adjust_for_ambient_noise(self.source)
@@ -190,7 +190,7 @@ class MicRecorder(BaseRecorder):
         self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
 
 #    def __init__(self):
-#        root_logger.info(MicRecorder.__name__)
+#        logger.info(MicRecorder.__name__)
 #        with pyaudio.PyAudio() as py_audio:
 #             WASAPI is windows specific
 #            wasapi_info = py_audio.get_host_api_info_by_type(pyaudio.paWASAPI)
@@ -217,7 +217,7 @@ class MicRecorder(BaseRecorder):
     def set_device(self, index: int):
         """Set active device based on index.
         """
-        root_logger.info(MicRecorder.set_device.__name__)
+        logger.info(MicRecorder.set_device.__name__)
         with pyaudio.PyAudio() as py_audio:
             self.device_index = index
             mic = py_audio.get_device_info_by_index(self.device_index)
@@ -240,7 +240,7 @@ class SpeakerRecorder(BaseRecorder):
     """Encapsultes the Speaer device audio input
     """
     def __init__(self, source_name='Speaker', audio_file_name: str = None):
-        root_logger.info(SpeakerRecorder.__name__)
+        logger.info(SpeakerRecorder.__name__)
         with pyaudio.PyAudio() as p:
             wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
             self.device_index = wasapi_info["defaultOutputDevice"]
@@ -275,7 +275,7 @@ class SpeakerRecorder(BaseRecorder):
     def set_device(self, index: int):
         """Set active device based on index.
         """
-        root_logger.info(SpeakerRecorder.set_device.__name__)
+        logger.info(SpeakerRecorder.set_device.__name__)
         with pyaudio.PyAudio() as p:
             self.device_index = index
             speakers = p.get_device_info_by_index(self.device_index)

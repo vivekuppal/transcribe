@@ -17,7 +17,7 @@ from tsutils import app_logging as al
 from tsutils import configuration
 
 
-root_logger = al.get_logger()
+logger = al.get_module_logger(al.UI_LOGGER)
 UI_FONT_SIZE = 20
 # Order of initialization can be unpredictable in python based on where imports are placed.
 # Setting it to None so comparison is deterministic in update_transcript_ui method
@@ -38,7 +38,7 @@ class UICallbacks:
         """Copy transcription text data to clipboard.
            Does not include responses from assistant.
         """
-        root_logger.info(UICallbacks.copy_to_clipboard.__name__)
+        logger.info(UICallbacks.copy_to_clipboard.__name__)
         self.capture_action("Copy transcript to clipboard")
         pyperclip.copy(self.global_vars.transcriber.get_transcript())
 
@@ -46,7 +46,7 @@ class UICallbacks:
         """Save transcription text data to file.
            Does not include responses from assistant.
         """
-        root_logger.info(UICallbacks.save_file.__name__)
+        logger.info(UICallbacks.save_file.__name__)
         filename = ctk.filedialog.asksaveasfilename(defaultextension='.txt',
                                                     title='Save Transcription',
                                                     filetypes=[("Text Files", "*.txt")])
@@ -58,7 +58,7 @@ class UICallbacks:
 
     def freeze_unfreeze(self):
         """Respond to start / stop of seeking responses from openAI API"""
-        root_logger.info(UICallbacks.freeze_unfreeze.__name__)
+        logger.info(UICallbacks.freeze_unfreeze.__name__)
         # Invert the state
         self.global_vars.responder.enabled = not self.global_vars.responder.enabled
         self.capture_action(f'{"Enabled " if self.global_vars.responder.enabled else "Disabled "} continuous LLM responses')
@@ -173,8 +173,8 @@ class UICallbacks:
             except Exception as e:
                 # Somehow we get the exception
                 # RuntimeError: main thread is not in main loop
-                root_logger.info('Exception in summarize_threaded')
-                root_logger.info(e)
+                logger.info('Exception in summarize_threaded')
+                logger.info(e)
 
             pop_up = None
         if summary is None:
@@ -206,7 +206,7 @@ class UICallbacks:
     def set_transcript_state(self):
         """Enables, disables transcription.
            Text of menu item File -> Pause Transcription toggles accordingly"""
-        root_logger.info(UICallbacks.set_transcript_state.__name__)
+        logger.info(UICallbacks.set_transcript_state.__name__)
         self.global_vars.transcriber.transcribe = not self.global_vars.transcriber.transcribe
         self.capture_action(f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.')
         if self.global_vars.transcriber.transcribe:
@@ -284,8 +284,8 @@ def popup_msg_no_close_threaded(title, msg):
         popup.lift()
     except Exception as e:
         # Sometimes get the error - calling Tcl from different apartment
-        root_logger.info('Exception in popup_msg_no_close_threaded')
-        root_logger.info(e)
+        logger.info('Exception in popup_msg_no_close_threaded')
+        logger.info(e)
         return
 
 
@@ -405,7 +405,7 @@ def update_response_ui(responder: gr.GPTResponder,
 def create_ui_components(root, config: dict):
     """Create UI for the application
     """
-    root_logger.info(create_ui_components.__name__)
+    logger.info(create_ui_components.__name__)
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
     root.title("Transcribe")

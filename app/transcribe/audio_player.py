@@ -14,7 +14,7 @@ import constants
 from tsutils import app_logging as al
 from tsutils.language import LANGUAGES_DICT
 
-root_logger = al.get_logger()
+logger = al.get_module_logger(al.AUDIO_PLAYER_LOGGER)
 
 
 class AudioPlayer:
@@ -22,7 +22,7 @@ class AudioPlayer:
     """
 
     def __init__(self, convo: Conversation):
-        root_logger.info(self.__class__.__name__)
+        logger.info(self.__class__.__name__)
         self.speech_text_available = threading.Event()
         self.conversation = convo
         self.temp_dir = tempfile.gettempdir()
@@ -34,7 +34,7 @@ class AudioPlayer:
         This is a blocking method and will return when audio playback is complete.
         For large audio text, this could take several minutes.
         """
-        root_logger.info(f'{self.__class__.__name__} - Playing audio')  # pylint: disable=W1203
+        logger.info(f'{self.__class__.__name__} - Playing audio')  # pylint: disable=W1203
         try:
             audio_obj = gtts.gTTS(speech, lang=lang)
             temp_audio_file = tempfile.mkstemp(dir=self.temp_dir, suffix='.mp3')
@@ -43,8 +43,8 @@ class AudioPlayer:
             audio_obj.save(temp_audio_file[1])
             playsound.playsound(temp_audio_file[1])
         except playsound.PlaysoundException as play_ex:
-            root_logger.error('Error when attempting to play audio.', exc_info=True)
-            root_logger.info(play_ex)
+            logger.error('Error when attempting to play audio.', exc_info=True)
+            logger.info(play_ex)
         finally:
             os.remove(temp_audio_file[1])
 

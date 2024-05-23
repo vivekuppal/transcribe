@@ -52,7 +52,6 @@ class TranscriptionGlobals(Singleton.Singleton):
     _initialized: bool = None
 
     def __init__(self):
-        root_logger.info(TranscriptionGlobals.__name__)
         if self._initialized:
             return
         if self.audio_queue is None:

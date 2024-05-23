@@ -14,7 +14,7 @@ from tsutils import app_logging as al
 from tsutils import duration, utilities
 
 
-root_logger = al.get_logger()
+logger = al.get_module_logger(al.GPT_RESPONDER_LOGGER)
 
 
 class InferenceEnum(Enum):
@@ -38,7 +38,7 @@ class GPTResponder:
                  save_to_file: bool = False,
                  file_name: str = 'logs/response.txt',
                  openai_module=openai):
-        root_logger.info(GPTResponder.__name__)
+        logger.info(GPTResponder.__name__)
         # This var is used by UI to populate the response textbox
         self.response = prompts.INITIAL_RESPONSE
         self.llm_response_interval = 2
@@ -51,7 +51,7 @@ class GPTResponder:
     def summarize(self) -> str:
         """Ping LLM to get a summary of the conversation.
         """
-        root_logger.info(GPTResponder.summarize.__name__)
+        logger.info(GPTResponder.summarize.__name__)
 
         chat_inference_provider = self.config['General']['chat_inference_provider']
         if chat_inference_provider == 'openai':
@@ -154,7 +154,7 @@ class GPTResponder:
         Returns:
             str: The generated response from the LLM.
         """
-        root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
+        logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
 
         try:
             chat_inference_provider = self.config['General']['chat_inference_provider']
@@ -175,7 +175,7 @@ class GPTResponder:
 
             return collected_messages
         except Exception as e:
-            root_logger.error(f"Error in generate_response_from_transcript_no_check: {e}")
+            logger.error(f"Error in generate_response_from_transcript_no_check: {e}")
             return None
 
     def create_client(self, api_key: str, base_url: str = None):
@@ -243,7 +243,7 @@ class GPTResponder:
             str: The response from the OpenAI LLM model.
             Returns an empty string if the feature is disabled.
         """
-        root_logger.info("generate_response_from_transcript called")
+        logger.info("generate_response_from_transcript called")
 
         if not self.enabled:
             return ''
@@ -256,7 +256,7 @@ class GPTResponder:
             Updates the conversation object with the response from LLM.
         """
         try:
-            root_logger.info(GPTResponder.generate_response_for_selected_text.__name__)
+            logger.info(GPTResponder.generate_response_for_selected_text.__name__)
             chat_inference_provider = self.config['General']['chat_inference_provider']
 
             chat_inference_provider = self.config['General']['chat_inference_provider']
@@ -297,8 +297,8 @@ class GPTResponder:
         except Exception as exception:
             print('Error when attempting to get a response from LLM.')
             print(exception)
-            root_logger.error('Error when attempting to get a response from LLM.')
-            root_logger.exception(exception)
+            logger.error('Error when attempting to get a response from LLM.')
+            logger.exception(exception)
             return prompts.INITIAL_RESPONSE
 
         processed_response = collected_messages
@@ -311,7 +311,7 @@ class GPTResponder:
 
     def _update_conversation(self, response, persona, update_previous=False):
         """Update the internaal conversation state"""
-        root_logger.info(GPTResponder._update_conversation.__name__)
+        logger.info(GPTResponder._update_conversation.__name__)
         if response != '':
             self.response = response
             self.conversation.update_conversation(persona=persona,
@@ -346,7 +346,7 @@ class GPTResponder:
     def update_response_interval(self, interval):
         """Change the interval for pinging LLM
         """
-        root_logger.info(GPTResponder.update_response_interval.__name__)
+        logger.info(GPTResponder.update_response_interval.__name__)
         self.llm_response_interval = interval
 
     def _pretty_print_openai_request(self, message: str):
@@ -370,7 +370,7 @@ class OpenAIResponder(GPTResponder):
                  save_to_file: bool = False,
                  base_url: str = None,
                  response_file_name: str = 'logs/response.txt'):
-        root_logger.info(OpenAIResponder.__name__)
+        logger.info(OpenAIResponder.__name__)
         self.config = config
         api_key = self.config['OpenAI']['api_key']
         base_url = self.config['OpenAI']['base_url']
@@ -392,7 +392,7 @@ class TogetherAIResponder(GPTResponder):
                  convo: conversation.Conversation,
                  save_to_file: bool = False,
                  response_file_name: str = 'logs/response.txt'):
-        root_logger.info(TogetherAIResponder.__name__)
+        logger.info(TogetherAIResponder.__name__)
         self.config = config
         api_key = self.config['Together']['api_key']
         base_url = self.config['Together']['base_url']
@@ -437,6 +437,7 @@ class InferenceResponderFactory:
                                        convo=convo,
                                        save_to_file=save_to_file,
                                        response_file_name=response_file_name)
+
         raise ValueError("Unknown Inference Provider type")
 
 

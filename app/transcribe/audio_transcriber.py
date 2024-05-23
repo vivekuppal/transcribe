@@ -28,7 +28,7 @@ from sdk.transcriber_models import WhisperCPPSTTModel
 
 # pylint: disable=logging-fstring-interpolation
 PHRASE_TIMEOUT = 3.05
-root_logger = al.get_logger()
+logger = al.get_module_logger(al.TRANSCRIBER_LOGGER)
 # Attempt to prune after these number of segments in transcription
 WHISPER_SEGMENT_PRUNE_THRESHOLD = 6
 # Duration of audio (seconds) after which force pruning
@@ -40,7 +40,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
                  config: dict):
-        root_logger.info(self.__class__.__name__)
+        logger.info(self.__class__.__name__)
         # Transcript_data should be replaced with the conversation object.
         # We do not need to store transcription in 2 different places.
         # self.transcript_data = {"You": [], "Speaker": []}
@@ -112,10 +112,10 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         Args:
           audio_queue: queue object with reference to audio files
         """
-        root_logger.info(self.__class__.__name__)
+        logger.info(self.__class__.__name__)
         while True:
             who_spoke, data, time_spoken = audio_queue.get()
-            root_logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} '
+            logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} '
                              f'- Time Spoken: {time_spoken} by : {who_spoke}, queue_backlog - '
                              f'{audio_queue.qsize()}')
             self._update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
@@ -128,14 +128,14 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 source_info["process_data_func"](source_info["last_sample"], path)
                 if self.transcribe:
                     with duration.Duration('Transcription (Speech to Text)', screen=False):
-                        root_logger.info(f'{datetime.datetime.now()} - Begin transcription')
+                        logger.info(f'{datetime.datetime.now()} - Begin transcription')
                         response = self.stt_model.get_transcription(path)
                         text = self.stt_model.process_response(response)
                         if text != '':
                             self._prune_audio_file(response, who_spoke, time_spoken, path)
 
-                        root_logger.info(f'{datetime.datetime.utcnow()} = Transcribed text: {text}')
-                        root_logger.info(f'{datetime.datetime.utcnow()} - End transcription')
+                        logger.info(f'{datetime.datetime.utcnow()} = Transcribed text: {text}')
+                        logger.info(f'{datetime.datetime.utcnow()} - End transcription')
 
             except Exception as exception:
                 print(exception)
@@ -157,7 +157,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         prune, prune_id, prune_percent = self.check_for_latency(results)
         # print(f'Prune: {prune}. prune_id: {prune_id}. prune_percent: {prune_percent}')
         if prune:
-            root_logger.info(f'{datetime.datetime.utcnow()} - Attempted to prune.')
+            logger.info(f'{datetime.datetime.utcnow()} - Attempted to prune.')
             first, second = self.prune_for_latency(who_spoke=who_spoke,
                                                    original_data_size=original_data_size,
                                                    prune_percent=prune_percent,
@@ -251,7 +251,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         return data
 
     def _update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken):
-        root_logger.info(AudioTranscriber._update_last_sample_and_phrase_status.__name__)
+        logger.info(AudioTranscriber._update_last_sample_and_phrase_status.__name__)
         if not self.transcribe:
             return
         source_info = self.audio_sources_properties[who_spoke]
@@ -303,7 +303,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         Args:
             temp_file_name: Name of .wav file to store the data
         """
-        root_logger.info(AudioTranscriber.process_mic_data.__name__)
+        logger.info(AudioTranscriber.process_mic_data.__name__)
         if not self.transcribe:
             return
 
@@ -320,7 +320,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         Args:
             temp_file_name: Name of .wav file to store the data
         """
-        root_logger.info(AudioTranscriber.process_speaker_data.__name__)
+        logger.info(AudioTranscriber.process_speaker_data.__name__)
         if not self.transcribe:
             return
         channels = int(self.audio_sources_properties["Speaker"]["channels"])
@@ -386,7 +386,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         with self.mutex:
             # This method can be invoked from 2 different contexts.
             # Mutex ensures integrity of data for race conditions.
-            root_logger.info(AudioTranscriber.clear_transcriber_context.__name__)
+            logger.info(AudioTranscriber.clear_transcriber_context.__name__)
             self.clear_transcript_data()
             with audio_queue.mutex:
                 audio_queue.queue.clear()
@@ -424,8 +424,8 @@ class WhisperTranscriber(AudioTranscriber):
         # For types of responses
         # Look into this a little bit further.
 
-        root_logger.info(WhisperTranscriber.check_for_latency)
-        root_logger.info('Check for latency')
+        logger.info(WhisperTranscriber.check_for_latency)
+        logger.info('Check for latency')
         try:
             len_segments = len(results["segments"])
         except KeyError:
@@ -444,13 +444,13 @@ class WhisperTranscriber(AudioTranscriber):
             return (False, 0, 0)
 
         len_speech = float(results['segments'][len_segments-1]['end'])
-        root_logger.info(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
+        logger.info(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
         # print(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
 
         if len_segments > WHISPER_SEGMENT_PRUNE_THRESHOLD:
             log_msg = f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.'
             # print(log_msg)
-            root_logger.info(log_msg)
+            logger.info(log_msg)
         else:
             # print(f'Segments: {len_segments}. Skip pruning.')
             return (False, 0, 0)
@@ -469,9 +469,9 @@ class WhisperTranscriber(AudioTranscriber):
                 prune_segment_id = int(rev_segment['id'])
                 prune_seconds = float(rev_segment['end'])
                 prune_percent = prune_seconds / original_duration
-                root_logger.info(f'Prune till segment id : {prune_segment_id}.'
+                logger.info(f'Prune till segment id : {prune_segment_id}.'
                                  f' Prune duration: {prune_seconds}.')
-                root_logger.info(f'Prune {prune_percent}% of data.')
+                logger.info(f'Prune {prune_percent}% of data.')
                 break
 
         # for segment in results['segments']:
@@ -479,7 +479,7 @@ class WhisperTranscriber(AudioTranscriber):
         #           f'text: {segment['text'].strip()}')
 
         if prune_percent == 0:
-            root_logger.info(f'Total segments ({len_segments}) is more than prune threshold'
+            logger.info(f'Total segments ({len_segments}) is more than prune threshold'
                              f' ({WHISPER_SEGMENT_PRUNE_THRESHOLD}), but could not find'
                              f' segment endings.')
 
@@ -492,9 +492,9 @@ class WhisperTranscriber(AudioTranscriber):
                     if float(segment['end']) > prune_seconds:
                         prune_segment_id = int(segment['id'])
                         prune_percent = prune_seconds / original_duration
-                        root_logger.info(f'Prune till segment id : {prune_segment_id}.'
+                        logger.info(f'Prune till segment id : {prune_segment_id}.'
                                          f' Prune duration: {prune_seconds}.')
-                        root_logger.info(f'Prune {prune_percent}% of data.')
+                        logger.info(f'Prune {prune_percent}% of data.')
                         break
 
         if prune_percent == 0:
@@ -510,15 +510,15 @@ class WhisperTranscriber(AudioTranscriber):
         """
         # If original_data_size and current size of data do not match, do nothing
         # print('Prune for latency')
-        root_logger.info(WhisperTranscriber.prune_for_latency.__name__)
+        logger.info(WhisperTranscriber.prune_for_latency.__name__)
         segments = results['segments']
-        root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
+        logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
         source_info = self.audio_sources_properties[who_spoke]
 
         with source_info["mutex"]:
             # Concurrency check
             if len(source_info["last_sample"]) != original_data_size:
-                root_logger.info(f'Aborting pruning. Data Size has changed from '
+                logger.info(f'Aborting pruning. Data Size has changed from '
                                  f'{original_data_size} to '
                                  f'{len(source_info["last_sample"])}')
                 return
@@ -529,7 +529,7 @@ class WhisperTranscriber(AudioTranscriber):
                 # Get the number of frames
                 num_frames = wavfile.getnframes()
                 save_frames = int(num_frames * prune_percent)
-                root_logger.info(f'File {file_path} has {num_frames} frames.'
+                logger.info(f'File {file_path} has {num_frames} frames.'
                                  f' We will save the last {save_frames} frames.')
                 new_data = b""
 
@@ -545,7 +545,7 @@ class WhisperTranscriber(AudioTranscriber):
 
             source_info["last_sample"] = new_data
 
-        root_logger.info(f'Prune convo object until prune id: {prune_id}')
+        logger.info(f'Prune convo object until prune id: {prune_id}')
         try:
             first_string = ''
             second_string = ''
@@ -557,8 +557,8 @@ class WhisperTranscriber(AudioTranscriber):
         except Exception as ex:
             print(f'Exception while pruning: {ex}')
 
-        root_logger.info(f'First string: {first_string}')
-        root_logger.info(f'Second string: {second_string}')
+        logger.info(f'First string: {first_string}')
+        logger.info(f'Second string: {second_string}')
 
         return first_string, second_string
 
@@ -586,7 +586,7 @@ class WhisperCPPTranscriber(AudioTranscriber):
         Args:
             temp_file_name: Name of .wav file to store the data
         """
-        root_logger.info(AudioTranscriber.process_speaker_data.__name__)
+        logger.info(AudioTranscriber.process_speaker_data.__name__)
         if not self.transcribe:
             return
         # print(f'filesize: {os.path.getsize(temp_file_name)}')
@@ -605,7 +605,7 @@ class WhisperCPPTranscriber(AudioTranscriber):
         Args:
             temp_file_name: Name of .wav file to store the data
         """
-        root_logger.info(AudioTranscriber.process_mic_data.__name__)
+        logger.info(AudioTranscriber.process_mic_data.__name__)
         if not self.transcribe:
             return
 
@@ -623,8 +623,8 @@ class WhisperCPPTranscriber(AudioTranscriber):
           prune_segment_id: int: Prune everything before this segment
           prune_percent: float: % of audio clip (by size) to be pruned
         """
-        root_logger.info(WhisperCPPTranscriber.check_for_latency)
-        root_logger.info('Check for latency')
+        logger.info(WhisperCPPTranscriber.check_for_latency)
+        logger.info('Check for latency')
         try:
             len_segments = len(results["transcription"])
         except KeyError:
@@ -634,13 +634,13 @@ class WhisperCPPTranscriber(AudioTranscriber):
             return (False, 0, 0)
 
         len_speech_ms = int(results['transcription'][-1]['offsets']['to'])
-        root_logger.info(f'Segments: {len_segments}. Speech length: {len_speech_ms} milliseconds.')
+        logger.info(f'Segments: {len_segments}. Speech length: {len_speech_ms} milliseconds.')
         # print(f'Segments: {len_segments}. Speech length: {len_speech_ms} milliseconds.')
 
         if len_segments > WHISPERCPP_SEGMENT_PRUNE_THRESHOLD:
             log_msg = f'Attempt Prune segments: {len_segments-WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}.'
             # print(log_msg)
-            root_logger.info(log_msg)
+            logger.info(log_msg)
         else:
             # print(f'Segments: {len_segments}. Skip pruning.')
             return (False, 0, 0)
@@ -660,13 +660,13 @@ class WhisperCPPTranscriber(AudioTranscriber):
                 prune_segment_id = segment_id
                 prune_seconds = float(rev_segment['offsets']['to']/1000)
                 prune_percent = prune_seconds / original_duration
-                root_logger.info(f'Prune till segment id : {prune_segment_id}.'
+                logger.info(f'Prune till segment id : {prune_segment_id}.'
                                  f' Prune duration: {prune_seconds}.')
-                root_logger.info(f'Prune {prune_percent}% of data.')
+                logger.info(f'Prune {prune_percent}% of data.')
                 break
 
         if prune_percent == 0:
-            root_logger.info(f'Total segments ({len_segments}) is more than prune threshold'
+            logger.info(f'Total segments ({len_segments}) is more than prune threshold'
                              f' ({WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}), but could not find'
                              f' segment endings.')
 
@@ -680,11 +680,11 @@ class WhisperCPPTranscriber(AudioTranscriber):
                     if float(segment['offsets']['to']/1000) > prune_seconds:
                         prune_segment_id = segment_id
                         prune_percent = prune_seconds / original_duration
-                        root_logger.info(f'Prune till segment id : {prune_segment_id}.'
+                        logger.info(f'Prune till segment id : {prune_segment_id}.'
                                          f' Prune duration: {prune_seconds}.')
                         # print(f'Prune till segment id : {prune_segment_id}.'
                         #       f' Prune duration: {prune_seconds}.')
-                        root_logger.info(f'Prune {prune_percent}% of data.')
+                        logger.info(f'Prune {prune_percent}% of data.')
                         # print(f'Prune {prune_percent}% of data.')
                         break
                     segment_id += 1
@@ -703,15 +703,15 @@ class WhisperCPPTranscriber(AudioTranscriber):
 
         # If original_data_size and current size of data do not match, do nothing
         # print('Prune for latency')
-        root_logger.info(WhisperCPPTranscriber.prune_for_latency.__name__)
+        logger.info(WhisperCPPTranscriber.prune_for_latency.__name__)
         segments = results['transcription']
-        root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
+        logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
         source_info = self.audio_sources_properties[who_spoke]
 
         with source_info['mutex']:
             # Concurrency check
             if len(source_info['last_sample']) != original_data_size:
-                root_logger.info(f'Aborting pruning. Data Size has changed from '
+                logger.info(f'Aborting pruning. Data Size has changed from '
                                  f'{original_data_size} to '
                                  f'{len(source_info["last_sample"])}')
                 return
@@ -721,7 +721,7 @@ class WhisperCPPTranscriber(AudioTranscriber):
                 # Get the number of frames
                 num_frames = wavfile.getnframes()
                 save_frames = int(num_frames * prune_percent)
-                root_logger.info(f'File {file_path} has {num_frames} frames.'
+                logger.info(f'File {file_path} has {num_frames} frames.'
                                  f' We will save the last {save_frames} frames.')
                 new_data = b""
 
@@ -737,7 +737,7 @@ class WhisperCPPTranscriber(AudioTranscriber):
 
             source_info['last_sample'] = new_data
 
-        root_logger.info(f'Prune convo object until prune id: {prune_id}')
+        logger.info(f'Prune convo object until prune id: {prune_id}')
         try:
             first_string = ''
             second_string = ''
@@ -751,8 +751,8 @@ class WhisperCPPTranscriber(AudioTranscriber):
         except Exception as ex:
             print(f'Exception while pruning: {ex}')
 
-        root_logger.info(f'First string: {first_string}')
-        root_logger.info(f'Second string: {second_string}')
+        logger.info(f'First string: {first_string}')
+        logger.info(f'Second string: {second_string}')
 
         return first_string, second_string
 
@@ -777,7 +777,7 @@ class DeepgramTranscriber(AudioTranscriber):
             prune_percent: float: % of audio clip (by size) to be pruned
         """
         # check for existence of paragraphs
-        root_logger.info(DeepgramTranscriber.check_for_latency)
+        logger.info(DeepgramTranscriber.check_for_latency)
         try:
             outer_paragraphs = results.results.channels[0].alternatives[0].paragraphs
         except KeyError as ke:
@@ -824,14 +824,14 @@ class DeepgramTranscriber(AudioTranscriber):
         Adjusts the application context based on pruning to reflect pruning.
         """
         # If original_data_size and current size of data do not match, do nothing
-        root_logger.info(DeepgramTranscriber.prune_for_latency)
-        root_logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
+        logger.info(DeepgramTranscriber.prune_for_latency)
+        logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
         source_info = self.audio_sources_properties[who_spoke]
 
         with source_info['mutex']:
             # Concurrency check
             if len(source_info['last_sample']) != original_data_size:
-                root_logger.info(f'Aborting pruning. Data Size has changed from '
+                logger.info(f'Aborting pruning. Data Size has changed from '
                                  f'{original_data_size} to '
                                  f'{len(source_info["last_sample"])}')
                 return
@@ -842,7 +842,7 @@ class DeepgramTranscriber(AudioTranscriber):
                 # Get the number of frames
                 num_frames = wavfile.getnframes()
                 save_frames = int(num_frames * prune_percent)
-                root_logger.info(f'File {file_path} has {num_frames} frames.'
+                logger.info(f'File {file_path} has {num_frames} frames.'
                                  f' We will save the last {save_frames} frames.')
                 new_data = b""
 
@@ -859,7 +859,7 @@ class DeepgramTranscriber(AudioTranscriber):
             source_info['last_sample'] = new_data
 
         try:
-            root_logger.info(f'Prune convo object until prune id: {prune_id}')
+            logger.info(f'Prune convo object until prune id: {prune_id}')
             first_string = ''
             second_string = ''
             para_list = results.results.channels[0].alternatives[0].paragraphs.paragraphs
