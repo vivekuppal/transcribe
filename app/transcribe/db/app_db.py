@@ -41,6 +41,7 @@ class AppDB(Singleton.Singleton):
     # db_log_file
     _db_context: dict = None
     _engine: Engine = None
+    _db_logger: logging.Logger = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -61,12 +62,12 @@ class AppDB(Singleton.Singleton):
         # Initialize DB logger
         db_log_file_name = f'{self._db_context["db_log_file"]}'
         db_handler = logging.FileHandler(db_log_file_name, encoding='utf-8')
-        db_logger = logging.getLogger('sqlalchemy')
+        self._db_logger = logging.getLogger('sqlalchemy')
         db_handler_log_level = logging.INFO
         db_logger_log_level = logging.DEBUG
         db_handler.setLevel(db_handler_log_level)
-        db_logger.addHandler(db_handler)
-        db_logger.setLevel(db_logger_log_level)
+        self._db_logger.addHandler(db_handler)
+        self._db_logger.setLevel(db_logger_log_level)
 
         # Initialize all the tables
         self._tables[appi.TABLE_NAME] = appi.ApplicationInvocations(engine=self._engine)
@@ -75,6 +76,9 @@ class AppDB(Singleton.Singleton):
         self._tables[s.TABLE_NAME] = s.Summaries(engine=self._engine)
         connection.commit()
         connection.close()
+
+    def get_logger(self) -> logging.Logger:
+        return self._db_logger
 
     def get_context(self) -> dict:
         """Get DB context
