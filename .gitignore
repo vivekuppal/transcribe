@@ -9,6 +9,7 @@ app/transcribe/models/base.pt
 app/transcribe/models/large-v3.pt
 app/transcribe/logs/transcript-*.txt
 app/transcribe/logs/transcript-*.zip
+app/transcribe/logs/db-*.log
 app/transcribe/logs/ui-*.txt
 app/transcribe/logs/Transcribe.log
 app/transcribe/logs/response.txt
