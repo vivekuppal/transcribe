@@ -15,9 +15,6 @@ from tsutils import Singleton, task_queue, utilities  # noqa: E402 pylint: disab
 from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
 
 
-root_logger = al.get_logger()
-
-
 class TranscriptionGlobals(Singleton.Singleton):
     """Global constants for audio processing. It is implemented as a Singleton class.
     """
@@ -52,7 +49,6 @@ class TranscriptionGlobals(Singleton.Singleton):
     _initialized: bool = None
 
     def __init__(self):
-        root_logger.info(TranscriptionGlobals.__name__)
         if self._initialized:
             return
         if self.audio_queue is None:

@@ -1,24 +1,26 @@
 import sys
-from datetime import datetime
-import time
-from abc import abstractmethod
-import queue
-import wave
 import os
+import queue
+import time
+import wave
+from datetime import datetime
+from abc import abstractmethod
+
 import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
-sys.path.append('../..')
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
+
+sys.path.append('../..')
 
 ENERGY_THRESHOLD = 1000
 DYNAMIC_ENERGY_THRESHOLD = False
 
-root_logger = al.get_logger()
+logger = al.get_module_logger(al.AUDIO_RECORDER_LOGGER)
 
-
+# Mapping of driver types
 # https://people.csail.mit.edu/hubert/pyaudio/docs/#id6
-driver_type = {
+DRIVER_TYPE = {
     -1: 'Not actually an audio device',
     0: 'Still in development',
     1: 'DirectSound (Windows only)',
@@ -38,10 +40,9 @@ driver_type = {
 
 def print_detailed_audio_info(print_func=print):
     """
-    Print information about Host APIs and devices,
-    using `print_func`.
+    Print information about Host APIs and devices using the provided print function.
 
-    :param print_func: Print function(or wrapper)
+    :param print_func: Print function or wrapper
     :type print_func: function
     :rtype: None
     """
@@ -50,6 +51,7 @@ def print_detailed_audio_info(print_func=print):
     print_func(header)
     print_func("-"*len(header))
     py_audio = pyaudio.PyAudio()
+
     for host_api in py_audio.get_host_api_info_generator():
         print_func(
             (
@@ -65,6 +67,7 @@ def print_detailed_audio_info(print_func=print):
     header = f" ^ #{'INDEX'.center(7)}# HOST API INDEX #{'LOOPBACK'.center(10)}#{'NAME'.center(5)}"
     print_func(header)
     print_func("-"*len(header))
+
     for device in py_audio.get_device_info_generator():
         print_func(
             (
@@ -91,8 +94,9 @@ def print_detailed_audio_info(print_func=print):
 class BaseRecorder:
     """Base class for Speaker, Microphone classes
     """
+
     def __init__(self, source, source_name, audio_file_name: str = None):
-        root_logger.info(BaseRecorder.__name__)
+        logger.info(BaseRecorder.__name__)
         self.recorder = sr.Recognizer()
         self.recorder.energy_threshold = ENERGY_THRESHOLD
         self.recorder.dynamic_energy_threshold = DYNAMIC_ENERGY_THRESHOLD
@@ -107,10 +111,14 @@ class BaseRecorder:
         self.config = configuration.Config().data
         self.stop_record_func = None
         self.audio_file_name = audio_file_name
+        self._remove_existing_audio_files()
+
+    def _remove_existing_audio_files(self):
+        """Remove existing audio files if they exist"""
         if self.audio_file_name and os.path.exists(self.audio_file_name):
             os.remove(self.audio_file_name)
-        if self.audio_file_name and os.path.exists(self.audio_file_name+'.bak'):
-            os.remove(self.audio_file_name+'.bak')
+        if self.audio_file_name and os.path.exists(self.audio_file_name + '.bak'):
+            os.remove(self.audio_file_name + '.bak')
 
     @abstractmethod
     def get_name(self):
@@ -130,8 +138,8 @@ class BaseRecorder:
     def adjust_for_noise(self, device_name, msg):
         """Adjust based on noise from surroundings.
         """
-        root_logger.info(BaseRecorder.adjust_for_noise.__name__)
-        print(f"[INFO] Adjusting for ambient noise from {device_name}. " + msg)
+        logger.info(BaseRecorder.adjust_for_noise.__name__)
+        print(f"[INFO] Adjusting for ambient noise from {device_name}. {msg}")
         with self.source:
             self.recorder.adjust_for_ambient_noise(self.source)
         print(f"[INFO] Completed ambient noise adjustment for {device_name}.")
@@ -190,7 +198,7 @@ class MicRecorder(BaseRecorder):
         self.adjust_for_noise("Default Mic", "Please make some noise from the Default Mic...")
 
 #    def __init__(self):
-#        root_logger.info(MicRecorder.__name__)
+#        logger.info(MicRecorder.__name__)
 #        with pyaudio.PyAudio() as py_audio:
 #             WASAPI is windows specific
 #            wasapi_info = py_audio.get_host_api_info_by_type(pyaudio.paWASAPI)
@@ -217,7 +225,7 @@ class MicRecorder(BaseRecorder):
     def set_device(self, index: int):
         """Set active device based on index.
         """
-        root_logger.info(MicRecorder.set_device.__name__)
+        logger.info(MicRecorder.set_device.__name__)
         with pyaudio.PyAudio() as py_audio:
             self.device_index = index
             mic = py_audio.get_device_info_by_index(self.device_index)
@@ -240,10 +248,10 @@ class SpeakerRecorder(BaseRecorder):
     """Encapsultes the Speaer device audio input
     """
     def __init__(self, source_name='Speaker', audio_file_name: str = None):
-        root_logger.info(SpeakerRecorder.__name__)
+        logger.info(SpeakerRecorder.__name__)
         with pyaudio.PyAudio() as p:
-            wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
-            self.device_index = wasapi_info["defaultOutputDevice"]
+            wasapi_inf = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+            self.device_index = wasapi_inf["defaultOutputDevice"]
             default_speakers = p.get_device_info_by_index(self.device_index)
 
             if not default_speakers["isLoopbackDevice"]:
@@ -275,7 +283,7 @@ class SpeakerRecorder(BaseRecorder):
     def set_device(self, index: int):
         """Set active device based on index.
         """
-        root_logger.info(SpeakerRecorder.set_device.__name__)
+        logger.info(SpeakerRecorder.set_device.__name__)
         with pyaudio.PyAudio() as p:
             self.device_index = index
             speakers = p.get_device_info_by_index(self.device_index)
@@ -310,11 +318,11 @@ if __name__ == "__main__":
     # Below statements are useful to view all available fields in the
     # default Input Device.
     # Do not delete these lines
-    # with pyaudio.PyAudio() as p:
-    #     wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
-    #     print(wasapi_info)
+    with pyaudio.PyAudio() as p:
+        wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+        print(wasapi_info)
 
-    # with pyaudio.PyAudio() as p:
-    #    wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
-    #    default_mic = p.get_device_info_by_index(wasapi_info["defaultInputDevice"])
-    #    print(default_mic)
+    with pyaudio.PyAudio() as p:
+        wasapi_info = p.get_host_api_info_by_type(pyaudio.paWASAPI)
+        default_mic = p.get_device_info_by_index(wasapi_info["defaultInputDevice"])
+        print(default_mic)
