@@ -95,86 +95,88 @@ class GPTResponder:
 
         return collected_messages
 
+    def _get_settings_section(self, provider: str) -> str:
+        """Get the settings section based on the chat inference provider."""
+        if provider == 'openai':
+            return 'OpenAI'
+        elif provider == 'together':
+            return 'Together'
+        raise ValueError(f"Unsupported chat inference provider: {provider}")
+
+    def _get_api_settings(self, settings_section: str):
+        """Retrieve API settings from the configuration."""
+        api_key = self.config[settings_section]['api_key']
+        base_url = self.config[settings_section]['base_url']
+        model = self.config[settings_section]['ai_model']
+        return api_key, base_url, model
+
+    def _get_openai_settings(self) -> (int, float):
+        """Retrieve OpenAI-specific settings from the configuration."""
+        timeout = self.config['OpenAI']['response_request_timeout_seconds']
+        temperature = self.config['OpenAI']['temperature']
+        return timeout, temperature
+
+    def _get_llm_response(self, messages, temperature, timeout) -> str:
+        """Send a request to the LLM and process the streaming response."""
+        with duration.Duration(name='OpenAI Chat Completion', screen=False):
+            multi_turn_response = self.llm_client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                timeout=timeout,
+                stream=True
+            )
+
+            collected_messages = ""
+            for chunk in multi_turn_response:
+                chunk_message = chunk.choices[0].delta  # extract the message
+                if chunk_message.content:
+                    message_text = chunk_message.content
+                    collected_messages += message_text
+                    self._update_conversation(persona=constants.PERSONA_ASSISTANT,
+                                              response=collected_messages,
+                                              update_previous=True)
+            return collected_messages
+
+    def _insert_response_in_db(self, last_convo_id: int, response: str):
+        """Insert the generated response into the database."""
+        inv_id = appdb().get_invocation_id()
+        llmr_obj: llmrdb.LLMResponses = appdb().get_object(llmrdb.TABLE_NAME)
+        llmr_obj.insert_response(inv_id, last_convo_id, response)
+
     def generate_response_from_transcript_no_check(self) -> str:
-        """Ping LLM to get a suggested response right away.
-           Gets a response even if the continuous suggestion option is disabled.
-           Updates the conversation object with the response from LLM.
         """
+        Pings the LLM to get a suggested response immediately.
+
+        This method gets a response even if the continuous suggestion option is disabled.
+        It updates the conversation object with the response from the LLM.
+
+        Returns:
+            str: The generated response from the LLM.
+        """
+        root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
+
         try:
-            root_logger.info(GPTResponder.generate_response_from_transcript_no_check.__name__)
             chat_inference_provider = self.config['General']['chat_inference_provider']
-
-            if chat_inference_provider == 'openai':
-                settings_section = 'OpenAI'
-            elif chat_inference_provider == 'together':
-                settings_section = 'Together'
-
-            api_key = self.config[settings_section]['api_key']
-            base_url = self.config[settings_section]['base_url']
-            model = self.config[settings_section]['ai_model']
+            settings_section = self._get_settings_section(chat_inference_provider)
+            api_key, base_url, model = self._get_api_settings(settings_section)
 
             if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
-            with duration.Duration(name='OpenAI Chat Completion', screen=False):
-                timeout: int = self.config['OpenAI']['response_request_timeout_seconds']
-                temperature: float = self.config['OpenAI']['temperature']
-                multiturn_prompt_content = self.conversation.get_merged_conversation_response(
-                    length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
-                # convo_id from the last conversation tuple
-                last_convo_id = int(multiturn_prompt_content[-1][2])
-                multiturn_prompt_api_message = prompts.create_multiturn_prompt(
-                    multiturn_prompt_content)
-                # Multi turn response is very effective when continuous mode is off.
-                # In continuous mode, there are far too many responses from LLM.
-                # They can confuse the LLM if that many responses are replayed back to LLM.
-                # print(f'{datetime.datetime.now()} - Request response')
-                # self._pretty_print_openai_request(multiturn_prompt_api_message)
-                multi_turn_response = self.llm_client.chat.completions.create(
-                    model=self.model,
-                    messages=multiturn_prompt_api_message,
-                    temperature=temperature,
-                    timeout=timeout,
-                    stream=True
-                )
-                # pprint.pprint(f'openai response: {multi_turn_response}', width=120)
-                # print(f'{datetime.datetime.now()} - Got response')
+            timeout, temperature = self._get_openai_settings()
+            multiturn_prompt_content = self.conversation.get_merged_conversation_response(
+                length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
+            last_convo_id = int(multiturn_prompt_content[-1][2])
+            multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
 
-                # Update conversation with an empty response. This response will be updated
-                # by subsequent updates from the streaming response
-                self._update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                          response="  ",
-                                          update_previous=False)
-                collected_messages = ""
-                for chunk in multi_turn_response:
-                    chunk_message = chunk.choices[0].delta  # extract the message
-                    if chunk_message.content:
-                        message_text = chunk_message.content
-                        collected_messages += message_text
-                        # print(f"{message_text}", end="")
-                        self._update_conversation(persona=constants.PERSONA_ASSISTANT,
-                                                  response=collected_messages,
-                                                  update_previous=True)
+            collected_messages = self._get_llm_response(multiturn_prompt_api_message, temperature, timeout)
+            self._insert_response_in_db(last_convo_id, collected_messages)
 
-                # Insert response in DB
-                inv_id = appdb().get_invocation_id()
-                llmr_obj: llmrdb.LLMResponses = appdb().get_object(llmrdb.TABLE_NAME)
-                llmr_obj.insert_response(inv_id, last_convo_id, collected_messages)
-
-        except Exception as exception:
-            print('Error when attempting to get a response from LLM.')
-            print(exception)
-            root_logger.error('Error when attempting to get a response from LLM.')
-            root_logger.exception(exception)
-            return prompts.INITIAL_RESPONSE
-
-        processed_multi_turn_response = collected_messages
-
-        if self.save_response_to_file:
-            with open(file=self.response_file, mode="a", encoding='utf-8') as f:
-                f.write(f'{datetime.datetime.now()} - {processed_multi_turn_response}\n')
-
-        return processed_multi_turn_response
+            return collected_messages
+        except Exception as e:
+            root_logger.error(f"Error in generate_response_from_transcript_no_check: {e}")
+            return None
 
     def create_client(self, api_key: str, base_url: str = None):
         """
