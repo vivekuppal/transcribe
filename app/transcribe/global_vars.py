@@ -71,7 +71,6 @@ class TranscriptionGlobals(Singleton.Singleton):
         # print(f'Env var is: {os.getenv("test_environment_variable")}')
         # Ensure log folder exists
         utilities.ensure_directory_exists(f'{self.data_dir}/logs')
-        print(f'Current working dir is: {self.current_working_dir}.')
         db_log_file = utilities.incrementing_filename(filename=f'{self.data_dir}logs/db',
                                                       extension='log')
         self.db_file_path = self.data_dir + 'logs/app.db'
