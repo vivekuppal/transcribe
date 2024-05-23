@@ -12,8 +12,6 @@ from sqlalchemy.orm import Session, mapped_column, Mapped
 from sqlalchemy import Engine
 from sqlalchemy.orm import declarative_base
 
-# from db import AppDBBase
-
 TABLE_NAME = 'ApplicationInvocations'
 
 
