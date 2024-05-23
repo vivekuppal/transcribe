@@ -4,7 +4,6 @@ from logging import handlers
 import logging.config
 import constants
 
-
 root_logger: logging.Logger = logging.getLogger(name=constants.LOG_NAME)
 AUDIO_PLAYER_LOGGER: str = 'audio_player'
 TRANSCRIBER_LOGGER: str = 'transcriber'
@@ -14,6 +13,15 @@ UI_LOGGER: str = 'ui'
 
 
 def initiate_log(config: dict) -> handlers.QueueListener:
+    """
+    Initiates logging for the application.
+
+    Args:
+        config (dict): Configuration dictionary containing logging settings.
+
+    Returns:
+        handlers.QueueListener: The logging queue listener.
+    """
     log_file_name = config['General']['log_file']
     setup_logging(log_file_name)
     que = queue.Queue(-1)
@@ -24,23 +32,46 @@ def initiate_log(config: dict) -> handlers.QueueListener:
     root_logger.addHandler(queue_handler)
     log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(threadName)s: %(message)s')
     handler.setFormatter(log_formatter)
-    log_listener.start()
-    root_logger.info('Logging started for application!')
+
+    try:
+        log_listener.start()
+        root_logger.info('Logging started for application!')
+    except Exception as e:
+        root_logger.error(f"Failed to start log listener: {e}")
+
     return log_listener
 
 
 def get_logger() -> logging.Logger:
-    """Get root logger"""
+    """
+    Returns the root logger.
+
+    Returns:
+        logging.Logger: The root logger.
+    """
     return root_logger
 
 
-def get_module_logger(module_name) -> logging.Logger:
-    """Get module logger"""
+def get_module_logger(module_name: str) -> logging.Logger:
+    """
+    Returns a logger for the specified module.
+
+    Args:
+        module_name (str): The name of the module.
+
+    Returns:
+        logging.Logger: The logger for the specified module.
+    """
     return logging.getLogger(module_name)
 
 
 def setup_logging(log_file_name: str):
-    """Initial config for setting up loggers"""
+    """
+    Initial configuration for setting up loggers.
+
+    Args:
+        log_file_name (str): The name of the log file.
+    """
     logging_config = {
         'version': 1,
         'disable_existing_loggers': False,
@@ -63,10 +94,11 @@ def setup_logging(log_file_name: str):
             },
         },
         'loggers': {
+            # Settings for default log handler propagated to all handlers
             # '': {
             #     'handlers': ['file'],  # 'console', 'file'
             #     'level': 'DEBUG',
-            #     'propagate': False,
+            #     'propagate': True,
             # },
             AUDIO_PLAYER_LOGGER: {
                 'handlers': ['file'],
@@ -88,7 +120,7 @@ def setup_logging(log_file_name: str):
                 'level': 'INFO',
                 'propagate': False,
             },
-            UI_LOGGER:  {
+            UI_LOGGER: {
                 'handlers': ['file'],
                 'level': 'INFO',
                 'propagate': False,
