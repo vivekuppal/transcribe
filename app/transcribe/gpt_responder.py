@@ -35,8 +35,8 @@ class GPTResponder:
     def __init__(self,
                  config: dict,
                  convo: conversation.Conversation,
+                 file_name: str,
                  save_to_file: bool = False,
-                 file_name: str = 'logs/response.txt',
                  openai_module=openai):
         logger.info(GPTResponder.__name__)
         # This var is used by UI to populate the response textbox
@@ -173,10 +173,12 @@ class GPTResponder:
             collected_messages = self._get_llm_response(multiturn_prompt_api_message, temperature, timeout)
             self._insert_response_in_db(last_convo_id, collected_messages)
 
-            return collected_messages
         except Exception as e:
             logger.error(f"Error in generate_response_from_transcript_no_check: {e}")
             return None
+
+        self._save_response_to_file(collected_messages)
+        return collected_messages
 
     def create_client(self, api_key: str, base_url: str = None):
         """
@@ -303,11 +305,14 @@ class GPTResponder:
 
         processed_response = collected_messages
 
-        if self.save_response_to_file:
-            with open(file=self.response_file, mode="a", encoding='utf-8') as f:
-                f.write(f'{datetime.datetime.now()} - {processed_response}\n')
+        self._save_response_to_file(processed_response)
 
         return processed_response
+
+    def _save_response_to_file(self, text: str):
+        if self.save_response_to_file:
+            with open(file=self.response_file, mode="a", encoding='utf-8') as f:
+                f.write(f'{datetime.datetime.now()} - {text}\n')
 
     def _update_conversation(self, response, persona, update_previous=False):
         """Update the internaal conversation state"""
@@ -367,9 +372,9 @@ class OpenAIResponder(GPTResponder):
     def __init__(self,
                  config: dict,
                  convo: conversation.Conversation,
+                 response_file_name: str,
                  save_to_file: bool = False,
-                 base_url: str = None,
-                 response_file_name: str = 'logs/response.txt'):
+                 base_url: str = None):
         logger.info(OpenAIResponder.__name__)
         self.config = config
         api_key = self.config['OpenAI']['api_key']
@@ -390,8 +395,8 @@ class TogetherAIResponder(GPTResponder):
     def __init__(self,
                  config: dict,
                  convo: conversation.Conversation,
-                 save_to_file: bool = False,
-                 response_file_name: str = 'logs/response.txt'):
+                 response_file_name: str,
+                 save_to_file: bool = False):
         logger.info(TogetherAIResponder.__name__)
         self.config = config
         api_key = self.config['Together']['api_key']
@@ -413,8 +418,8 @@ class InferenceResponderFactory:
                                provider: InferenceEnum,
                                config: dict,
                                convo: conversation.Conversation,
+                               response_file_name: str,
                                save_to_file: bool = False,
-                               response_file_name: str = 'logs/response.txt'
                                ) -> GPTResponder:
         """Get the appropriate Inference Provider class instance
         Args:

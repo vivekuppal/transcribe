@@ -11,6 +11,7 @@ from db.app_db import AppDB
 sys.path.append('../..')
 import interactions  # noqa: E402 pylint: disable=C0413
 from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
+from tsutils import utilities
 
 
 def create_responder(provider_name: str, config, convo, save_to_file: bool,
@@ -48,7 +49,8 @@ def initiate_app_threads(global_vars: TranscriptionGlobals,
     transcribe_thread.start()
 
     save_llm_response_to_file: bool = config['General']['save_llm_response_to_file']
-    llm_response_file = config['General']['llm_response_file']
+    data_dir = utilities.get_data_path(app_name='Transcribe')
+    llm_response_file = f"{data_dir}/{config['General']['llm_response_file']}"
     chat = config['General']['chat_inference_provider']
     global_vars.responder = create_responder(provider_name=chat,
                                              config=config,

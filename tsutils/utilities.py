@@ -5,7 +5,7 @@ import subprocess
 import zipfile
 import openai
 from appdirs import user_data_dir
-
+import time
 
 valid_api_key: bool = False
 
@@ -287,3 +287,33 @@ def get_data_path(app_name, filename=''):
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
     return os.path.join(data_dir, filename)
+
+
+def delete_old_files(folder_path: str, days: int):
+    """
+    Delete all files older than a specified number of months inside a folder.
+
+    Args:
+        folder_path (str): The path to the folder.
+        months (int): The number of months. Files older than this will be deleted.
+
+    Returns:
+        None
+    """
+    current_time = time.time()
+    cutoff_time = current_time - (days * 24 * 60 * 60)  # Days in seconds
+
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+
+        # Check if it's a file (not a directory)
+        if os.path.isfile(file_path):
+            file_mod_time = os.path.getmtime(file_path)
+
+            # Delete the file if it's older than the cutoff time
+            if file_mod_time < cutoff_time:
+                try:
+                    os.remove(file_path)
+                    print(f"Deleted: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting file {file_path}: {e}")
