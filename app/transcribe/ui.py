@@ -63,7 +63,8 @@ class UICallbacks:
             logger.error(f"Error saving file {filename}: {e}")
 
     def freeze_unfreeze(self):
-        """Respond to start / stop of seeking responses from openAI API"""
+        """Respond to start / stop of seeking responses from openAI API
+        """
         logger.info(UICallbacks.freeze_unfreeze.__name__)
         try:
             # Invert the state
@@ -76,7 +77,8 @@ class UICallbacks:
             logger.error(f"Error toggling responder state: {e}")
 
     def enable_disable_speaker(self, editmenu):
-        """Toggles the state of speaker"""
+        """Toggles the state of speaker
+        """
         try:
             self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
             editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
@@ -85,7 +87,8 @@ class UICallbacks:
             logger.error(f"Error toggling speaker state: {e}")
 
     def enable_disable_microphone(self, editmenu):
-        """Toggles the state of microphone"""
+        """Toggles the state of microphone
+        """
         try:
             self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
             editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
@@ -125,12 +128,22 @@ class UICallbacks:
         response_ui_thread.daemon = True
         response_ui_thread.start()
 
+    def get_response_selected_now_threaded(self, text: str):
+        """Update response UI in a separate thread
+        """
+        self.update_response_ui_threaded(lambda: self.global_vars.responder.generate_response_for_selected_text(text))
+
     def get_response_now_threaded(self):
         """Update response UI in a separate thread
         """
+        self.update_response_ui_threaded(self.global_vars.responder.generate_response_from_transcript_no_check)
+
+    def update_response_ui_threaded(self, response_generator):
+        """Helper method to update response UI in a separate thread
+        """
         try:
             self.global_vars.update_response_now = True
-            response_string = self.global_vars.responder.generate_response_from_transcript_no_check()
+            response_string = response_generator()
             self.global_vars.update_response_now = False
             # Set event to play the recording audio if required
             if self.global_vars.read_response:
@@ -160,23 +173,6 @@ class UICallbacks:
                                               name='GetResponseSelectedNow')
         response_ui_thread.daemon = True
         response_ui_thread.start()
-
-    def get_response_selected_now_threaded(self, text: str):
-        """Update response UI in a separate thread"""
-        try:
-            self.global_vars.update_response_now = True
-            response_string = self.global_vars.responder.generate_response_for_selected_text(text=text)
-            self.global_vars.update_response_now = False
-            # Set event to play the recording audio if required
-            if self.global_vars.read_response:
-                self.global_vars.audio_player_var.speech_text_available.set()
-            self.global_vars.response_textbox.configure(state="normal")
-            if response_string:
-                write_in_textbox(self.global_vars.response_textbox, response_string)
-            self.global_vars.response_textbox.configure(state="disabled")
-            self.global_vars.response_textbox.see("end")
-        except Exception as e:
-            logger.error(f"Error in threaded response: {e}")
 
     def summarize_threaded(self):
         """Get summary from LLM in a separate thread"""
@@ -208,7 +204,8 @@ class UICallbacks:
             logger.error(f"Error in summarize_threaded: {e}")
 
     def summarize(self):
-        """Get summary response from LLM"""
+        """Get summary response from LLM
+        """
         self.capture_action('Get summary from LLM')
         summarize_ui_thread = threading.Thread(target=self.summarize_threaded,
                                                name='Summarize')
