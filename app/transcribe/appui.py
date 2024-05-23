@@ -44,6 +44,14 @@ class AppUI:
         """
         self.root.mainloop()
 
+    def update_initial_transcripts(self):
+        update_transcript_ui(self.global_vars.transcriber,
+                             self.transcript_textbox)
+        update_response_ui(self.global_vars.responder,
+                           self.response_textbox,
+                           self.update_interval_slider_label,
+                           self.update_interval_slider)
+
     def create_ui_components(self, config: dict):
         """Create all UI components
         """
@@ -173,9 +181,13 @@ class AppUI:
         self.github_link = ctk.CTkLabel(self.root, text="Star the Github Repo",
                                         text_color="#639cdc", cursor="hand2")
         self.github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
+        self.github_link.bind('<Button-1>', lambda e:
+                                self.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
 
         self.issue_link = ctk.CTkLabel(self.root, text="Report an issue", text_color="#639cdc", cursor="hand2")
         self.issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
+        self.issue_link.bind('<Button-1>', lambda e: self.open_link(
+            'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
         # Create right click menu for transcript textbox.
         # This displays only inside the speech to text textbox

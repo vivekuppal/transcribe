@@ -60,7 +60,7 @@ class TranscriptionGlobals(Singleton.Singleton):
         zip_file_name = utilities.incrementing_filename(filename=f'{self.data_dir}/logs/transcript', extension='zip')
         zip_params = {
             'task_type': task_queue.TaskQueueEnum.ZIP_TASK,
-            'folder_path': './logs',
+            'folder_path': f'{self.data_dir}/logs',
             'zip_file_name': zip_file_name,
             'skip_zip_files': True
         }
