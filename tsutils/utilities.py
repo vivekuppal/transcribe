@@ -4,7 +4,8 @@ import copy
 import subprocess
 import zipfile
 import openai
-
+from appdirs import user_data_dir
+import time
 
 valid_api_key: bool = False
 
@@ -251,3 +252,68 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
 
     valid_api_key = True
     return True
+
+
+def ensure_directory_exists(directory_path: str):
+    """
+    Ensure that a directory exists. If it does not exist, create it.
+
+    Args:
+        directory_path (str): The path to the directory to check or create.
+
+    Returns:
+        None
+    """
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        print(f"Directory '{directory_path}' created.")
+    else:
+        print(f"Directory '{directory_path}' already exists.")
+
+
+def get_data_path(app_name, filename=''):
+    """
+    Get the full path to the data file in the user data directory.
+    These files are created inside the Roaming profile.
+
+    Args:
+        app_name (str): Specific folder inside the data dir like Log, Db, Cache
+        filename (str): The name of the file.
+
+    Returns:
+        str: The full path to the data file.
+    """
+    data_dir = user_data_dir(app_name, appauthor='viveku', roaming=True)
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    return os.path.join(data_dir, filename)
+
+
+def delete_old_files(folder_path: str, days: int):
+    """
+    Delete all files older than a specified number of months inside a folder.
+
+    Args:
+        folder_path (str): The path to the folder.
+        months (int): The number of months. Files older than this will be deleted.
+
+    Returns:
+        None
+    """
+    current_time = time.time()
+    cutoff_time = current_time - (days * 24 * 60 * 60)  # Days in seconds
+
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+
+        # Check if it's a file (not a directory)
+        if os.path.isfile(file_path):
+            file_mod_time = os.path.getmtime(file_path)
+
+            # Delete the file if it's older than the cutoff time
+            if file_mod_time < cutoff_time:
+                try:
+                    os.remove(file_path)
+                    print(f"Deleted: {file_path}")
+                except Exception as e:
+                    print(f"Error deleting file {file_path}: {e}")

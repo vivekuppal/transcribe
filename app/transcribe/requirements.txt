@@ -21,3 +21,4 @@ torch
 bandit==1.7.8
 SqlAlchemy==2.0.29
 setuptools
+appdirs

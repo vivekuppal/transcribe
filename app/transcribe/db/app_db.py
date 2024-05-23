@@ -78,6 +78,8 @@ class AppDB(Singleton.Singleton):
         connection.close()
 
     def get_logger(self) -> logging.Logger:
+        """Get DB logger
+        """
         return self._db_logger
 
     def get_context(self) -> dict:

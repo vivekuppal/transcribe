@@ -12,7 +12,6 @@ sys.path.append('../..')
 import conversation  # noqa: E402 pylint: disable=C0413
 from sdk import audio_recorder as ar  # noqa: E402 pylint: disable=C0413
 from tsutils import Singleton, task_queue, utilities  # noqa: E402 pylint: disable=C0413
-from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
 
 
 class TranscriptionGlobals(Singleton.Singleton):
@@ -40,6 +39,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     start: datetime.datetime = None
     task_worker = None
     main_window = None
+    data_dir = None
     db_file_path: str = None
     # Current working directory
     current_working_dir: str = None
@@ -56,7 +56,8 @@ class TranscriptionGlobals(Singleton.Singleton):
         self.convo = conversation.Conversation()
         self.start = datetime.datetime.now()
         self.task_worker = task_queue.TaskQueue()
-        zip_file_name = utilities.incrementing_filename(filename='logs/transcript', extension='zip')
+        self.data_dir = utilities.get_data_path(app_name='Transcribe')
+        zip_file_name = utilities.incrementing_filename(filename=f'{self.data_dir}/logs/transcript', extension='zip')
         zip_params = {
             'task_type': task_queue.TaskQueueEnum.ZIP_TASK,
             'folder_path': './logs',
@@ -68,9 +69,11 @@ class TranscriptionGlobals(Singleton.Singleton):
         # print(f'Current folder is : {self.current_working_dir}')
         # Ensure that vscode.env file is being read correctly
         # print(f'Env var is: {os.getenv("test_environment_variable")}')
-        db_log_file = utilities.incrementing_filename(filename=f'{self.current_working_dir}/logs/db',
+        # Ensure log folder exists
+        utilities.ensure_directory_exists(f'{self.data_dir}/logs')
+        db_log_file = utilities.incrementing_filename(filename=f'{self.data_dir}logs/db',
                                                       extension='log')
-        self.db_file_path = self.current_working_dir + '/logs/app.db'
+        self.db_file_path = self.data_dir + 'logs/app.db'
         self.db_context = {}
         self.db_context['db_file_path'] = self.db_file_path
         self.db_context['current_working_dir'] = self.current_working_dir
@@ -87,14 +90,15 @@ class TranscriptionGlobals(Singleton.Singleton):
         """
         # Handle mic if it is not disabled in arguments or yaml file
         print('[INFO] Using default microphone.')
-        self.user_audio_recorder = ar.MicRecorder(audio_file_name='./logs/mic.wav')
+        data_dir = utilities.get_data_path(app_name='Transcribe')
+        self.user_audio_recorder = ar.MicRecorder(audio_file_name=f'{data_dir}/logs/mic.wav')
         if not config['General']['disable_mic'] and config['General']['mic_device_index'] != -1:
             print('[INFO] Override default microphone with device specified in parameters file.')
             self.user_audio_recorder.set_device(index=int(config['General']['mic_device_index']))
 
         # Handle speaker if it is not disabled in arguments or yaml file
         print('[INFO] Using default speaker.')
-        self.speaker_audio_recorder = ar.SpeakerRecorder(audio_file_name='./logs/speaker.wav')
+        self.speaker_audio_recorder = ar.SpeakerRecorder(audio_file_name=f'{data_dir}/logs/speaker.wav')
         if not config['General']['disable_speaker'] and config['General']['speaker_device_index'] != -1:
             print('[INFO] Override default speaker with device specified in parameters file.')
             self.speaker_audio_recorder.set_device(index=int(

@@ -70,7 +70,7 @@ class TestConversations(unittest.TestCase):
             convo_text=convo_text
         )
 
-        max_convo_id = self.conversations.get_max_convo_id(speaker_name)
+        max_convo_id = self.conversations.get_max_convo_id(speaker_name, inv_id=invocation_id)
 
         # Verify retrieval
         session = self.Session()

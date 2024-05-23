@@ -234,7 +234,8 @@ class UICallbacks:
 
     def capture_action(self, action_text: str):
         """write to file"""
-        filename = utilities.incrementing_filename(filename='logs/ui',
+        data_dir = utilities.get_data_path(app_name='Transcribe')
+        filename = utilities.incrementing_filename(filename=f'{data_dir}/logs/ui',
                                                    extension='txt')
         with open(filename, mode='a', encoding='utf-8') as ui_file:
             ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
