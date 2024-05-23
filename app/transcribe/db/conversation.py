@@ -129,7 +129,7 @@ class Conversations:
         convo_id = result.lastrowid
         return convo_id
 
-    def get_max_convo_id(self, speaker: str) -> int:
+    def get_max_convo_id(self, speaker: str, inv_id: int) -> int:
         """
         Retrieves the ID of the last conversation row inserted in the database for a given speaker.
 
@@ -139,9 +139,9 @@ class Conversations:
         Returns:
             int: The ID of the last conversation entry for the given speaker.
         """
-        stmt = text(f'SELECT MAX(Id) FROM {self._table_name} WHERE Speaker = :speaker')
+        stmt = text(f'SELECT MAX(Id) FROM {self._table_name} WHERE Speaker = :speaker and InvocationId = :inv_id')
         with Session(self.engine) as session:
-            result = session.execute(stmt, {'speaker': speaker})
+            result = session.execute(stmt, {'speaker': speaker, 'inv_id': inv_id})
             convo_id = result.scalar()
             session.commit()
 
@@ -159,7 +159,8 @@ class Conversations:
             ValueError: If the conversation_id is None.
         """
         if conversation_id is None:
-            raise ValueError("Conversation ID cannot be None.")
+            # This happens for system prompts, Needs investigation
+            return
 
         try:
             with Session(self.engine) as session:

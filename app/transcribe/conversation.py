@@ -69,7 +69,7 @@ class Conversation:
         if self._initialized:
             inv_id = appdb().get_invocation_id()
             convo_object: convodb.Conversations = appdb().get_object(convodb.TABLE_NAME)
-            convo_id = convo_object.get_max_convo_id(speaker=persona)
+            convo_id = convo_object.get_max_convo_id(speaker=persona, inv_id=inv_id)
 
         # if (persona.lower() == 'assistant'):
         #     print(f'Assistant Transcript length to begin with: {len(transcript)}')
