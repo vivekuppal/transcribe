@@ -371,11 +371,11 @@ class AppUI:
             # Set event to play the recording audio if required
             if self.global_vars.read_response:
                 self.global_vars.audio_player_var.speech_text_available.set()
-            self.global_vars.response_textbox.configure(state="normal")
+            self.response_textbox.configure(state="normal")
             if response_string:
-                write_in_textbox(self.global_vars.response_textbox, response_string)
-            self.global_vars.response_textbox.configure(state="disabled")
-            self.global_vars.response_textbox.see("end")
+                write_in_textbox(self.response_textbox, response_string)
+            self.response_textbox.configure(state="disabled")
+            self.response_textbox.see("end")
         except Exception as e:
             logger.error(f"Error in threaded response: {e}")
 
@@ -390,7 +390,7 @@ class AppUI:
         # streamed back. Without the thread UI appears stuck as we stream the
         # responses back
         self.capture_action('Get LLM response selected now')
-        selected_text = self.global_vars.transcript_textbox.selection_get()
+        selected_text = self.transcript_textbox.selection_get()
         response_ui_thread = threading.Thread(target=self.get_response_selected_now_threaded,
                                               args=(selected_text,),
                                               name='GetResponseSelectedNow')
@@ -453,9 +453,9 @@ class AppUI:
             self.global_vars.transcriber.transcribe = not self.global_vars.transcriber.transcribe
             self.capture_action(f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.')
             if self.global_vars.transcriber.transcribe:
-                self.global_vars.filemenu.entryconfigure(1, label="Pause Transcription")
+                self.filemenu.entryconfigure(1, label="Pause Transcription")
             else:
-                self.global_vars.filemenu.entryconfigure(1, label="Start Transcription")
+                self.filemenu.entryconfigure(1, label="Start Transcription")
         except Exception as e:
             logger.error(f"Error setting transcript state: {e}")
 

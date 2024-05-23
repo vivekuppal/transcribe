@@ -26,16 +26,16 @@ class TranscriptionGlobals(Singleton.Singleton):
     transcriber: AudioTranscriber = None
     # Global for responses from openAI API
     responder = None
-    freeze_button: ctk.CTkButton = None
+    # freeze_button: ctk.CTkButton = None
     # Update_response_now is true when we are waiting for a one time immediate response to query
     update_response_now: bool = False
     # Read response in voice
     read_response: bool = False
-    editmenu: tk.Menu = None
-    filemenu: tk.Menu = None
-    update_interval_slider_label: ctk.CTkLabel = None
-    response_textbox: ctk.CTkTextbox = None
-    transcript_textbox: ctk.CTkTextbox = None
+    # editmenu: tk.Menu = None
+    # filemenu: tk.Menu = None
+    # update_interval_slider_label: ctk.CTkLabel = None
+    # response_textbox: ctk.CTkTextbox = None
+    # transcript_textbox: ctk.CTkTextbox = None
     start: datetime.datetime = None
     task_worker = None
     main_window = None
