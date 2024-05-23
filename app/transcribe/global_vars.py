@@ -72,11 +72,13 @@ class TranscriptionGlobals(Singleton.Singleton):
         # print(f'Current folder is : {self.current_working_dir}')
         # Ensure that vscode.env file is being read correctly
         # print(f'Env var is: {os.getenv("test_environment_variable")}')
+        db_log_file = utilities.incrementing_filename(filename=f'{self.current_working_dir}/logs/db',
+                                                      extension='log')
         self.db_file_path = self.current_working_dir + '/logs/app.db'
         self.db_context = {}
         self.db_context['db_file_path'] = self.db_file_path
         self.db_context['current_working_dir'] = self.current_working_dir
-        self.db_context['db_log_file'] = f'{self.current_working_dir}/logs/db.log'
+        self.db_context['db_log_file'] = db_log_file
         self._initialized = True
 
     def set_transcriber(self, transcriber):
