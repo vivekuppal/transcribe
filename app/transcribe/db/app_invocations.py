@@ -1,16 +1,30 @@
+"""
+This module defines classes and methods for managing application invocation records
+in a SQLAlchemy database. The `Invocation` class represents a single invocation record,
+while the `ApplicationInvocations` class provides methods to interact with the database
+table, including creating the table, inserting start times, and updating end times.
+"""
+
 from typing import Optional
 from datetime import datetime
 import sqlalchemy as sqldb
-from sqlalchemy.sql import text
 from sqlalchemy.orm import Session, mapped_column, Mapped
 from sqlalchemy import Engine
+from sqlalchemy.orm import declarative_base
+
 # from db import AppDBBase
 
 TABLE_NAME = 'ApplicationInvocations'
 
 
-class Invocation():
-    """One row in the ApplicationInvocations Table
+class Invocation(declarative_base()):
+    """
+    Represents a row in the ApplicationInvocations table.
+
+    Attributes:
+        Id (int): The primary key of the table, auto-incremented.
+        StartTime (datetime): The start time of the application invocation.
+        EndTime (Optional[datetime]): The end time of the application invocation.
     """
     __tablename__ = TABLE_NAME
 
@@ -19,18 +33,40 @@ class Invocation():
     EndTime: Mapped[Optional[datetime]]
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the Invocation instance.
+
+        Returns:
+            str: A string representing the Invocation instance.
+        """
         return f"Invocation(id={self.Id!r}, StartTime={self.StartTime!r}, EndTime={self.EndTime!r})"
 
 
 class ApplicationInvocations:
-    """Represents the table ApplicationInvocations in DB
+    """
+    Manages the ApplicationInvocations table in the database.
+
+    Provides methods to create the table, insert start times, update end times, 
+    and retrieve the current invocation ID.
+
+    Attributes:
+        _table_name (str): The name of the table.
+        _db_table (Optional[sqldb.Table]): The SQLAlchemy Table object.
+        _invocation_id (Optional[int]): The ID of the current invocation.
     """
     _table_name = TABLE_NAME
     _db_table = None
     _invocation_id: int = None
 
     def __init__(self, engine):
-        # Create table if it does not exist in DB
+        """
+        Initializes the ApplicationInvocations instance.
+
+        If the table does not exist in the database, it creates the table.
+
+        Args:
+            engine (Engine): The SQLAlchemy engine to connect to the database.
+        """
         try:
             metadata = sqldb.MetaData()
             self._db_table = sqldb.Table(self._table_name, metadata, autoload_with=engine)
@@ -43,43 +79,74 @@ class ApplicationInvocations:
         self.populate_data()
 
     def create_table(self, engine, metadata):
-        """Create invocation table.
+        """
+        Creates the ApplicationInvocations table in the database.
+
+        Args:
+            engine (Engine): The SQLAlchemy engine to connect to the database.
+            metadata (MetaData): The SQLAlchemy MetaData object.
         """
         self._db_table = sqldb.Table(self._table_name, metadata,
-                                     sqldb.Column('Id', sqldb.Integer(), sqldb.Identity(start=1), primary_key=True, ),
-                                     sqldb.Column('StartTime', sqldb.Integer(), nullable=False, default=datetime.utcnow),
-                                     sqldb.Column('EndTime', sqldb.Integer(), nullable=True))
+                                     sqldb.Column('Id', sqldb.Integer(), sqldb.Identity(start=1), primary_key=True),
+                                     sqldb.Column('StartTime', sqldb.DateTime(), nullable=False,
+                                                  default=datetime.utcnow),
+                                     sqldb.Column('EndTime', sqldb.DateTime(), nullable=True))
 
         metadata.create_all(engine)
 
     def insert_start_time(self, engine: Engine):
-        """Set the time application was started.
+        """
+        Inserts the start time of the application invocation into the database.
+
+        Args:
+            engine (Engine): The SQLAlchemy engine to connect to the database.
+
+        Raises:
+            Exception: If there is an error during insertion.
         """
         try:
-            query = text(f'INSERT INTO {self._table_name} (StartTime) VALUES("{datetime.utcnow()}")')
             with Session(engine) as session:
-                result = session.execute(query)
-                self._invocation_id = result.lastrowid
+                new_invocation = Invocation(StartTime=datetime.utcnow())
+                session.add(new_invocation)
                 session.commit()
-                session.close()
+                self._invocation_id = new_invocation.Id
         except Exception as ex:
-            print(ex)
+            print(f'Failed to insert start time: {ex}')
 
-    def populate_end_time(self, engine):
-        """Set the time application was shutdown
+    def populate_end_time(self, engine: Engine):
         """
-        with Session(engine) as session:
-            row_id = self.get_invocation_id()
-            query = text(f'UPDATE {self._table_name} Set EndTime ="{datetime.utcnow()}" where Id = {row_id}')
-            session.execute(query)
-            session.commit()
-            session.close()
+        Updates the end time of the current application invocation in the database.
+
+        Args:
+            engine (Engine): The SQLAlchemy engine to connect to the database.
+
+        Raises:
+            Exception: If there is an error during the update.
+        """
+        if self._invocation_id is None:
+            print('Invocation ID is not set. Cannot update end time.')
+            return
+
+        try:
+            with Session(engine) as session:
+                invocation = session.query(Invocation).get(self._invocation_id)
+                if invocation:
+                    invocation.EndTime = datetime.utcnow()
+                    session.commit()
+        except Exception as ex:
+            print(f'Failed to update end time: {ex}')
 
     def get_invocation_id(self) -> int:
-        """Get the invocation id of this instance of the application.
-           This id is constant for a specific run of the application.
+        """
+        Retrieves the invocation ID of the current application instance.
+
+        Returns:
+            int: The invocation ID.
         """
         return self._invocation_id
 
     def populate_data(self):
+        """
+        Placeholder method for populating the table with initial data.
+        """
         pass
