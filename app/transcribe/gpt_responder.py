@@ -250,7 +250,6 @@ class GPTResponder:
 
         return self.generate_response_from_transcript_no_check()
 
-
     def generate_response_for_selected_text(self, text: str):
         """Ping LLM to get a suggested response right away.
             Gets a response even if the continuous suggestion option is disabled.
@@ -259,21 +258,17 @@ class GPTResponder:
         try:
             root_logger.info(GPTResponder.generate_response_for_selected_text.__name__)
             chat_inference_provider = self.config['General']['chat_inference_provider']
-            if chat_inference_provider == 'openai':
-                settings_section = 'OpenAI'
-            elif chat_inference_provider == 'together':
-                settings_section = 'Together'
 
-            api_key = self.config[settings_section]['api_key']
-            base_url = self.config[settings_section]['base_url']
-            model = self.config[settings_section]['ai_model']
+            chat_inference_provider = self.config['General']['chat_inference_provider']
+            settings_section = self._get_settings_section(chat_inference_provider)
+            api_key, base_url, model = self._get_api_settings(settings_section)
+
+            timeout, temperature = self._get_openai_settings()
 
             if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
             with duration.Duration(name='OpenAI Chat Completion Selected', screen=False):
-                timeout: int = self.config['OpenAI']['response_request_timeout_seconds']
-                temperature: float = self.config['OpenAI']['temperature']
                 prompt = prompts.create_prompt_for_text(text=text, config=self.config)
                 llm_response = self.llm_client.chat.completions.create(
                     model=self.model,
