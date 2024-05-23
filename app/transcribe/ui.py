@@ -30,6 +30,7 @@ class UICallbacks:
     """All callbacks for UI"""
 
     global_vars: TranscriptionGlobals
+    ui_filename: str = None
 
     def __init__(self):
         self.global_vars = TranscriptionGlobals()
@@ -261,9 +262,10 @@ class UICallbacks:
         """Write to file
         """
         try:
-            data_dir = utilities.get_data_path(app_name='Transcribe')
-            filename = utilities.incrementing_filename(filename=f'{data_dir}/logs/ui', extension='txt')
-            with open(filename, mode='a', encoding='utf-8') as ui_file:
+            if not self.ui_filename:
+                data_dir = utilities.get_data_path(app_name='Transcribe')
+                self.ui_filename = utilities.incrementing_filename(filename=f'{data_dir}/logs/ui', extension='txt')
+            with open(self.ui_filename, mode='a', encoding='utf-8') as ui_file:
                 ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
         except Exception as e:
             logger.error(f"Error capturing action {action_text}: {e}")
