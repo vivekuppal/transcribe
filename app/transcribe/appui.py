@@ -15,6 +15,8 @@ from tsutils.language import LANGUAGES_DICT
 from tsutils import utilities
 from tsutils import app_logging as al
 from tsutils import configuration
+from uicomp.selectable_text import SelectableText
+
 
 logger = al.get_module_logger(al.UI_LOGGER)
 UI_FONT_SIZE = 20
@@ -25,28 +27,30 @@ global_vars_module: TranscriptionGlobals = T_GLOBALS
 pop_up = None
 
 
-class AppUI:
+class AppUI(ctk.CTk):
     """Encapsulates all UI functionality for the app
     """
     global_vars: TranscriptionGlobals
     ui_filename: str = None
 
     def __init__(self, config: dict):
+        super().__init__()
         self.global_vars = TranscriptionGlobals()
 
-        self.root = ctk.CTk()
-        self.global_vars.main_window = self.root
+        # self.root = ctk.CTk()
+        self.global_vars.main_window = self
         self.create_ui_components(config=config)
         self.set_audio_device_menus(config=config)
 
     def start(self):
         """Start showing the UI
         """
-        self.root.mainloop()
+        self.mainloop()
 
     def update_initial_transcripts(self):
-        update_transcript_ui(self.global_vars.transcriber,
-                             self.transcript_textbox)
+        # TODO: Ref to transcript_textbox
+        # update_transcript_ui(self.global_vars.transcriber,
+        #                      self.transcript_textbox)
         update_response_ui(self.global_vars.responder,
                            self.response_textbox,
                            self.update_interval_slider_label,
@@ -57,141 +61,135 @@ class AppUI:
         """
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("dark-blue")
-        self.root.title("Transcribe")
-        self.root.configure(bg='#252422')
-        self.root.geometry("1000x600")
+        self.title("Transcribe")
+        self.configure(bg='#252422')
+        self.geometry("1000x600")
 
-        # Create the menu bar
-        menubar = tk.Menu(self.root)
+        # Frame for the main content
+        self.main_frame = ctk.CTkFrame(self)
+        self.main_frame.pack(fill="both", expand=True)
 
-        # Create a file menu
-        self.filemenu = tk.Menu(menubar, tearoff=False)
-
-        # Add a "Save" menu item to the file menu
-        self.filemenu.add_command(label="Save Transcript to File", command=self.save_file)
-
-        # Add a "Pause" menu item to the file menu
-        self.filemenu.add_command(label="Pause Transcription", command=self.set_transcript_state)
-
-        # Add a "Quit" menu item to the file menu
-        self.filemenu.add_command(label="Quit", command=self.root.quit)
-
-        # Add the file menu to the menu bar
-        menubar.add_cascade(label="File", menu=self.filemenu)
-
-        # Create an edit menu
-        self.editmenu = tk.Menu(menubar, tearoff=False)
-
-        # Add a "Clear Audio Transcript" menu item to the file menu
-        self.editmenu.add_command(label="Clear Audio Transcript", command=lambda:
-                                  self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue))
-
-        # Add a "Copy To Clipboard" menu item to the file menu
-        self.editmenu.add_command(label="Copy Transcript to Clipboard",
-                                  command=self.copy_to_clipboard)
-
-        # Add "Disable Speaker" menu item to file menu
-        self.editmenu.add_command(label="Disable Speaker",
-                                  command=self.enable_disable_speaker())
-
-        # Add "Disable Microphone" menu item to file menu
-        self.editmenu.add_command(label="Disable Microphone",
-                                  command=self.enable_disable_microphone())
-
-        # Add the edit menu to the menu bar
-        menubar.add_cascade(label="Edit", menu=self.editmenu)
-
-        # Create help menu, add items in help menu
-        helpmenu = tk.Menu(menubar, tearoff=False)
-        helpmenu.add_command(label="Github Repo", command=self.open_github)
-        helpmenu.add_command(label="Star the Github repo", command=self.open_github)
-        helpmenu.add_command(label="Report an Issue", command=self.open_support)
-        menubar.add_cascade(label="Help", menu=helpmenu)
-
-        # Add the menu bar to the main window
-        self.root.config(menu=menubar)
+        self.create_menus()
 
         # Speech to Text textbox
-        self.transcript_textbox = ctk.CTkTextbox(self.root, width=300, font=("Arial", UI_FONT_SIZE),
-                                                 text_color='#FFFCF2', wrap="word")
-        self.transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        # TODO: Ref to transcript_textbox
+        # Left side: SelectableTextComponent
+        self.transcript_text: SelectableText = SelectableText(self.main_frame)
+        self.transcript_text.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        # self.transcript_text.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+
+        # TODO: set the font, texcolor etc.
+        # self.transcript_textbox = ctk.CTkTextbox(self.root, width=300, font=("Arial", UI_FONT_SIZE),
+        #                                          text_color='#FFFCF2', wrap="word")
+        # self.transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+
+        # Right side
+        self.right_frame = ctk.CTkFrame(self.main_frame)
+        self.right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
         # LLM Response textbox
-        self.response_textbox = ctk.CTkTextbox(self.root, width=300, font=("Arial", UI_FONT_SIZE),
+        self.response_textbox = ctk.CTkTextbox(self.right_frame, width=300, font=("Arial", UI_FONT_SIZE),
                                                text_color='#639cdc', wrap="word")
-        self.response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
+        # self.response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
+        self.response_textbox.pack(fill="both", expand=True)
         self.response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
+
+        # Bottom Frame for buttons
+        self.bottom_frame = ctk.CTkFrame(self, border_color="white", border_width=2)
+        self.bottom_frame.pack(side="bottom", fill="both", pady=10)
 
         response_enabled = bool(config['General']['continuous_response'])
         b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
-        self.continuous_response_button = ctk.CTkButton(self.root, text=b_text)
-        self.continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
+        self.continuous_response_button = ctk.CTkButton(self.bottom_frame, text=b_text)
+        self.continuous_response_button.grid(row=0, column=4, padx=10, pady=3, sticky="nsew")
+        # self.continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
+        # self.continuous_response_button.pack(side="left", padx=10)
         self.continuous_response_button.configure(command=self.freeze_unfreeze)
 
-        self.response_now_button = ctk.CTkButton(self.root, text="Suggest Response Now")
-        self.response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
+        self.response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response Now")
+        self.response_now_button.grid(row=1, column=4, padx=10, pady=3, sticky="nsew")
+        # self.response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
+        # self.response_now_button.pack(side="left", padx=10)
         self.response_now_button.configure(command=self.get_response_now)
 
-        self.read_response_now_button = ctk.CTkButton(self.root, text="Suggest Response and Read")
-        self.read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
+        self.read_response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response and Read")
+        # self.read_response_now_button.pack(side="left", padx=10)
+        self.read_response_now_button.grid(row=2, column=4, padx=10, pady=3, sticky="nsew")
+        # self.read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
         self.read_response_now_button.configure(command=self.update_response_ui_and_read_now)
 
-        self.summarize_button = ctk.CTkButton(self.root, text="Summarize")
-        self.summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
+        self.summarize_button = ctk.CTkButton(self.bottom_frame, text="Summarize")
+        # self.summarize_button.pack(side="left", padx=10)
+        self.summarize_button.grid(row=3, column=4, padx=10, pady=3, sticky="nsew")
+        # self.summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
         self.summarize_button.configure(command=self.summarize)
 
         # Continuous LLM Response label, and slider
-        self.update_interval_slider_label = ctk.CTkLabel(self.root, text="", font=("Arial", 12),
+        self.update_interval_slider_label = ctk.CTkLabel(self.bottom_frame, text="", font=("Arial", 12),
                                                          text_color="#FFFCF2")
-        self.update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
-
-        self.update_interval_slider = ctk.CTkSlider(self.root, from_=1, to=30, width=300,  # height=5,
+#         self.update_interval_slider_label.pack(side="left", padx=10)
+        self.update_interval_slider_label.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        # self.update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider = ctk.CTkSlider(self.bottom_frame, from_=1, to=30, width=300,  # height=5,
                                                     number_of_steps=29)
         self.update_interval_slider.set(config['General']['llm_response_interval'])
-        self.update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        # self.update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        # self.update_interval_slider.pack(side="left", padx=10)
         self.update_interval_slider.configure(command=self.update_interval_slider_value)
 
         label_text = f'LLM Response interval: {int(self.update_interval_slider.get())} seconds'
         self.update_interval_slider_label.configure(text=label_text)
 
         # Speech to text language selection label, dropdown
-        audio_lang_label = ctk.CTkLabel(self.root, text="Audio Lang: ",
+        audio_lang_label = ctk.CTkLabel(self.bottom_frame, text="Audio Lang: ",
                                         font=("Arial", 12),
                                         text_color="#FFFCF2")
-        audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="nw")
+        # audio_lang_label.pack(side="left", padx=10)
+        audio_lang_label.grid(row=2, column=0, padx=10, pady=3, sticky='nw')
 
         audio_lang = config['OpenAI']['audio_lang']
-        self.audio_lang_combobox = ctk.CTkOptionMenu(self.root, width=15, values=list(LANGUAGES_DICT.values()))
+        self.audio_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15, values=list(LANGUAGES_DICT.values()))
         self.audio_lang_combobox.set(audio_lang)
-        self.audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
+        # self.audio_lang_combobox.pack(side="left", padx=10)
+        self.audio_lang_combobox.grid(row=2, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
+        # self.audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
         self.audio_lang_combobox.configure(command=self.set_audio_language)
 
         # LLM Response language selection label, dropdown
-        response_lang_label = ctk.CTkLabel(self.root,
+        response_lang_label = ctk.CTkLabel(self.bottom_frame,
                                            text="Response Lang: ",
                                            font=("Arial", 12), text_color="#FFFCF2")
-        response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
+        # response_lang_label.pack(side="left", padx=10)
+        response_lang_label.grid(row=2, column=2, padx=10, pady=3, sticky="nw")
+        # response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
 
         response_lang = config['OpenAI']['response_lang']
-        self.response_lang_combobox = ctk.CTkOptionMenu(self.root, width=15, values=list(LANGUAGES_DICT.values()))
+        self.response_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15, values=list(LANGUAGES_DICT.values()))
         self.response_lang_combobox.set(response_lang)
-        self.response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
+        # self.response_lang_combobox.pack(side="left", padx=10)
+        self.response_lang_combobox.grid(row=2, column=3, ipadx=60, padx=10, pady=3, sticky="ne")
+        # self.response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
         self.response_lang_combobox.configure(command=self.set_response_language)
 
-        self.github_link = ctk.CTkLabel(self.root, text="Star the Github Repo",
+        self.github_link = ctk.CTkLabel(self.bottom_frame, text="Star the Github Repo",
                                         text_color="#639cdc", cursor="hand2")
-        self.github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
+        # self.github_link.pack(side="left", padx=10)
+        self.github_link.grid(row=3, column=0, padx=10, pady=3, sticky="wn")
+        # self.github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
         self.github_link.bind('<Button-1>', lambda e:
-                                self.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
+                              self.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
 
-        self.issue_link = ctk.CTkLabel(self.root, text="Report an issue", text_color="#639cdc", cursor="hand2")
-        self.issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
+        self.issue_link = ctk.CTkLabel(self.bottom_frame, text="Report an issue", text_color="#639cdc", cursor="hand2")
+        # self.issue_link.pack(side="left", padx=10)
+        self.issue_link.grid(row=3, column=1, padx=10, pady=3, sticky="wn")
+        # self.issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
         self.issue_link.bind('<Button-1>', lambda e: self.open_link(
             'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
         # Create right click menu for transcript textbox.
         # This displays only inside the speech to text textbox
-        m = tk.Menu(self.root, tearoff=0)
+        m = tk.Menu(self.main_frame, tearoff=0)
         m.add_command(label="Generate response for selected text",
                       command=self.get_response_selected_now)
         m.add_command(label="Save Transcript to File", command=self.save_file)
@@ -199,7 +197,7 @@ class AppUI:
                       self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue))
         m.add_command(label="Copy Transcript to Clipboard", command=self.copy_to_clipboard)
         m.add_separator()
-        m.add_command(label="Quit", command=self.root.quit)
+        m.add_command(label="Quit", command=self.quit)
 
         chat_inference_provider = config['General']['chat_inference_provider']
         if chat_inference_provider == 'openai':
@@ -239,14 +237,66 @@ class AppUI:
             finally:
                 m.grab_release()
 
-        self.transcript_textbox.bind("<Button-3>", show_context_menu)
+        # TODO: Ref to transcript_textbox
+        self.transcript_text.bind("<Button-3>", show_context_menu)
 
-        self.root.grid_rowconfigure(0, weight=100)
-        self.root.grid_rowconfigure(1, weight=1)
-        self.root.grid_rowconfigure(2, weight=1)
-        self.root.grid_rowconfigure(3, weight=1)
-        self.root.grid_columnconfigure(0, weight=2)
-        self.root.grid_columnconfigure(1, weight=1)
+        # self.root.grid_rowconfigure(0, weight=100)
+        # self.root.grid_rowconfigure(1, weight=1)
+        # self.root.grid_rowconfigure(2, weight=1)
+        # self.root.grid_rowconfigure(3, weight=1)
+        # self.root.grid_columnconfigure(0, weight=2)
+        # self.root.grid_columnconfigure(1, weight=1)
+
+    def create_menus(self):
+        # Create the menu bar
+        menubar = tk.Menu(self)
+
+        # Create a file menu
+        self.filemenu = tk.Menu(menubar, tearoff=False)
+
+        # Add a "Save" menu item to the file menu
+        self.filemenu.add_command(label="Save Transcript to File", command=self.save_file)
+
+        # Add a "Pause" menu item to the file menu
+        self.filemenu.add_command(label="Pause Transcription", command=self.set_transcript_state)
+
+        # Add a "Quit" menu item to the file menu
+        self.filemenu.add_command(label="Quit", command=self.quit)
+
+        # Add the file menu to the menu bar
+        menubar.add_cascade(label="File", menu=self.filemenu)
+
+        # Create an edit menu
+        self.editmenu = tk.Menu(menubar, tearoff=False)
+
+        # Add a "Clear Audio Transcript" menu item to the file menu
+        self.editmenu.add_command(label="Clear Audio Transcript", command=lambda:
+                                  self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue))
+
+        # Add a "Copy To Clipboard" menu item to the file menu
+        self.editmenu.add_command(label="Copy Transcript to Clipboard",
+                                  command=self.copy_to_clipboard)
+
+        # Add "Disable Speaker" menu item to file menu
+        self.editmenu.add_command(label="Disable Speaker",
+                                  command=self.enable_disable_speaker())
+
+        # Add "Disable Microphone" menu item to file menu
+        self.editmenu.add_command(label="Disable Microphone",
+                                  command=self.enable_disable_microphone())
+
+        # Add the edit menu to the menu bar
+        menubar.add_cascade(label="Edit", menu=self.editmenu)
+
+        # Create help menu, add items in help menu
+        helpmenu = tk.Menu(menubar, tearoff=False)
+        helpmenu.add_command(label="Github Repo", command=self.open_github)
+        helpmenu.add_command(label="Star the Github repo", command=self.open_github)
+        helpmenu.add_command(label="Report an Issue", command=self.open_support)
+        menubar.add_cascade(label="Help", menu=helpmenu)
+
+        # Add the menu bar to the main window
+        self.config(menu=menubar)
 
     def set_audio_device_menus(self, config):
         if config['General']['disable_speaker']:
@@ -390,7 +440,7 @@ class AppUI:
         # streamed back. Without the thread UI appears stuck as we stream the
         # responses back
         self.capture_action('Get LLM response selected now')
-        selected_text = self.transcript_textbox.selection_get()
+        selected_text = self.transcript_text.selection_get()
         response_ui_thread = threading.Thread(target=self.get_response_selected_now_threaded,
                                               args=(selected_text,),
                                               name='GetResponseSelectedNow')
@@ -624,8 +674,8 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
         textbox.see("end")
         last_transcript_ui_update_time = datetime.datetime.utcnow()
 
-    textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,
-                  update_transcript_ui, transcriber, textbox)
+    # textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,
+    #              update_transcript_ui, transcriber, textbox)
 
 
 def update_response_ui(responder: gr.GPTResponder,

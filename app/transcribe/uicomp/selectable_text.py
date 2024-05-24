@@ -9,7 +9,7 @@ class SelectableText(ctk.CTkFrame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.text_widget = Text(self, wrap="word", undo=True)
+        self.text_widget = Text(self, wrap="word", undo=True, background='#252422')
         self.scrollbar = Scrollbar(self, command=self.text_widget.yview)
         self.text_widget.config(yscrollcommand=self.scrollbar.set)
 
@@ -17,10 +17,14 @@ class SelectableText(ctk.CTkFrame):
         self.scrollbar.pack(side="right", fill="y")
 
         self.text_widget.bind("<Button-1>", self.on_text_click)
+        # Handler for left mouse click up
         # self.text_widget.bind("<ButtonRelease-1>", self.on_text_select)
+        # Handler for double click
         # self.text_widget.bind("<Double-1>", self.on_double_click)
 
     def on_text_select(self, event):
+        """Handler for left mouse click
+        """
         try:
             selected_text = self.text_widget.get(SEL_FIRST, SEL_LAST)
             print(f"Selected text: {selected_text}")
@@ -39,6 +43,8 @@ class SelectableText(ctk.CTkFrame):
             pass  # No selection
 
     def on_double_click(self, event):
+        """Handler for double click
+        """
         index = self.text_widget.index("@%s,%s" % (event.x, event.y))
         line_start = self.text_widget.index("%s linestart" % index)
         line_end = self.text_widget.index("%s lineend" % index)
