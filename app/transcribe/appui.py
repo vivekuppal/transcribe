@@ -62,6 +62,10 @@ class AppUI(ctk.CTk):
         self.global_vars.convo.set_handlers(self.update_last_row,
                                             self.transcript_text.add_text_to_bottom)
 
+    def clear_transcript(self):
+        self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
+        self.transcript_text.clear_all_text()
+
     def create_ui_components(self, config: dict):
         """Create all UI components
         """
@@ -205,8 +209,7 @@ class AppUI(ctk.CTk):
         m.add_command(label="Generate response for selected text",
                       command=self.get_response_selected_now)
         m.add_command(label="Save Transcript to File", command=self.save_file)
-        m.add_command(label="Clear Audio Transcript", command=lambda:
-                      self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue))
+        m.add_command(label="Clear Audio Transcript", command=self.clear_transcript)
         m.add_command(label="Copy Transcript to Clipboard", command=self.copy_to_clipboard)
         m.add_separator()
         m.add_command(label="Quit", command=self.quit)
@@ -282,8 +285,7 @@ class AppUI(ctk.CTk):
         self.editmenu = tk.Menu(menubar, tearoff=False)
 
         # Add a "Clear Audio Transcript" menu item to the file menu
-        self.editmenu.add_command(label="Clear Audio Transcript", command=lambda:
-                                  self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue))
+        self.editmenu.add_command(label="Clear Audio Transcript", command=self.clear_transcript)
 
         # Add a "Copy To Clipboard" menu item to the file menu
         self.editmenu.add_command(label="Copy Transcript to Clipboard",
@@ -291,11 +293,11 @@ class AppUI(ctk.CTk):
 
         # Add "Disable Speaker" menu item to file menu
         self.editmenu.add_command(label="Disable Speaker",
-                                  command=self.enable_disable_speaker())
+                                  command=self.enable_disable_speaker)
 
         # Add "Disable Microphone" menu item to file menu
         self.editmenu.add_command(label="Disable Microphone",
-                                  command=self.enable_disable_microphone())
+                                  command=self.enable_disable_microphone)
 
         # Add the edit menu to the menu bar
         menubar.add_cascade(label="Edit", menu=self.editmenu)
@@ -313,11 +315,11 @@ class AppUI(ctk.CTk):
     def set_audio_device_menus(self, config):
         if config['General']['disable_speaker']:
             print('[INFO] Disabling Speaker')
-        self.enable_disable_speaker()
+            self.enable_disable_speaker()
 
         if config['General']['disable_mic']:
             print('[INFO] Disabling Microphone')
-        self.enable_disable_microphone()
+            self.enable_disable_microphone()
 
     def copy_to_clipboard(self):
         """Copy transcription text data to clipboard.
