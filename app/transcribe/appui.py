@@ -37,7 +37,6 @@ class AppUI(ctk.CTk):
         super().__init__()
         self.global_vars = TranscriptionGlobals()
 
-        # self.root = ctk.CTk()
         self.global_vars.main_window = self
         self.create_ui_components(config=config)
         self.set_audio_device_menus(config=config)
@@ -47,14 +46,21 @@ class AppUI(ctk.CTk):
         """
         self.mainloop()
 
+    def update_last_row(self, input_text: str):
+        self.transcript_text.delete_last_3_rows()
+        self.transcript_text.add_text_to_bottom(input_text)
+        self.transcript_text.scroll_to_bottom()
+
     def update_initial_transcripts(self):
-        # TODO: Ref to transcript_textbox
-        # update_transcript_ui(self.global_vars.transcriber,
-        #                      self.transcript_textbox)
+
+        update_transcript_ui(self.global_vars.transcriber,
+                             self.transcript_text)
         update_response_ui(self.global_vars.responder,
                            self.response_textbox,
                            self.update_interval_slider_label,
                            self.update_interval_slider)
+        self.global_vars.convo.set_handlers(self.update_last_row,
+                                            self.transcript_text.add_text_to_bottom)
 
     def create_ui_components(self, config: dict):
         """Create all UI components
@@ -63,7 +69,7 @@ class AppUI(ctk.CTk):
         ctk.set_default_color_theme("dark-blue")
         self.title("Transcribe")
         self.configure(bg='#252422')
-        self.geometry("1000x600")
+        self.geometry("1200x800")
 
         # Frame for the main content
         self.main_frame = ctk.CTkFrame(self)
@@ -88,11 +94,17 @@ class AppUI(ctk.CTk):
         self.right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
         # LLM Response textbox
-        self.response_textbox = ctk.CTkTextbox(self.right_frame, width=300, font=("Arial", UI_FONT_SIZE),
-                                               text_color='#639cdc', wrap="word")
+        self.min_response_textbox_width = 300
+        self.response_textbox = ctk.CTkTextbox(self.right_frame, self.min_response_textbox_width,
+                                               font=("Arial", UI_FONT_SIZE),
+                                               text_color='#639cdc',
+                                               wrap="word")
         # self.response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
         self.response_textbox.pack(fill="both", expand=True)
         self.response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
+
+        # Bind the <Configure> event to enforce minimum width
+        # self.right_frame.bind("<Configure>", self.enforce_minimum_width_of_response)
 
         # Bottom Frame for buttons
         self.bottom_frame = ctk.CTkFrame(self, border_color="white", border_width=2)
@@ -128,12 +140,12 @@ class AppUI(ctk.CTk):
         self.update_interval_slider_label = ctk.CTkLabel(self.bottom_frame, text="", font=("Arial", 12),
                                                          text_color="#FFFCF2")
 #         self.update_interval_slider_label.pack(side="left", padx=10)
-        self.update_interval_slider_label.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider_label.grid(row=0, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
         # self.update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
         self.update_interval_slider = ctk.CTkSlider(self.bottom_frame, from_=1, to=30, width=300,  # height=5,
                                                     number_of_steps=29)
         self.update_interval_slider.set(config['General']['llm_response_interval'])
-        self.update_interval_slider.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider.grid(row=1, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
         # self.update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
         # self.update_interval_slider.pack(side="left", padx=10)
         self.update_interval_slider.configure(command=self.update_interval_slider_value)
@@ -240,12 +252,12 @@ class AppUI(ctk.CTk):
         # TODO: Ref to transcript_textbox
         self.transcript_text.bind("<Button-3>", show_context_menu)
 
-        # self.root.grid_rowconfigure(0, weight=100)
-        # self.root.grid_rowconfigure(1, weight=1)
-        # self.root.grid_rowconfigure(2, weight=1)
-        # self.root.grid_rowconfigure(3, weight=1)
-        # self.root.grid_columnconfigure(0, weight=2)
-        # self.root.grid_columnconfigure(1, weight=1)
+        # self.grid_rowconfigure(0, weight=100)
+        # self.grid_rowconfigure(1, weight=1)
+        # self.grid_rowconfigure(2, weight=1)
+        # self.grid_rowconfigure(3, weight=1)
+        # self.grid_columnconfigure(0, weight=1)
+        # self.grid_columnconfigure(1, weight=1)
 
     def create_menus(self):
         # Create the menu bar
@@ -577,6 +589,16 @@ class AppUI(ctk.CTk):
         except Exception as e:
             logger.error(f"Error setting response language: {e}")
 
+    # def enforce_minimum_width_of_response(self, event):
+    #     widthm = self.main_frame.winfo_width()
+    #     widthr = self.right_frame.winfo_width()
+    #     widthl = self.bottom_frame.winfo_width()
+    #     # if self.response_textbox.winfo_width() < self.min_response_textbox_width:
+    #         # self.response_textbox.configure(width=self.min_response_textbox_width)
+    #         # self.right_frame.configure(width=self.min_response_textbox_width)
+    #     #    self.transcript_text.configure(width=widthm - self.min_response_textbox_width)
+    #     print(f'Widths as observed: all {widthm}, right: {widthr}, left: {widthl}')
+
 
 def popup_msg_no_close_threaded(title, msg):
     """Create a pop up with no close button.
@@ -654,11 +676,11 @@ def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
         textbox.tag_add('sel', a[0], a[1])
 
 
-def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox):
+def update_transcript_ui(transcriber: AudioTranscriber, textbox: SelectableText):
     """Update the text of transcription textbox with the given text
         Args:
           transcriber: AudioTranscriber Object
-          textbox: textbox to be updated
+          textbox: SelectableText to be updated
     """
 
     global last_transcript_ui_update_time  # pylint: disable=W0603
@@ -669,9 +691,14 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
 
     # None comparison is for initialization
     if last_transcript_ui_update_time is None or last_transcript_ui_update_time < global_vars_module.convo.last_update:
-        transcript_string = transcriber.get_transcript()
-        write_in_textbox(textbox, transcript_string)
-        textbox.see("end")
+        transcript_strings = transcriber.get_transcript()
+        if isinstance(transcript_strings, list):
+            for line in transcript_strings:
+                textbox.add_text_to_bottom(line)
+        else:
+            textbox.add_text_to_bottom(transcript_strings)
+        # write_in_textbox(textbox, transcript_string)
+        textbox.scroll_to_bottom()
         last_transcript_ui_update_time = datetime.datetime.utcnow()
 
     # textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,

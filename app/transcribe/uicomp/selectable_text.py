@@ -9,7 +9,9 @@ class SelectableText(ctk.CTkFrame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.text_widget = Text(self, wrap="word", undo=True, background='#252422')
+        self.text_widget = Text(self, wrap="word", undo=True,
+                                background='#252422', font=("Arial", 20),
+                                foreground='#639cdc',)
         self.scrollbar = Scrollbar(self, command=self.text_widget.yview)
         self.text_widget.config(yscrollcommand=self.scrollbar.set)
 
@@ -21,6 +23,11 @@ class SelectableText(ctk.CTkFrame):
         # self.text_widget.bind("<ButtonRelease-1>", self.on_text_select)
         # Handler for double click
         # self.text_widget.bind("<Double-1>", self.on_double_click)
+
+    def clear_all_text(self):
+        self.text_widget.configure(state="normal")
+        self.text_widget.delete("1.0", END)
+        self.text_widget.configure(state="disabled")
 
     def on_text_select(self, event):
         """Handler for left mouse click
@@ -98,6 +105,21 @@ class SelectableText(ctk.CTkFrame):
         """
         self.text_widget.configure(state="normal")
         self.text_widget.insert(END, input_text + "\n")
+        self.text_widget.configure(state="disabled")
+
+    def delete_last_3_rows(self):
+        self.text_widget.configure(state="normal")
+        last_index = self.text_widget.index("end-1c linestart")
+        second_last_index = self.text_widget.index("%s -1 lines" % last_index)
+        third_last_index = self.text_widget.index("%s -1 lines" % second_last_index)
+        self.text_widget.delete(third_last_index, "end-1c")
+        self.text_widget.configure(state="normal")
+
+    def delete_last_2_row(self):
+        self.text_widget.configure(state="normal")
+        last_index = self.text_widget.index("end-1c linestart")
+        second_last_index = self.text_widget.index("%s -1 lines" % last_index)
+        self.text_widget.delete(second_last_index, "end-1c")
         self.text_widget.configure(state="disabled")
 
 

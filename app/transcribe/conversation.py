@@ -12,6 +12,8 @@ class Conversation:
     Has text from Speakers, Microphone, LLM, Instructions to LLM
     """
     _initialized: bool = False
+    update_handler = None
+    insert_handler = None
 
     def __init__(self):
         self.transcript_data = {constants.PERSONA_SYSTEM: [],
@@ -20,6 +22,10 @@ class Conversation:
                                 constants.PERSONA_ASSISTANT: []}
         self.last_update: datetime.datetime = None
         self.initialize_conversation()
+
+    def set_handlers(self, update, insert):
+        self.update_handler = update
+        self.insert_handler = insert
 
     def initialize_conversation(self):
         """Populate initial app data for conversation object
@@ -71,6 +77,8 @@ class Conversation:
             convo_object: convodb.Conversations = appdb().get_object(convodb.TABLE_NAME)
             convo_id = convo_object.get_max_convo_id(speaker=persona, inv_id=inv_id)
 
+        convo_text = f"{persona}: [{text}]\n\n"
+        ui_text = f"{persona}: [{text}]\n"
         # if (persona.lower() == 'assistant'):
         #     print(f'Assistant Transcript length to begin with: {len(transcript)}')
         #     print(f'append: {text}')
@@ -90,15 +98,16 @@ class Conversation:
                 # print(f'Removed: {prev_element}')
                 # print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_object.update_conversation(convo_id, text)
+                self.update_handler(ui_text)
         else:
             if self._initialized:
                 # Insert in DB
                 # print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text)
+                self.insert_handler(ui_text)
 
-        new_element = f"{persona}: [{text}]\n\n"
         # print(f'Added: {time_spoken} - {new_element}')
-        transcript.append((new_element, time_spoken, convo_id))
+        transcript.append((convo_text, time_spoken, convo_id))
 
         # if (persona.lower() == 'assistant'):
         #    print(f'Assistant Transcript length after completion: {len(transcript)}')
