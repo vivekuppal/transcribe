@@ -108,6 +108,8 @@ class SelectableText(ctk.CTkFrame):
         self.text_widget.configure(state="disabled")
 
     def delete_last_3_rows(self):
+        """Delete last 3 rows of text
+        """
         self.text_widget.configure(state="normal")
         last_index = self.text_widget.index("end-1c linestart")
         second_last_index = self.text_widget.index("%s -1 lines" % last_index)
@@ -116,6 +118,8 @@ class SelectableText(ctk.CTkFrame):
         self.text_widget.configure(state="normal")
 
     def delete_last_2_row(self):
+        """Delete last 2 rows of text
+        """
         self.text_widget.configure(state="normal")
         last_index = self.text_widget.index("end-1c linestart")
         second_last_index = self.text_widget.index("%s -1 lines" % last_index)

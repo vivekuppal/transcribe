@@ -98,7 +98,8 @@ class Conversation:
                 # print(f'Removed: {prev_element}')
                 # print(f'Update DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_object.update_conversation(convo_id, text)
-                self.update_handler(ui_text)
+                if persona.lower() != 'assistant':
+                    self.update_handler(ui_text)
         else:
             if self._initialized:
                 # Insert in DB
