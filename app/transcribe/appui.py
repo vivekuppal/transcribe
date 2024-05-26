@@ -62,7 +62,8 @@ class AppUI(ctk.CTk):
         self.transcript_text.scroll_to_bottom()
 
     def update_initial_transcripts(self):
-
+        """Set initial transcript in UI.
+        """
         update_transcript_ui(self.global_vars.transcriber,
                              self.transcript_text)
         update_response_ui(self.global_vars.responder,
@@ -73,6 +74,8 @@ class AppUI(ctk.CTk):
                                             self.transcript_text.add_text_to_bottom)
 
     def clear_transcript(self):
+        """Clear transcript from all places where it exists.
+        """
         self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
         self.transcript_text.clear_all_text()
 
@@ -91,14 +94,11 @@ class AppUI(ctk.CTk):
 
         self.create_menus()
 
-        # Speech to Text textbox
-        # TODO: Ref to transcript_textbox
         # Left side: SelectableTextComponent
         self.transcript_text: SelectableText = SelectableText(self.main_frame)
         self.transcript_text.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        self.transcript_text.set_callbacks(self.global_vars.convo.on_convo_select)
         # self.transcript_text.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
-
-        # TODO: set the font, texcolor etc.
         # self.transcript_textbox = ctk.CTkTextbox(self.root, width=300, font=("Arial", UI_FONT_SIZE),
         #                                          text_color='#FFFCF2', wrap="word")
         # self.transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
@@ -191,7 +191,8 @@ class AppUI(ctk.CTk):
         # response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
 
         response_lang = config['OpenAI']['response_lang']
-        self.response_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15, values=list(LANGUAGES_DICT.values()))
+        self.response_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15,
+                                                        values=list(LANGUAGES_DICT.values()))
         self.response_lang_combobox.set(response_lang)
         # self.response_lang_combobox.pack(side="left", padx=10)
         self.response_lang_combobox.grid(row=2, column=3, ipadx=60, padx=10, pady=3, sticky="ne")

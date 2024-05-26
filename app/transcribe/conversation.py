@@ -2,7 +2,7 @@ import sys
 from heapq import merge
 import datetime
 import constants
-from db import AppDB as appdb, conversation as convodb
+from db import AppDB as appdb, conversation as convodb, llm_responses as llmrdb
 sys.path.append('../..')
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
@@ -113,6 +113,30 @@ class Conversation:
         # if (persona.lower() == 'assistant'):
         #    print(f'Assistant Transcript length after completion: {len(transcript)}')
         self.last_update = datetime.datetime.utcnow()
+
+    def on_convo_select(self, input_text: str):
+        """Callback when a specific conversation is selected.
+        """
+        print(f'convo: {input_text}')
+        end_speaker = input_text.find(':')
+        if end_speaker == -1:
+            return
+        persona = input_text[:end_speaker].strip()
+        print(persona)
+        transcript = self.transcript_data[persona]
+        for index, (first, _, third) in enumerate(transcript):
+            if first.strip() == input_text.strip():
+                convo_id = third
+        print(convo_id)
+        if not convo_id:
+            return
+
+        # Get LLM_response for this convo_id
+        # get_text_by_invocation_and_conversation
+        inv_id = appdb().get_invocation_id()
+        llmr_object: llmrdb.LLMResponses = appdb().get_object(llmrdb.TABLE_NAME)
+        response = llmr_object.get_text_by_invocation_and_conversation(inv_id, convo_id)
+        print(response)
 
     def get_conversation(self,
                          sources: list = None,

@@ -24,30 +24,42 @@ class SelectableText(ctk.CTkFrame):
         # Handler for double click
         # self.text_widget.bind("<Double-1>", self.on_double_click)
 
+        # Define the tag for highlighting
+        self.text_widget.tag_configure("highlight", background="white")
+        self.on_text_click_cb = None
+
+    def set_callbacks(self, onTextClick):
+        """Set callback handlers
+        """
+        self.on_text_click_cb = onTextClick
+
     def clear_all_text(self):
+        """Clear all text from the component
+        """
         self.text_widget.configure(state="normal")
         self.text_widget.delete("1.0", END)
         self.text_widget.configure(state="disabled")
 
-    def on_text_select(self, event):
-        """Handler for left mouse click
-        """
-        try:
-            selected_text = self.text_widget.get(SEL_FIRST, SEL_LAST)
-            print(f"Selected text: {selected_text}")
+    def on_text_click(self, event):
+        """Handle the click event on the Text widget."""
+        # Remove the previous highlight
+        self.text_widget.tag_remove("highlight", "1.0", END)
 
-            index = self.text_widget.index("@%s,%s" % (event.x, event.y))
-            line_number = int(index.split(".")[0])
+        # Get the index of the clicked line
+        index = self.text_widget.index("@%s,%s" % (event.x, event.y))
+        line_number = int(index.split(".")[0])
 
-            # Get the text of the clicked line
-            line_start = f"{line_number}.0"
-            line_end = f"{line_number}.end"
-            line_text = self.text_widget.get(line_start, line_end).strip()
+        # Get the text of the clicked line
+        line_start = f"{line_number}.0"
+        line_end = f"{line_number}.end"
+        line_text = self.text_widget.get(line_start, line_end).strip()
 
-            # Trigger an event (print the line text)
-            print(f"Selected: {line_text}")
-        except:
-            pass  # No selection
+        # Add the highlight tag to the clicked line
+        self.text_widget.tag_add("highlight", line_start, line_end)
+        self.on_text_click_cb(line_text)
+
+        # Trigger an event (print the line text)
+        # print(f"Selected: {line_text}")
 
     def on_double_click(self, event):
         """Handler for double click
@@ -59,25 +71,6 @@ class SelectableText(ctk.CTkFrame):
         self.text_widget.mark_set("insert", line_end)
         self.text_widget.see("insert")
         self.text_widget.focus()
-
-    def on_text_click(self, event):
-        """
-        Handle the click event on the Text widget.
-
-        Args:
-            event (tkinter.Event): The event object containing event details.
-        """
-        # Get the index of the clicked line
-        index = self.text_widget.index("@%s,%s" % (event.x, event.y))
-        line_number = int(index.split(".")[0])
-
-        # Get the text of the clicked line
-        line_start = f"{line_number}.0"
-        line_end = f"{line_number}.end"
-        line_text = self.text_widget.get(line_start, line_end).strip()
-
-        # Trigger an event (print the line text)
-        print(f"Selected: {line_text}")
 
     def scroll_to_top(self):
         """
