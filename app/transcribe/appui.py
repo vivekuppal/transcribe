@@ -263,7 +263,6 @@ class AppUI(ctk.CTk):
             finally:
                 m.grab_release()
 
-        # TODO: Ref to transcript_textbox
         self.transcript_text.bind("<Button-3>", show_context_menu)
 
         # self.grid_rowconfigure(0, weight=100)
@@ -731,21 +730,28 @@ def update_response_ui(responder: gr.GPTResponder,
 
     if global_vars_module is None:
         global_vars_module = TranscriptionGlobals()
+    response = None
 
     # global_vars_module.responder.enabled --> This is continous response mode from LLM
     # global_vars_module.update_response_now --> Get Response now from LLM
     if global_vars_module.responder.enabled or global_vars_module.update_response_now:
         response = responder.response
 
+    if global_vars_module.previous_response is not None:
+        # User selection of previous response takes precedence over
+        # Automated ping of LLM Response
+        response = global_vars_module.previous_response
+
+    if response:
         textbox.configure(state="normal")
         write_in_textbox(textbox, response)
         textbox.configure(state="disabled")
         textbox.see("end")
 
-        update_interval = int(update_interval_slider.get())
-        responder.update_response_interval(update_interval)
-        update_interval_slider_label.configure(text=f'LLM Response interval: '
-                                               f'{update_interval} seconds')
+    update_interval = int(update_interval_slider.get())
+    responder.update_response_interval(update_interval)
+    update_interval_slider_label.configure(text=f'LLM Response interval: '
+                                            f'{update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
                   update_interval_slider_label, update_interval_slider)

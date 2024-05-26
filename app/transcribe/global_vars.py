@@ -31,6 +31,9 @@ class TranscriptionGlobals(Singleton.Singleton):
     update_response_now: bool = False
     # Read response in voice
     read_response: bool = False
+    # LLM Response to an earlier conversation
+    # This is populated when user clicks on text in transcript textbox
+    previous_response: str = None
     # editmenu: tk.Menu = None
     # filemenu: tk.Menu = None
     # update_interval_slider_label: ctk.CTkLabel = None
@@ -53,7 +56,7 @@ class TranscriptionGlobals(Singleton.Singleton):
             return
         if self.audio_queue is None:
             self.audio_queue = queue.Queue()
-        self.convo = conversation.Conversation()
+        self.convo = conversation.Conversation(self)
         self.start = datetime.datetime.now()
         self.task_worker = task_queue.TaskQueue()
         self.data_dir = utilities.get_data_path(app_name='Transcribe')

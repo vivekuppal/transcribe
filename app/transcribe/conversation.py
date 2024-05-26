@@ -15,13 +15,14 @@ class Conversation:
     update_handler = None
     insert_handler = None
 
-    def __init__(self):
+    def __init__(self, context):
         self.transcript_data = {constants.PERSONA_SYSTEM: [],
                                 constants.PERSONA_YOU: [],
                                 constants.PERSONA_SPEAKER: [],
                                 constants.PERSONA_ASSISTANT: []}
         self.last_update: datetime.datetime = None
         self.initialize_conversation()
+        self.context = context
 
     def set_handlers(self, update, insert):
         self.update_handler = update
@@ -120,15 +121,21 @@ class Conversation:
         print(f'convo: {input_text}')
         end_speaker = input_text.find(':')
         if end_speaker == -1:
+            self.context.previous_response = None
             return
         persona = input_text[:end_speaker].strip()
         print(persona)
         transcript = self.transcript_data[persona]
-        for index, (first, _, third) in enumerate(transcript):
+        bFound = False
+        for _, (first, _, third) in enumerate(transcript):
             if first.strip() == input_text.strip():
                 convo_id = third
+                bFound = True
+                break
+
         print(convo_id)
         if not convo_id:
+            self.context.previous_response = None
             return
 
         # Get LLM_response for this convo_id
@@ -136,6 +143,7 @@ class Conversation:
         inv_id = appdb().get_invocation_id()
         llmr_object: llmrdb.LLMResponses = appdb().get_object(llmrdb.TABLE_NAME)
         response = llmr_object.get_text_by_invocation_and_conversation(inv_id, convo_id)
+        self.context.previous_response = response if response else 'No LLM response corresponding to this row'
         print(response)
 
     def get_conversation(self,
