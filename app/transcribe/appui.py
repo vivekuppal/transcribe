@@ -46,9 +46,19 @@ class AppUI(ctk.CTk):
         """
         self.mainloop()
 
-    def update_last_row(self, input_text: str):
-        self.transcript_text.delete_last_3_rows()
+    def update_last_row(self, speaker: str, input_text: str):
+        # Update the line for this speaker
+
+        # Delete row starting with speaker
+        self.transcript_text.delete_row_starting_with(start_text=speaker)
+        self.transcript_text.replace_multiple_newlines()
+
+        # Add new line to end, since it was cleared by previous operation
+        self.transcript_text.add_text_to_bottom('\n')
+
+        # Add a new row to the bottom with new text
         self.transcript_text.add_text_to_bottom(input_text)
+
         self.transcript_text.scroll_to_bottom()
 
     def update_initial_transcripts(self):

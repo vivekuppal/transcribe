@@ -107,15 +107,33 @@ class SelectableText(ctk.CTkFrame):
         self.text_widget.insert(END, input_text + "\n")
         self.text_widget.configure(state="disabled")
 
-    def delete_last_3_rows(self):
-        """Delete last 3 rows of text
+    def delete_row_starting_with(self, start_text: str):
+        """Delete the row that starts with the given text."""
+        self.text_widget.configure(state="normal")
+        last_line_index = int(self.text_widget.index('end-1c').split('.')[0])
+
+        for line_number in range(last_line_index, 0, -1):
+            line_start = f"{line_number}.0"
+            line_end = f"{line_number}.end"
+            line_text = self.text_widget.get(line_start, line_end).strip()
+            if line_text.startswith(start_text):
+                self.text_widget.delete(line_start, f"{line_number + 1}.0")
+                break
+
+        self.text_widget.configure(state="disabled")
+
+    def replace_multiple_newlines(self):
+        """Replace multiple consecutive lines with only newline characters with a single newline character.
         """
         self.text_widget.configure(state="normal")
-        last_index = self.text_widget.index("end-1c linestart")
-        second_last_index = self.text_widget.index("%s -1 lines" % last_index)
-        third_last_index = self.text_widget.index("%s -1 lines" % second_last_index)
-        self.text_widget.delete(third_last_index, "end-1c")
-        self.text_widget.configure(state="normal")
+        current_index = "1.0"
+        while True:
+            current_index = self.text_widget.search("\n\n\n", current_index, END)
+            if not current_index:
+                break
+            next_index = self.text_widget.index(f"{current_index} + 1c")
+            self.text_widget.delete(current_index, next_index)
+        self.text_widget.configure(state="disabled")
 
     def delete_last_2_row(self):
         """Delete last 2 rows of text
@@ -125,6 +143,13 @@ class SelectableText(ctk.CTkFrame):
         second_last_index = self.text_widget.index("%s -1 lines" % last_index)
         self.text_widget.delete(second_last_index, "end-1c")
         self.text_widget.configure(state="disabled")
+
+    def get_text_last_3_rows(self) -> str:
+        last_index = self.text_widget.index("end-1c linestart")
+        second_last_index = self.text_widget.index("%s -1 lines" % last_index)
+        third_last_index = self.text_widget.index("%s -1 lines" % second_last_index)
+        line_text = self.text_widget.get(third_last_index, "end-1c")
+        return line_text
 
 
 if __name__ == "__main__":
