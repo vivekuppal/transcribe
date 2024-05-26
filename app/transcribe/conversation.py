@@ -102,7 +102,7 @@ class Conversation:
                 if persona.lower() != 'assistant':
                     self.update_handler(persona, ui_text)
         else:
-            if self._initialized:
+            if self._initialized and persona != constants.PERSONA_SYSTEM and persona != constants.PERSONA_ASSISTANT:
                 # Insert in DB
                 # print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text)
@@ -118,7 +118,6 @@ class Conversation:
     def on_convo_select(self, input_text: str):
         """Callback when a specific conversation is selected.
         """
-        print(f'convo: {input_text}')
         end_speaker = input_text.find(':')
         if end_speaker == -1:
             self.context.previous_response = None
@@ -126,14 +125,11 @@ class Conversation:
         persona = input_text[:end_speaker].strip()
         print(persona)
         transcript = self.transcript_data[persona]
-        bFound = False
         for _, (first, _, third) in enumerate(transcript):
             if first.strip() == input_text.strip():
                 convo_id = third
-                bFound = True
                 break
 
-        print(convo_id)
         if not convo_id:
             self.context.previous_response = None
             return

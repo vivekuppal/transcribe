@@ -76,8 +76,8 @@ class AppUI(ctk.CTk):
     def clear_transcript(self):
         """Clear transcript from all places where it exists.
         """
-        self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
         self.transcript_text.clear_all_text()
+        self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
 
     def create_ui_components(self, config: dict):
         """Create all UI components
@@ -98,10 +98,6 @@ class AppUI(ctk.CTk):
         self.transcript_text: SelectableText = SelectableText(self.main_frame)
         self.transcript_text.pack(side="left", fill="both", expand=True, padx=10, pady=10)
         self.transcript_text.set_callbacks(self.global_vars.convo.on_convo_select)
-        # self.transcript_text.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
-        # self.transcript_textbox = ctk.CTkTextbox(self.root, width=300, font=("Arial", UI_FONT_SIZE),
-        #                                          text_color='#FFFCF2', wrap="word")
-        # self.transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
 
         # Right side
         self.right_frame = ctk.CTkFrame(self.main_frame)
@@ -113,12 +109,8 @@ class AppUI(ctk.CTk):
                                                font=("Arial", UI_FONT_SIZE),
                                                text_color='#639cdc',
                                                wrap="word")
-        # self.response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
         self.response_textbox.pack(fill="both", expand=True)
         self.response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
-
-        # Bind the <Configure> event to enforce minimum width
-        # self.right_frame.bind("<Configure>", self.enforce_minimum_width_of_response)
 
         # Bottom Frame for buttons
         self.bottom_frame = ctk.CTkFrame(self, border_color="white", border_width=2)
@@ -128,40 +120,28 @@ class AppUI(ctk.CTk):
         b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
         self.continuous_response_button = ctk.CTkButton(self.bottom_frame, text=b_text)
         self.continuous_response_button.grid(row=0, column=4, padx=10, pady=3, sticky="nsew")
-        # self.continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
-        # self.continuous_response_button.pack(side="left", padx=10)
         self.continuous_response_button.configure(command=self.freeze_unfreeze)
 
         self.response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response Now")
         self.response_now_button.grid(row=1, column=4, padx=10, pady=3, sticky="nsew")
-        # self.response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
-        # self.response_now_button.pack(side="left", padx=10)
         self.response_now_button.configure(command=self.get_response_now)
 
         self.read_response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response and Read")
-        # self.read_response_now_button.pack(side="left", padx=10)
         self.read_response_now_button.grid(row=2, column=4, padx=10, pady=3, sticky="nsew")
-        # self.read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
         self.read_response_now_button.configure(command=self.update_response_ui_and_read_now)
 
         self.summarize_button = ctk.CTkButton(self.bottom_frame, text="Summarize")
-        # self.summarize_button.pack(side="left", padx=10)
         self.summarize_button.grid(row=3, column=4, padx=10, pady=3, sticky="nsew")
-        # self.summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
         self.summarize_button.configure(command=self.summarize)
 
         # Continuous LLM Response label, and slider
         self.update_interval_slider_label = ctk.CTkLabel(self.bottom_frame, text="", font=("Arial", 12),
                                                          text_color="#FFFCF2")
-#         self.update_interval_slider_label.pack(side="left", padx=10)
         self.update_interval_slider_label.grid(row=0, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
-        # self.update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
         self.update_interval_slider = ctk.CTkSlider(self.bottom_frame, from_=1, to=30, width=300,  # height=5,
                                                     number_of_steps=29)
         self.update_interval_slider.set(config['General']['llm_response_interval'])
         self.update_interval_slider.grid(row=1, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
-        # self.update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
-        # self.update_interval_slider.pack(side="left", padx=10)
         self.update_interval_slider.configure(command=self.update_interval_slider_value)
 
         label_text = f'LLM Response interval: {int(self.update_interval_slider.get())} seconds'
@@ -171,46 +151,35 @@ class AppUI(ctk.CTk):
         audio_lang_label = ctk.CTkLabel(self.bottom_frame, text="Audio Lang: ",
                                         font=("Arial", 12),
                                         text_color="#FFFCF2")
-        # audio_lang_label.pack(side="left", padx=10)
         audio_lang_label.grid(row=2, column=0, padx=10, pady=3, sticky='nw')
 
         audio_lang = config['OpenAI']['audio_lang']
         self.audio_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15, values=list(LANGUAGES_DICT.values()))
         self.audio_lang_combobox.set(audio_lang)
-        # self.audio_lang_combobox.pack(side="left", padx=10)
         self.audio_lang_combobox.grid(row=2, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
-        # self.audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
         self.audio_lang_combobox.configure(command=self.set_audio_language)
 
         # LLM Response language selection label, dropdown
         response_lang_label = ctk.CTkLabel(self.bottom_frame,
                                            text="Response Lang: ",
                                            font=("Arial", 12), text_color="#FFFCF2")
-        # response_lang_label.pack(side="left", padx=10)
         response_lang_label.grid(row=2, column=2, padx=10, pady=3, sticky="nw")
-        # response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
 
         response_lang = config['OpenAI']['response_lang']
         self.response_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15,
                                                         values=list(LANGUAGES_DICT.values()))
         self.response_lang_combobox.set(response_lang)
-        # self.response_lang_combobox.pack(side="left", padx=10)
         self.response_lang_combobox.grid(row=2, column=3, ipadx=60, padx=10, pady=3, sticky="ne")
-        # self.response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
         self.response_lang_combobox.configure(command=self.set_response_language)
 
         self.github_link = ctk.CTkLabel(self.bottom_frame, text="Star the Github Repo",
                                         text_color="#639cdc", cursor="hand2")
-        # self.github_link.pack(side="left", padx=10)
         self.github_link.grid(row=3, column=0, padx=10, pady=3, sticky="wn")
-        # self.github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
         self.github_link.bind('<Button-1>', lambda e:
                               self.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
 
         self.issue_link = ctk.CTkLabel(self.bottom_frame, text="Report an issue", text_color="#639cdc", cursor="hand2")
-        # self.issue_link.pack(side="left", padx=10)
         self.issue_link.grid(row=3, column=1, padx=10, pady=3, sticky="wn")
-        # self.issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
         self.issue_link.bind('<Button-1>', lambda e: self.open_link(
             'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
@@ -601,16 +570,6 @@ class AppUI(ctk.CTk):
         except Exception as e:
             logger.error(f"Error setting response language: {e}")
 
-    # def enforce_minimum_width_of_response(self, event):
-    #     widthm = self.main_frame.winfo_width()
-    #     widthr = self.right_frame.winfo_width()
-    #     widthl = self.bottom_frame.winfo_width()
-    #     # if self.response_textbox.winfo_width() < self.min_response_textbox_width:
-    #         # self.response_textbox.configure(width=self.min_response_textbox_width)
-    #         # self.right_frame.configure(width=self.min_response_textbox_width)
-    #     #    self.transcript_text.configure(width=widthm - self.min_response_textbox_width)
-    #     print(f'Widths as observed: all {widthm}, right: {widthr}, left: {widthl}')
-
 
 def popup_msg_no_close_threaded(title, msg):
     """Create a pop up with no close button.
@@ -713,9 +672,6 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: SelectableText)
         textbox.scroll_to_bottom()
         last_transcript_ui_update_time = datetime.datetime.utcnow()
 
-    # textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,
-    #              update_transcript_ui, transcriber, textbox)
-
 
 def update_response_ui(responder: gr.GPTResponder,
                        textbox: ctk.CTkTextbox,
@@ -751,7 +707,7 @@ def update_response_ui(responder: gr.GPTResponder,
     update_interval = int(update_interval_slider.get())
     responder.update_response_interval(update_interval)
     update_interval_slider_label.configure(text=f'LLM Response interval: '
-                                            f'{update_interval} seconds')
+                                           f'{update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
                   update_interval_slider_label, update_interval_slider)

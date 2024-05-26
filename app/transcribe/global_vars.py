@@ -4,8 +4,6 @@ import sys
 import os
 import queue
 import datetime
-import tkinter as tk
-import customtkinter as ctk
 from audio_transcriber import AudioTranscriber
 import audio_player
 sys.path.append('../..')
@@ -26,7 +24,6 @@ class TranscriptionGlobals(Singleton.Singleton):
     transcriber: AudioTranscriber = None
     # Global for responses from openAI API
     responder = None
-    # freeze_button: ctk.CTkButton = None
     # Update_response_now is true when we are waiting for a one time immediate response to query
     update_response_now: bool = False
     # Read response in voice
@@ -34,11 +31,6 @@ class TranscriptionGlobals(Singleton.Singleton):
     # LLM Response to an earlier conversation
     # This is populated when user clicks on text in transcript textbox
     previous_response: str = None
-    # editmenu: tk.Menu = None
-    # filemenu: tk.Menu = None
-    # update_interval_slider_label: ctk.CTkLabel = None
-    # response_textbox: ctk.CTkTextbox = None
-    # transcript_textbox: ctk.CTkTextbox = None
     start: datetime.datetime = None
     task_worker = None
     main_window = None
