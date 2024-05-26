@@ -12,6 +12,8 @@ class TaskQueueEnum(Enum):
     DB_CLEAN = 2
 
 
+# Add a task to clean log files at regular intervals
+# Add a task to purge DB at regular intervals
 class TaskQueue:
 
     def __init__(self):

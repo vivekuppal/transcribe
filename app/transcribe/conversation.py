@@ -2,7 +2,10 @@ import sys
 from heapq import merge
 import datetime
 import constants
-from db import AppDB as appdb, conversation as convodb, llm_responses as llmrdb
+from db import (
+    AppDB as appdb,
+    conversation as convodb,
+    llm_responses as llmrdb)
 sys.path.append('../..')
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
@@ -25,6 +28,13 @@ class Conversation:
         self.context = context
 
     def set_handlers(self, update, insert):
+        """Sets handlers to be called when a conversation is updated or
+           a new conversation is inserted.
+
+        Args:
+        update: Handler for update update(persona, input_text)
+        insert: Handler for insert insert(input_text)
+        """
         self.update_handler = update
         self.insert_handler = insert
 
@@ -111,8 +121,6 @@ class Conversation:
         # print(f'Added: {time_spoken} - {new_element}')
         transcript.append((convo_text, time_spoken, convo_id))
 
-        # if (persona.lower() == 'assistant'):
-        #    print(f'Assistant Transcript length after completion: {len(transcript)}')
         self.last_update = datetime.datetime.utcnow()
 
     def on_convo_select(self, input_text: str):
@@ -123,7 +131,6 @@ class Conversation:
             self.context.previous_response = None
             return
         persona = input_text[:end_speaker].strip()
-        print(persona)
         transcript = self.transcript_data[persona]
         for _, (first, _, third) in enumerate(transcript):
             if first.strip() == input_text.strip():
@@ -140,7 +147,6 @@ class Conversation:
         llmr_object: llmrdb.LLMResponses = appdb().get_object(llmrdb.TABLE_NAME)
         response = llmr_object.get_text_by_invocation_and_conversation(inv_id, convo_id)
         self.context.previous_response = response if response else 'No LLM response corresponding to this row'
-        print(response)
 
     def get_conversation(self,
                          sources: list = None,
