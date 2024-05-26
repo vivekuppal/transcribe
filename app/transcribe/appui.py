@@ -742,7 +742,7 @@ def update_response_ui(responder: gr.GPTResponder,
         textbox.see("end")
 
         update_interval = int(update_interval_slider.get())
-        # responder.update_response_interval(update_interval)
+        responder.update_response_interval(update_interval)
         update_interval_slider_label.configure(text=f'LLM Response interval: '
                                                f'{update_interval} seconds')
 

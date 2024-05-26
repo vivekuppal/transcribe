@@ -41,7 +41,7 @@ class GPTResponder:
         logger.info(GPTResponder.__name__)
         # This var is used by UI to populate the response textbox
         self.response = prompts.INITIAL_RESPONSE
-        self.llm_response_interval = 2
+        self.llm_response_interval = config['General']['llm_response_interval']
         self.conversation = convo
         self.config = config
         self.save_response_to_file = save_to_file
@@ -169,7 +169,6 @@ class GPTResponder:
                 length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
             last_convo_id = int(multiturn_prompt_content[-1][2])
             multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
-
             collected_messages = self._get_llm_response(multiturn_prompt_api_message, temperature, timeout)
             self._insert_response_in_db(last_convo_id, collected_messages)
 
@@ -344,6 +343,8 @@ class GPTResponder:
 
                 remaining_time = self.llm_response_interval - execution_time
                 if remaining_time > 0:
+                    # print(f'llm_response_interval: {self.llm_response_interval}, execution time: {execution_time}')
+                    # print(f'Sleeping for a response for duration: {remaining_time}')
                     time.sleep(remaining_time)
             else:
                 time.sleep(self.llm_response_interval)
