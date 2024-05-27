@@ -15,6 +15,7 @@ from tsutils.language import LANGUAGES_DICT
 from tsutils import utilities
 from tsutils import app_logging as al
 from tsutils import configuration
+from uicomp.selectable_text import SelectableText
 
 
 logger = al.get_module_logger(al.UI_LOGGER)
@@ -26,20 +27,284 @@ global_vars_module: TranscriptionGlobals = T_GLOBALS
 pop_up = None
 
 
-class UICallbacks:
-    """All callbacks for UI"""
-
+class AppUI(ctk.CTk):
+    """Encapsulates all UI functionality for the app
+    """
     global_vars: TranscriptionGlobals
     ui_filename: str = None
 
-    def __init__(self):
+    def __init__(self, config: dict):
+        super().__init__()
         self.global_vars = TranscriptionGlobals()
+
+        self.global_vars.main_window = self
+        self.create_ui_components(config=config)
+        self.set_audio_device_menus(config=config)
+
+    def start(self):
+        """Start showing the UI
+        """
+        self.mainloop()
+
+    def update_last_row(self, speaker: str, input_text: str):
+        # Update the line for this speaker
+
+        # Delete row starting with speaker
+        self.transcript_text.delete_row_starting_with(start_text=speaker)
+        self.transcript_text.replace_multiple_newlines()
+
+        # Add new line to end, since it was cleared by previous operation
+        self.transcript_text.add_text_to_bottom('\n')
+
+        # Add a new row to the bottom with new text
+        self.transcript_text.add_text_to_bottom(input_text)
+
+        self.transcript_text.scroll_to_bottom()
+
+    def update_initial_transcripts(self):
+        """Set initial transcript in UI.
+        """
+        update_transcript_ui(self.global_vars.transcriber,
+                             self.transcript_text)
+        update_response_ui(self.global_vars.responder,
+                           self.response_textbox,
+                           self.update_interval_slider_label,
+                           self.update_interval_slider)
+        self.global_vars.convo.set_handlers(self.update_last_row,
+                                            self.transcript_text.add_text_to_bottom)
+
+    def clear_transcript(self):
+        """Clear transcript from all places where it exists.
+        """
+        self.transcript_text.clear_all_text()
+        self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
+
+    def create_ui_components(self, config: dict):
+        """Create all UI components
+        """
+        ctk.set_appearance_mode("dark")
+        ctk.set_default_color_theme("dark-blue")
+        self.title("Transcribe")
+        self.configure(bg='#252422')
+        self.geometry("1200x800")
+
+        # Frame for the main content
+        self.main_frame = ctk.CTkFrame(self)
+        self.main_frame.pack(fill="both", expand=True)
+
+        self.create_menus()
+
+        # Left side: SelectableTextComponent
+        self.transcript_text: SelectableText = SelectableText(self.main_frame)
+        self.transcript_text.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+        self.transcript_text.set_callbacks(self.global_vars.convo.on_convo_select)
+
+        # Right side
+        self.right_frame = ctk.CTkFrame(self.main_frame)
+        self.right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+        # LLM Response textbox
+        self.min_response_textbox_width = 300
+        self.response_textbox = ctk.CTkTextbox(self.right_frame, self.min_response_textbox_width,
+                                               font=("Arial", UI_FONT_SIZE),
+                                               text_color='#639cdc',
+                                               wrap="word")
+        self.response_textbox.pack(fill="both", expand=True)
+        self.response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
+
+        # Bottom Frame for buttons
+        self.bottom_frame = ctk.CTkFrame(self, border_color="white", border_width=2)
+        self.bottom_frame.pack(side="bottom", fill="both", pady=10)
+
+        response_enabled = bool(config['General']['continuous_response'])
+        b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
+        self.continuous_response_button = ctk.CTkButton(self.bottom_frame, text=b_text)
+        self.continuous_response_button.grid(row=0, column=4, padx=10, pady=3, sticky="nsew")
+        self.continuous_response_button.configure(command=self.freeze_unfreeze)
+
+        self.response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response Now")
+        self.response_now_button.grid(row=1, column=4, padx=10, pady=3, sticky="nsew")
+        self.response_now_button.configure(command=self.get_response_now)
+
+        self.read_response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response and Read")
+        self.read_response_now_button.grid(row=2, column=4, padx=10, pady=3, sticky="nsew")
+        self.read_response_now_button.configure(command=self.update_response_ui_and_read_now)
+
+        self.summarize_button = ctk.CTkButton(self.bottom_frame, text="Summarize")
+        self.summarize_button.grid(row=3, column=4, padx=10, pady=3, sticky="nsew")
+        self.summarize_button.configure(command=self.summarize)
+
+        # Continuous LLM Response label, and slider
+        self.update_interval_slider_label = ctk.CTkLabel(self.bottom_frame, text="", font=("Arial", 12),
+                                                         text_color="#FFFCF2")
+        self.update_interval_slider_label.grid(row=0, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider = ctk.CTkSlider(self.bottom_frame, from_=1, to=30, width=300,  # height=5,
+                                                    number_of_steps=29)
+        self.update_interval_slider.set(config['General']['llm_response_interval'])
+        self.update_interval_slider.grid(row=1, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
+        self.update_interval_slider.configure(command=self.update_interval_slider_value)
+
+        label_text = f'LLM Response interval: {int(self.update_interval_slider.get())} seconds'
+        self.update_interval_slider_label.configure(text=label_text)
+
+        # Speech to text language selection label, dropdown
+        audio_lang_label = ctk.CTkLabel(self.bottom_frame, text="Audio Lang: ",
+                                        font=("Arial", 12),
+                                        text_color="#FFFCF2")
+        audio_lang_label.grid(row=2, column=0, padx=10, pady=3, sticky='nw')
+
+        audio_lang = config['OpenAI']['audio_lang']
+        self.audio_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15, values=list(LANGUAGES_DICT.values()))
+        self.audio_lang_combobox.set(audio_lang)
+        self.audio_lang_combobox.grid(row=2, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
+        self.audio_lang_combobox.configure(command=self.set_audio_language)
+
+        # LLM Response language selection label, dropdown
+        response_lang_label = ctk.CTkLabel(self.bottom_frame,
+                                           text="Response Lang: ",
+                                           font=("Arial", 12), text_color="#FFFCF2")
+        response_lang_label.grid(row=2, column=2, padx=10, pady=3, sticky="nw")
+
+        response_lang = config['OpenAI']['response_lang']
+        self.response_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15,
+                                                        values=list(LANGUAGES_DICT.values()))
+        self.response_lang_combobox.set(response_lang)
+        self.response_lang_combobox.grid(row=2, column=3, ipadx=60, padx=10, pady=3, sticky="ne")
+        self.response_lang_combobox.configure(command=self.set_response_language)
+
+        self.github_link = ctk.CTkLabel(self.bottom_frame, text="Star the Github Repo",
+                                        text_color="#639cdc", cursor="hand2")
+        self.github_link.grid(row=3, column=0, padx=10, pady=3, sticky="wn")
+        self.github_link.bind('<Button-1>', lambda e:
+                              self.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
+
+        self.issue_link = ctk.CTkLabel(self.bottom_frame, text="Report an issue", text_color="#639cdc", cursor="hand2")
+        self.issue_link.grid(row=3, column=1, padx=10, pady=3, sticky="wn")
+        self.issue_link.bind('<Button-1>', lambda e: self.open_link(
+            'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
+
+        # Create right click menu for transcript textbox.
+        # This displays only inside the speech to text textbox
+        m = tk.Menu(self.main_frame, tearoff=0)
+        m.add_command(label="Generate response for selected text",
+                      command=self.get_response_selected_now)
+        m.add_command(label="Save Transcript to File", command=self.save_file)
+        m.add_command(label="Clear Audio Transcript", command=self.clear_transcript)
+        m.add_command(label="Copy Transcript to Clipboard", command=self.copy_to_clipboard)
+        m.add_separator()
+        m.add_command(label="Quit", command=self.quit)
+
+        chat_inference_provider = config['General']['chat_inference_provider']
+        if chat_inference_provider == 'openai':
+            api_key = config['OpenAI']['api_key']
+            base_url = config['OpenAI']['base_url']
+            model = config['OpenAI']['ai_model']
+        elif chat_inference_provider == 'together':
+            api_key = config['Together']['api_key']
+            base_url = config['Together']['base_url']
+            model = config['Together']['ai_model']
+
+        if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
+            # Disable buttons that interact with backend services
+            self.continuous_response_button.configure(state='disabled')
+            self.response_now_button.configure(state='disabled')
+            self.read_response_now_button.configure(state='disabled')
+            self.summarize_button.configure(state='disabled')
+
+            tt_msg = 'Add API Key in override.yaml to enable button'
+            # Add tooltips for disabled buttons
+            ToolTip(self.continuous_response_button, msg=tt_msg,
+                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                    padx=7, pady=7)
+            ToolTip(self.response_now_button, msg=tt_msg,
+                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                    padx=7, pady=7)
+            ToolTip(self.read_response_now_button, msg=tt_msg,
+                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                    padx=7, pady=7)
+            ToolTip(self.summarize_button, msg=tt_msg,
+                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
+                    padx=7, pady=7)
+
+        def show_context_menu(event):
+            try:
+                m.tk_popup(event.x_root, event.y_root)
+            finally:
+                m.grab_release()
+
+        self.transcript_text.bind("<Button-3>", show_context_menu)
+
+        # self.grid_rowconfigure(0, weight=100)
+        # self.grid_rowconfigure(1, weight=1)
+        # self.grid_rowconfigure(2, weight=1)
+        # self.grid_rowconfigure(3, weight=1)
+        # self.grid_columnconfigure(0, weight=1)
+        # self.grid_columnconfigure(1, weight=1)
+
+    def create_menus(self):
+        # Create the menu bar
+        menubar = tk.Menu(self)
+
+        # Create a file menu
+        self.filemenu = tk.Menu(menubar, tearoff=False)
+
+        # Add a "Save" menu item to the file menu
+        self.filemenu.add_command(label="Save Transcript to File", command=self.save_file)
+
+        # Add a "Pause" menu item to the file menu
+        self.filemenu.add_command(label="Pause Transcription", command=self.set_transcript_state)
+
+        # Add a "Quit" menu item to the file menu
+        self.filemenu.add_command(label="Quit", command=self.quit)
+
+        # Add the file menu to the menu bar
+        menubar.add_cascade(label="File", menu=self.filemenu)
+
+        # Create an edit menu
+        self.editmenu = tk.Menu(menubar, tearoff=False)
+
+        # Add a "Clear Audio Transcript" menu item to the file menu
+        self.editmenu.add_command(label="Clear Audio Transcript", command=self.clear_transcript)
+
+        # Add a "Copy To Clipboard" menu item to the file menu
+        self.editmenu.add_command(label="Copy Transcript to Clipboard",
+                                  command=self.copy_to_clipboard)
+
+        # Add "Disable Speaker" menu item to file menu
+        self.editmenu.add_command(label="Disable Speaker",
+                                  command=self.enable_disable_speaker)
+
+        # Add "Disable Microphone" menu item to file menu
+        self.editmenu.add_command(label="Disable Microphone",
+                                  command=self.enable_disable_microphone)
+
+        # Add the edit menu to the menu bar
+        menubar.add_cascade(label="Edit", menu=self.editmenu)
+
+        # Create help menu, add items in help menu
+        helpmenu = tk.Menu(menubar, tearoff=False)
+        helpmenu.add_command(label="Github Repo", command=self.open_github)
+        helpmenu.add_command(label="Star the Github repo", command=self.open_github)
+        helpmenu.add_command(label="Report an Issue", command=self.open_support)
+        menubar.add_cascade(label="Help", menu=helpmenu)
+
+        # Add the menu bar to the main window
+        self.config(menu=menubar)
+
+    def set_audio_device_menus(self, config):
+        if config['General']['disable_speaker']:
+            print('[INFO] Disabling Speaker')
+            self.enable_disable_speaker()
+
+        if config['General']['disable_mic']:
+            print('[INFO] Disabling Microphone')
+            self.enable_disable_microphone()
 
     def copy_to_clipboard(self):
         """Copy transcription text data to clipboard.
            Does not include responses from assistant.
         """
-        logger.info(UICallbacks.copy_to_clipboard.__name__)
+        logger.info(AppUI.copy_to_clipboard.__name__)
         self.capture_action("Copy transcript to clipboard")
         try:
             pyperclip.copy(self.global_vars.transcriber.get_transcript())
@@ -50,7 +315,7 @@ class UICallbacks:
         """Save transcription text data to file.
            Does not include responses from assistant.
         """
-        logger.info(UICallbacks.save_file.__name__)
+        logger.info(AppUI.save_file.__name__)
         filename = ctk.filedialog.asksaveasfilename(defaultextension='.txt',
                                                     title='Save Transcription',
                                                     filetypes=[("Text Files", "*.txt")])
@@ -66,33 +331,33 @@ class UICallbacks:
     def freeze_unfreeze(self):
         """Respond to start / stop of seeking responses from openAI API
         """
-        logger.info(UICallbacks.freeze_unfreeze.__name__)
+        logger.info(AppUI.freeze_unfreeze.__name__)
         try:
             # Invert the state
             self.global_vars.responder.enabled = not self.global_vars.responder.enabled
             self.capture_action(f'{"Enabled " if self.global_vars.responder.enabled else "Disabled "} continuous LLM responses')
-            self.global_vars.freeze_button.configure(
+            self.continuous_response_button.configure(
                 text="Suggest Responses Continuously" if not self.global_vars.responder.enabled else "Do Not Suggest Responses Continuously"
             )
         except Exception as e:
             logger.error(f"Error toggling responder state: {e}")
 
-    def enable_disable_speaker(self, editmenu):
+    def enable_disable_speaker(self):
         """Toggles the state of speaker
         """
         try:
             self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
-            editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
+            self.editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
             self.capture_action(f'{"Enabled " if self.global_vars.speaker_audio_recorder.enabled else "Disabled "} speaker input')
         except Exception as e:
             logger.error(f"Error toggling speaker state: {e}")
 
-    def enable_disable_microphone(self, editmenu):
+    def enable_disable_microphone(self):
         """Toggles the state of microphone
         """
         try:
             self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
-            editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
+            self.editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
             self.capture_action(f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input')
         except Exception as e:
             logger.error(f"Error toggling microphone state: {e}")
@@ -108,7 +373,7 @@ class UICallbacks:
             config_obj.add_override_value(altered_config)
 
             label_text = f'LLM Response interval: {int(slider_value)} seconds'
-            self.global_vars.update_interval_slider_label.configure(text=label_text)
+            self.update_interval_slider_label.configure(text=label_text)
             self.capture_action(f'Update LLM response interval to {int(slider_value)}')
         except Exception as e:
             logger.error(f"Error updating slider value: {e}")
@@ -149,11 +414,11 @@ class UICallbacks:
             # Set event to play the recording audio if required
             if self.global_vars.read_response:
                 self.global_vars.audio_player_var.speech_text_available.set()
-            self.global_vars.response_textbox.configure(state="normal")
+            self.response_textbox.configure(state="normal")
             if response_string:
-                write_in_textbox(self.global_vars.response_textbox, response_string)
-            self.global_vars.response_textbox.configure(state="disabled")
-            self.global_vars.response_textbox.see("end")
+                write_in_textbox(self.response_textbox, response_string)
+            self.response_textbox.configure(state="disabled")
+            self.response_textbox.see("end")
         except Exception as e:
             logger.error(f"Error in threaded response: {e}")
 
@@ -168,7 +433,7 @@ class UICallbacks:
         # streamed back. Without the thread UI appears stuck as we stream the
         # responses back
         self.capture_action('Get LLM response selected now')
-        selected_text = self.global_vars.transcript_textbox.selection_get()
+        selected_text = self.transcript_text.selection_get()
         response_ui_thread = threading.Thread(target=self.get_response_selected_now_threaded,
                                               args=(selected_text,),
                                               name='GetResponseSelectedNow')
@@ -226,14 +491,14 @@ class UICallbacks:
         """Enables, disables transcription.
            Text of menu item File -> Pause Transcription toggles accordingly
         """
-        logger.info(UICallbacks.set_transcript_state.__name__)
+        logger.info(AppUI.set_transcript_state.__name__)
         try:
             self.global_vars.transcriber.transcribe = not self.global_vars.transcriber.transcribe
             self.capture_action(f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.')
             if self.global_vars.transcriber.transcribe:
-                self.global_vars.filemenu.entryconfigure(1, label="Pause Transcription")
+                self.filemenu.entryconfigure(1, label="Pause Transcription")
             else:
-                self.global_vars.filemenu.entryconfigure(1, label="Start Transcription")
+                self.filemenu.entryconfigure(1, label="Start Transcription")
         except Exception as e:
             logger.error(f"Error setting transcript state: {e}")
 
@@ -382,11 +647,11 @@ def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
         textbox.tag_add('sel', a[0], a[1])
 
 
-def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox):
+def update_transcript_ui(transcriber: AudioTranscriber, textbox: SelectableText):
     """Update the text of transcription textbox with the given text
         Args:
           transcriber: AudioTranscriber Object
-          textbox: textbox to be updated
+          textbox: SelectableText to be updated
     """
 
     global last_transcript_ui_update_time  # pylint: disable=W0603
@@ -397,13 +662,15 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: ctk.CTkTextbox)
 
     # None comparison is for initialization
     if last_transcript_ui_update_time is None or last_transcript_ui_update_time < global_vars_module.convo.last_update:
-        transcript_string = transcriber.get_transcript()
-        write_in_textbox(textbox, transcript_string)
-        textbox.see("end")
+        transcript_strings = transcriber.get_transcript()
+        if isinstance(transcript_strings, list):
+            for line in transcript_strings:
+                textbox.add_text_to_bottom(line)
+        else:
+            textbox.add_text_to_bottom(transcript_strings)
+        # write_in_textbox(textbox, transcript_string)
+        textbox.scroll_to_bottom()
         last_transcript_ui_update_time = datetime.datetime.utcnow()
-
-    textbox.after(constants.TRANSCRIPT_UI_UPDATE_DELAY_DURATION_MS,
-                  update_transcript_ui, transcriber, textbox)
 
 
 def update_response_ui(responder: gr.GPTResponder,
@@ -419,205 +686,28 @@ def update_response_ui(responder: gr.GPTResponder,
 
     if global_vars_module is None:
         global_vars_module = TranscriptionGlobals()
+    response = None
 
     # global_vars_module.responder.enabled --> This is continous response mode from LLM
     # global_vars_module.update_response_now --> Get Response now from LLM
     if global_vars_module.responder.enabled or global_vars_module.update_response_now:
         response = responder.response
 
+    if global_vars_module.previous_response is not None:
+        # User selection of previous response takes precedence over
+        # Automated ping of LLM Response
+        response = global_vars_module.previous_response
+
+    if response:
         textbox.configure(state="normal")
         write_in_textbox(textbox, response)
         textbox.configure(state="disabled")
         textbox.see("end")
 
-        update_interval = int(update_interval_slider.get())
-        # responder.update_response_interval(update_interval)
-        update_interval_slider_label.configure(text=f'LLM Response interval: '
-                                               f'{update_interval} seconds')
+    update_interval = int(update_interval_slider.get())
+    responder.update_response_interval(update_interval)
+    update_interval_slider_label.configure(text=f'LLM Response interval: '
+                                           f'{update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
                   update_interval_slider_label, update_interval_slider)
-
-
-def create_ui_components(root, config: dict):
-    """Create UI for the application
-    """
-    logger.info(create_ui_components.__name__)
-    ctk.set_appearance_mode("dark")
-    ctk.set_default_color_theme("dark-blue")
-    root.title("Transcribe")
-    root.configure(bg='#252422')
-    root.geometry("1000x600")
-
-    ui_cb = UICallbacks()
-    global_vars = TranscriptionGlobals()
-
-    # Create the menu bar
-    menubar = tk.Menu(root)
-
-    # Create a file menu
-    filemenu = tk.Menu(menubar, tearoff=False)
-
-    # Add a "Save" menu item to the file menu
-    filemenu.add_command(label="Save Transcript to File", command=ui_cb.save_file)
-
-    # Add a "Pause" menu item to the file menu
-    filemenu.add_command(label="Pause Transcription", command=ui_cb.set_transcript_state)
-
-    # Add a "Quit" menu item to the file menu
-    filemenu.add_command(label="Quit", command=root.quit)
-
-    # Add the file menu to the menu bar
-    menubar.add_cascade(label="File", menu=filemenu)
-
-    # Create an edit menu
-    editmenu = tk.Menu(menubar, tearoff=False)
-
-    # Add a "Clear Audio Transcript" menu item to the file menu
-    editmenu.add_command(label="Clear Audio Transcript", command=lambda:
-                         global_vars.transcriber.clear_transcriber_context(global_vars.audio_queue))
-
-    # Add a "Copy To Clipboard" menu item to the file menu
-    editmenu.add_command(label="Copy Transcript to Clipboard", command=ui_cb.copy_to_clipboard)
-
-    # Add "Disable Speaker" menu item to file menu
-    editmenu.add_command(label="Disable Speaker", command=lambda: ui_cb.enable_disable_speaker(editmenu))
-
-    # Add "Disable Microphone" menu item to file menu
-    editmenu.add_command(label="Disable Microphone", command=lambda: ui_cb.enable_disable_microphone(editmenu))
-
-    # Add the edit menu to the menu bar
-    menubar.add_cascade(label="Edit", menu=editmenu)
-
-    # Create help menu, add items in help menu
-    helpmenu = tk.Menu(menubar, tearoff=False)
-    helpmenu.add_command(label="Github Repo", command=ui_cb.open_github)
-    helpmenu.add_command(label="Star the Github repo", command=ui_cb.open_github)
-    helpmenu.add_command(label="Report an Issue", command=ui_cb.open_support)
-    menubar.add_cascade(label="Help", menu=helpmenu)
-
-    # Add the menu bar to the main window
-    root.config(menu=menubar)
-
-    # Speech to Text textbox
-    transcript_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
-                                        text_color='#FFFCF2', wrap="word")
-    transcript_textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
-
-    # LLM Response textbox
-    response_textbox = ctk.CTkTextbox(root, width=300, font=("Arial", UI_FONT_SIZE),
-                                      text_color='#639cdc', wrap="word")
-    response_textbox.grid(row=0, column=2, padx=10, pady=3, sticky="nsew")
-    response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
-
-    response_enabled = bool(config['General']['continuous_response'])
-    b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
-    continuous_response_button = ctk.CTkButton(root, text=b_text)
-    continuous_response_button.grid(row=1, column=2, padx=10, pady=3, sticky="nsew")
-
-    response_now_button = ctk.CTkButton(root, text="Suggest Response Now")
-    response_now_button.grid(row=2, column=2, padx=10, pady=3, sticky="nsew")
-
-    read_response_now_button = ctk.CTkButton(root, text="Suggest Response and Read")
-    read_response_now_button.grid(row=3, column=2, padx=10, pady=3, sticky="nsew")
-
-    summarize_button = ctk.CTkButton(root, text="Summarize")
-    summarize_button.grid(row=4, column=2, padx=10, pady=3, sticky="nsew")
-
-    # Continuous LLM Response label, and slider
-    update_interval_slider_label = ctk.CTkLabel(root, text="", font=("Arial", 12),
-                                                text_color="#FFFCF2")
-    update_interval_slider_label.grid(row=1, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
-
-    update_interval_slider = ctk.CTkSlider(root, from_=1, to=30, width=300,  # height=5,
-                                           number_of_steps=29)
-    update_interval_slider.set(config['General']['llm_response_interval'])
-    update_interval_slider.grid(row=2, column=0, columnspan=2, padx=10, pady=3, sticky="nsew")
-
-    # Speech to text language selection label, dropdown
-    audio_lang_label = ctk.CTkLabel(root, text="Audio Lang: ",
-                                    font=("Arial", 12),
-                                    text_color="#FFFCF2")
-    audio_lang_label.grid(row=3, column=0, padx=10, pady=3, sticky="nw")
-
-    audio_lang = config['OpenAI']['audio_lang']
-    audio_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
-    audio_lang_combobox.set(audio_lang)
-    audio_lang_combobox.grid(row=3, column=0, ipadx=60, padx=10, pady=3, sticky="ne")
-
-    # LLM Response language selection label, dropdown
-    response_lang_label = ctk.CTkLabel(root,
-                                       text="Response Lang: ",
-                                       font=("Arial", 12), text_color="#FFFCF2")
-    response_lang_label.grid(row=3, column=1, padx=10, pady=3, sticky="nw")
-
-    response_lang = config['OpenAI']['response_lang']
-    response_lang_combobox = ctk.CTkOptionMenu(root, width=15, values=list(LANGUAGES_DICT.values()))
-    response_lang_combobox.set(response_lang)
-    response_lang_combobox.grid(row=3, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
-
-    github_link = ctk.CTkLabel(root, text="Star the Github Repo",
-                               text_color="#639cdc", cursor="hand2")
-    github_link.grid(row=4, column=0, padx=10, pady=3, sticky="wn")
-
-    issue_link = ctk.CTkLabel(root, text="Report an issue", text_color="#639cdc", cursor="hand2")
-    issue_link.grid(row=4, column=1, padx=10, pady=3, sticky="wn")
-
-    # Create right click menu for transcript textbox.
-    # This displays only inside the speech to text textbox
-    m = tk.Menu(root, tearoff=0)
-    m.add_command(label="Generate response for selected text",
-                  command=ui_cb.get_response_selected_now)
-    m.add_command(label="Save Transcript to File", command=ui_cb.save_file)
-    m.add_command(label="Clear Audio Transcript", command=lambda:
-                  global_vars.transcriber.clear_transcriber_context(global_vars.audio_queue))
-    m.add_command(label="Copy Transcript to Clipboard", command=ui_cb.copy_to_clipboard)
-    m.add_separator()
-    m.add_command(label="Quit", command=root.quit)
-
-    chat_inference_provider = config['General']['chat_inference_provider']
-    if chat_inference_provider == 'openai':
-        api_key = config['OpenAI']['api_key']
-        base_url = config['OpenAI']['base_url']
-        model = config['OpenAI']['ai_model']
-    elif chat_inference_provider == 'together':
-        api_key = config['Together']['api_key']
-        base_url = config['Together']['base_url']
-        model = config['Together']['ai_model']
-
-    if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
-        # Disable buttons that interact with backend services
-        continuous_response_button.configure(state='disabled')
-        response_now_button.configure(state='disabled')
-        read_response_now_button.configure(state='disabled')
-        summarize_button.configure(state='disabled')
-
-        tt_msg = 'Add API Key in override.yaml to enable button'
-        # Add tooltips for disabled buttons
-        ToolTip(continuous_response_button, msg=tt_msg,
-                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                padx=7, pady=7)
-        ToolTip(response_now_button, msg=tt_msg,
-                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                padx=7, pady=7)
-        ToolTip(read_response_now_button, msg=tt_msg,
-                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                padx=7, pady=7)
-        ToolTip(summarize_button, msg=tt_msg,
-                delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                padx=7, pady=7)
-
-    def show_context_menu(event):
-        try:
-            m.tk_popup(event.x_root, event.y_root)
-        finally:
-            m.grab_release()
-
-    transcript_textbox.bind("<Button-3>", show_context_menu)
-
-    # Order of returned components is important.
-    # Add new components to the end
-    return [transcript_textbox, response_textbox, update_interval_slider,
-            update_interval_slider_label, continuous_response_button,
-            audio_lang_combobox, response_lang_combobox, filemenu, response_now_button,
-            read_response_now_button, editmenu, github_link, issue_link, summarize_button]

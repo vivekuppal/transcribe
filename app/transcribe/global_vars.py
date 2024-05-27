@@ -4,8 +4,6 @@ import sys
 import os
 import queue
 import datetime
-import tkinter as tk
-import customtkinter as ctk
 from audio_transcriber import AudioTranscriber
 import audio_player
 sys.path.append('../..')
@@ -26,16 +24,13 @@ class TranscriptionGlobals(Singleton.Singleton):
     transcriber: AudioTranscriber = None
     # Global for responses from openAI API
     responder = None
-    freeze_button: ctk.CTkButton = None
     # Update_response_now is true when we are waiting for a one time immediate response to query
     update_response_now: bool = False
     # Read response in voice
     read_response: bool = False
-    editmenu: tk.Menu = None
-    filemenu: tk.Menu = None
-    update_interval_slider_label: ctk.CTkLabel = None
-    response_textbox: ctk.CTkTextbox = None
-    transcript_textbox: ctk.CTkTextbox = None
+    # LLM Response to an earlier conversation
+    # This is populated when user clicks on text in transcript textbox
+    previous_response: str = None
     start: datetime.datetime = None
     task_worker = None
     main_window = None
@@ -53,14 +48,14 @@ class TranscriptionGlobals(Singleton.Singleton):
             return
         if self.audio_queue is None:
             self.audio_queue = queue.Queue()
-        self.convo = conversation.Conversation()
+        self.convo = conversation.Conversation(self)
         self.start = datetime.datetime.now()
         self.task_worker = task_queue.TaskQueue()
         self.data_dir = utilities.get_data_path(app_name='Transcribe')
         zip_file_name = utilities.incrementing_filename(filename=f'{self.data_dir}/logs/transcript', extension='zip')
         zip_params = {
             'task_type': task_queue.TaskQueueEnum.ZIP_TASK,
-            'folder_path': './logs',
+            'folder_path': f'{self.data_dir}/logs',
             'zip_file_name': zip_file_name,
             'skip_zip_files': True
         }

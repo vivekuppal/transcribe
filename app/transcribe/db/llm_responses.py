@@ -7,7 +7,7 @@ including creating the table, inserting responses, and populating initial data.
 
 import datetime
 import sqlalchemy as sqldb
-from sqlalchemy import Column, Integer, String, MetaData, DateTime, Engine, insert
+from sqlalchemy import Column, Integer, String, MetaData, DateTime, Engine, insert, select
 from sqlalchemy.orm import Session, mapped_column, declarative_base, Mapped
 
 TABLE_NAME = 'LLMResponses'
@@ -124,6 +124,27 @@ class LLMResponses:
             session.commit()
 
         return result.inserted_primary_key[0]
+
+    def get_text_by_invocation_and_conversation(self, invocation_id: int, conversation_id: int) -> str:
+        """
+        Retrieves the text of a response based on the invocation_id and conversation_id.
+
+        Args:
+            invocation_id (int): The ID of the related invocation.
+            conversation_id (int): The ID of the related conversation.
+
+        Returns:
+            str: The text of the matching response or None if no match is found.
+        """
+        stmt = select(self._db_table.c.Text).where(
+            self._db_table.c.InvocationId == invocation_id,
+            self._db_table.c.ConversationId == conversation_id
+        )
+
+        with Session(self.engine) as session:
+            result = session.execute(stmt).scalar()
+
+        return result
 
     def populate_data(self):
         """
