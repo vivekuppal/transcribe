@@ -184,15 +184,14 @@ class AppUI(ctk.CTk):
             'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
         # Create right click menu for transcript textbox.
-        # This displays only inside the speech to text textbox
-        m = tk.Menu(self.main_frame, tearoff=0)
-        m.add_command(label="Generate response for selected text",
-                      command=self.get_response_selected_now)
-        m.add_command(label="Save Transcript to File", command=self.save_file)
-        m.add_command(label="Clear Audio Transcript", command=self.clear_transcript)
-        m.add_command(label="Copy Transcript to Clipboard", command=self.copy_to_clipboard)
-        m.add_separator()
-        m.add_command(label="Quit", command=self.quit)
+        self.transcript_text.add_right_click_menu(label="Generate response for selected text",
+                                                  command=self.get_response_selected_now)
+        self.transcript_text.add_right_click_menu(label="Save Transcript to File", command=self.save_file)
+        self.transcript_text.add_right_click_menu(label="Clear Audio Transcript", command=self.clear_transcript)
+        self.transcript_text.add_right_click_menu(label="Copy Transcript to Clipboard", command=self.copy_to_clipboard)
+        self.transcript_text.add_right_click_menu(label="Edit line", command=self.edit_current_line)
+        self.transcript_text.add_right_menu_separator()
+        self.transcript_text.add_right_click_menu(label="Quit", command=self.quit)
 
         chat_inference_provider = config['General']['chat_inference_provider']
         if chat_inference_provider == 'openai':
@@ -226,14 +225,6 @@ class AppUI(ctk.CTk):
                     delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
                     padx=7, pady=7)
 
-        def show_context_menu(event):
-            try:
-                m.tk_popup(event.x_root, event.y_root)
-            finally:
-                m.grab_release()
-
-        self.transcript_text.bind("<Button-3>", show_context_menu)
-
         # self.grid_rowconfigure(0, weight=100)
         # self.grid_rowconfigure(1, weight=1)
         # self.grid_rowconfigure(2, weight=1)
@@ -241,7 +232,67 @@ class AppUI(ctk.CTk):
         # self.grid_columnconfigure(0, weight=1)
         # self.grid_columnconfigure(1, weight=1)
 
+
+    def edit_current_line(self):
+        """Edit the selected line of text required
+        """
+        try:
+            ctk.set_appearance_mode("dark")
+            ctk.set_default_color_theme("dark-blue")
+
+            current_line = self.transcript_text.text_widget.index("insert linestart")
+            current_line_text = self.transcript_text.text_widget.get(current_line, f"{current_line} lineend")
+
+            edit_window = tk.Toplevel(self)
+            edit_window.title("Edit Line")
+            edit_window.configure(background='#252422')
+
+            edit_text = tk.Text(edit_window, wrap="word", height=10, width=50,
+                                bg='#252422', font=("Arial", 20),
+                                foreground='#639cdc')
+            edit_text.pack(expand=True, fill='both')
+            # Separate Person, text in this line
+            end_speaker = current_line_text.find(':')
+            if end_speaker == -1:
+                # Could not determine speaker in text
+                return
+            speaker: str = current_line_text[:end_speaker].strip()
+            speaker_text: str = current_line_text[end_speaker+1:].strip()
+            if speaker_text[0] == '[':
+                speaker_text = speaker_text[1:]
+            if speaker_text[-1] == ']':
+                speaker_text = speaker_text[:-1]
+            edit_text.insert(tk.END, speaker_text)
+
+            def save_edit():
+                # Needs to do 3 things
+                # 1. Edit the text in SelectableText class
+                # 2. Edit the convo object
+                # 3. Save in DBs
+                new_text = edit_text.get("1.0", tk.END).strip()
+                self.transcript_text.text_widget.configure(state="normal")
+                self.transcript_text.text_widget.delete(current_line, f"{current_line} lineend")
+                self.transcript_text.text_widget.insert(current_line, f'{speaker}: {new_text}')
+                self.transcript_text.text_widget.configure(state="disabled")
+                # Separate persona, text
+                convo_id = self.global_vars.convo.get_convo_id(persona=speaker, input_text=speaker_text)
+                self.global_vars.convo.update_conversation_by_id(persona=speaker, convo_id=convo_id, text=new_text)
+                edit_window.destroy()
+
+            def cancel_edit():
+                edit_window.destroy()
+            save_button = ctk.CTkButton(edit_window, text="Save", command=save_edit)
+            save_button.pack(side=ctk.LEFT, padx=10, pady=10)
+
+            cancel_button = ctk.CTkButton(edit_window, text="Cancel", command=cancel_edit)
+            cancel_button.pack(side=ctk.RIGHT, padx=10, pady=10)
+
+        except tk.TclError:
+            pass  # No text in the line
+
     def create_menus(self):
+        """Create menus for the application
+        """
         # Create the menu bar
         menubar = tk.Menu(self)
 
