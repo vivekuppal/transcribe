@@ -12,7 +12,8 @@ from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
 class Conversation:
     """Encapsulates the complete conversation.
-    Has text from Speakers, Microphone, LLM, Instructions to LLM
+    The member transcript_data has separate lists for different personas.
+    Each list has a tuple of (ConversationText, time, conversation_id)
     """
     _initialized: bool = False
     update_handler = None
@@ -68,6 +69,34 @@ class Conversation:
         self.transcript_data[constants.PERSONA_ASSISTANT].clear()
         self.initialize_conversation()
 
+    def update_conversation_by_id(self, persona: str, convo_id: int, text: str):
+        """
+        Update a conversation entry in the transcript_data list.
+
+        Args:
+            persona (str): The persona whose conversation is to be updated.
+            convo_id (int): The ID of the conversation entry to update.
+            text (str): The new content of the conversation.
+        """
+        transcript = self.transcript_data[persona]
+
+        # Find the conversation with the given convo_id
+        for index, (_, time_spoken, current_convo_id) in enumerate(transcript):
+            if current_convo_id == convo_id:
+                # Update the conversation text
+                new_convo_text = f"{persona}: [{text}]\n\n"
+                transcript[index] = (new_convo_text, time_spoken, convo_id)
+                # Update the conversation in the database
+                if self._initialized:
+                    # inv_id = appdb().get_invocation_id()
+                    convo_object: convodb.Conversations = appdb().get_object(convodb.TABLE_NAME)
+                    convo_object.update_conversation(convo_id, text)
+                    # if persona.lower() != 'assistant':
+                    #    self.update_handler(persona, new_convo_text)
+                break
+        else:
+            print(f'Conversation with ID {convo_id} not found for persona {persona}.')
+
     def update_conversation(self, persona: str,
                             text: str,
                             time_spoken,
@@ -122,6 +151,31 @@ class Conversation:
         transcript.append((convo_text, time_spoken, convo_id))
 
         self.last_update = datetime.datetime.utcnow()
+
+    def get_convo_id(self, persona: str, input_text: str):
+        """
+        Retrieves the ID of the conversation row that matches the given speaker and text.
+
+        Args:
+            speaker (str): The name of the speaker.
+            text (str): The content of the conversation.
+
+        Returns:
+            int: The ID of the matching conversation entry.
+        """
+        if not self._initialized:
+            return
+        cleaned_text = input_text.strip()
+        if cleaned_text[0] == '[':
+            cleaned_text = cleaned_text[1:]
+        if cleaned_text[-1] == ']':
+            cleaned_text = cleaned_text[:-1]
+        inv_id = appdb().get_invocation_id()
+        convo_object: convodb.Conversations = appdb().get_object(convodb.TABLE_NAME)
+        convo_id = convo_object.get_convo_id_by_speaker_and_text(speaker=persona,
+                                                                 input_text=cleaned_text,
+                                                                 inv_id=inv_id)
+        return convo_id
 
     def on_convo_select(self, input_text: str):
         """Callback when a specific conversation is selected.

@@ -147,6 +147,25 @@ class Conversations:
 
         return convo_id
 
+    def get_convo_id_by_speaker_and_text(self, speaker: str, input_text: str, inv_id: int) -> int:
+        """
+        Retrieves the ID of the conversation row that matches the given speaker and text.
+
+        Args:
+            speaker (str): The name of the speaker.
+            text (str): The content of the conversation.
+
+        Returns:
+            int: The ID of the matching conversation entry.
+        """
+        stmt = text(f'SELECT Id FROM {self._table_name} WHERE Speaker = :speaker and Text = :text and InvocationId = :inv_id')
+        with Session(self.engine) as session:
+            result = session.execute(stmt, {'speaker': speaker, 'text': input_text, 'inv_id': inv_id})
+            convo_id = result.scalar()
+            session.commit()
+
+        return convo_id
+
     def update_conversation(self, conversation_id: int, convo_text: str):
         """
         Updates the text of a conversation entry in the Conversations table.

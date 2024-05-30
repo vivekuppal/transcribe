@@ -63,7 +63,7 @@ Methods:
         Get the text of the last 3 rows.
 """
 
-from tkinter import Text, Scrollbar, END
+from tkinter import Text, Scrollbar, END, Menu, TclError
 import customtkinter as ctk
 
 
@@ -71,6 +71,9 @@ class SelectableText(ctk.CTkFrame):
     """Custom TKinter Component to display multiple lines of text
     and support custom functionality on clicking a line of text.
     """
+
+    context_menu = None
+
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
 
@@ -92,6 +95,37 @@ class SelectableText(ctk.CTkFrame):
         # Define the tag for highlighting
         self.text_widget.tag_configure("highlight", background="white")
         self.on_text_click_cb = None
+
+        # Bind right click menu
+        self.text_widget.bind("<Button-3>", self.show_context_menu)
+
+    def add_right_click_menu(self, label, command):
+        """Add an entry to the right click menu.
+        """
+        if not self.context_menu:
+            self.context_menu = Menu(self, tearoff=0)
+        self.context_menu.add_command(label=label, command=command)
+
+    def get_selected_text(self):
+        self.text_widget.selection_get()
+
+    def add_right_menu_separator(self):
+        """Add a separator to right click menu.
+        """
+        self.context_menu.add_separator()
+
+    def show_context_menu(self, event):
+        """Show the context menu.
+        """
+        if self.context_menu:
+            self.context_menu.post(event.x_root, event.y_root)
+
+    def copy_text(self):
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(self.selection_get())
+        except TclError:
+            pass  # No text selected
 
     def set_callbacks(self, onTextClick):
         """Set callback handlers
