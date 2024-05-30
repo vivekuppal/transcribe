@@ -184,7 +184,6 @@ class AppUI(ctk.CTk):
             'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
 
         # Create right click menu for transcript textbox.
-        # This displays only inside the speech to text textbox
         self.transcript_text.add_right_click_menu(label="Generate response for selected text",
                                                   command=self.get_response_selected_now)
         self.transcript_text.add_right_click_menu(label="Save Transcript to File", command=self.save_file)
@@ -232,6 +231,7 @@ class AppUI(ctk.CTk):
         # self.grid_rowconfigure(3, weight=1)
         # self.grid_columnconfigure(0, weight=1)
         # self.grid_columnconfigure(1, weight=1)
+
 
     def edit_current_line(self):
         """Edit the selected line of text required
