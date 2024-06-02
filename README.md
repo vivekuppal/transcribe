@@ -90,7 +90,7 @@ Connect on LinkedIn to discuss further.
 ## Security ##
 - <b>Secret scanning</b>: Continuous Integration with [GitGuardian](https://www.gitguardian.com/)
 - <b>Static Code Analysis</b>: Regular static code scan scan with [Bandit](https://bandit.readthedocs.io/en/latest/)
-- <b>Static Code Analysis</b>: Incorporate Snyk for daily static analysis of code
+- <b>Static Code Analysis</b>: Incorporate Snyk for static analysis of code on every check in
 - <b>Secure Transmission</b>: All secure communications for any network communications
 - <b>Dependency Security</b>: All strictest security features enabled in the Github repo
 
@@ -104,8 +104,8 @@ Connect on LinkedIn to discuss further.
 Note that installation files are generated every few weeks. Generated binaries will almost always trail the latest codebase available in the repo.
 
 Latest Binary
-- Generated: 2024-01-30
-- Git version: bbe1f4
+- Generated: 2024-06-02
+- Git version: 3b3502d
 
 1. Install ffmpeg
 
