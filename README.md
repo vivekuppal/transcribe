@@ -123,7 +123,7 @@ Run these commands in a PowerShell window with administrator privileges. For any
 
 2. Download the zip file from
 ```
-https://drive.google.com/file/d/1vJCHv8eEjp6q7HEnCMY5mlX_8Ys2_06u/view?usp=drive_link
+https://drive.google.com/file/d/1kcgGbTKxZqgbJOShL0bc3Do34lLouYxF/view?usp=drive_link
 
 
 Using GPU provides 2-3 times faster reseponse time depending on processing power of GPU.
