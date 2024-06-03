@@ -32,7 +32,7 @@ Winrar is required for generating binaries from python code. If you do not inten
 Install pyInstaller
 
 ```
-pip install pyinstaller==6.3.0
+pip install pyinstaller==6.7.0
 ```
 
 In the file ```generate_binary.bat``` replace these paths at the top of the file to paths specific to your machine. 
@@ -52,12 +52,12 @@ Run ```generate_binary.bat``` file by replacing paths at the top of the file to 
 
 Note that installation files are generated every few weeks. So these file will almost always trail the latest codebase available in the repo.
 Latest Binary
-- Generated: 2024-01-30
-- Git version: bbe1f4
+- Generated: 2024-06-02
+- Git version: 3b3502d
 
 1. Download the zip file from
 ```
-https://drive.google.com/file/d/1vJCHv8eEjp6q7HEnCMY5mlX_8Ys2_06u/view?usp=drive_link
+https://drive.google.com/file/d/1kcgGbTKxZqgbJOShL0bc3Do34lLouYxF/view?usp=drive_link
 ```
 2. Unzip the files in a folder.
 
