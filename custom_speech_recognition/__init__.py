@@ -1605,7 +1605,7 @@ class Recognizer(AudioSource):
             task="translate" if translate else None,
             # fp16=torch.cuda.is_available(),
             fp16=False,
-            temperature=0,
+            # temperature=0,
             **transcribe_options
         )
 
