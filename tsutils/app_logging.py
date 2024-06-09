@@ -2,10 +2,9 @@ import queue
 import logging
 from logging import handlers
 import logging.config
-import constants
 from tsutils import utilities
 
-root_logger: logging.Logger = logging.getLogger(name=constants.LOG_NAME)
+root_logger: logging.Logger = logging.getLogger(name='Transcribe')
 AUDIO_PLAYER_LOGGER: str = 'audio_player'
 TRANSCRIBER_LOGGER: str = 'transcriber'
 GPT_RESPONDER_LOGGER: str = 'gpt_responder'
