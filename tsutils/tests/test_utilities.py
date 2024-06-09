@@ -1,15 +1,8 @@
 import unittest
-from unittest.mock import patch, mock_open, call, MagicMock
-import os
-import subprocess
-import time
-import zipfile
-import openai
+from unittest.mock import patch
 from tsutils.utilities import (
-    merge, delete_files, incrementing_filename, naturalsize,
-    download_using_bits, zip_files_in_folder_with_params,
-    zip_files_in_folder, get_available_models, is_api_key_valid,
-    ensure_directory_exists, get_data_path, delete_old_files
+    merge, incrementing_filename, naturalsize,
+    download_using_bits, ensure_directory_exists
 )
 
 
