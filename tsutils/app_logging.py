@@ -93,6 +93,7 @@ def setup_logging(log_file_name: str):
                 'class': 'logging.FileHandler',
                 'filename': log_file_name,
                 'formatter': 'standard',
+                'encoding': 'utf-8'
             },
         },
         'loggers': {
