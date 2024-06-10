@@ -266,9 +266,9 @@ def ensure_directory_exists(directory_path: str):
     """
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
-        print(f"Directory '{directory_path}' created.")
-    else:
-        print(f"Directory '{directory_path}' already exists.")
+    #    print(f"Directory '{directory_path}' created.")
+    # else:
+    #     print(f"Directory '{directory_path}' already exists.")
 
 
 def get_data_path(app_name, filename=''):

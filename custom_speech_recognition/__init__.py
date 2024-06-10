@@ -1513,7 +1513,8 @@ class Recognizer(AudioSource):
         transcription = []
         confidence = None
         for utterance in result["results"]:
-            if "alternatives" not in utterance: raise UnknownValueError()
+            if "alternatives" not in utterance:
+                raise UnknownValueError()
             for hypothesis in utterance["alternatives"]:
                 if "transcript" in hypothesis:
                     transcription.append(hypothesis["transcript"])
@@ -1605,7 +1606,7 @@ class Recognizer(AudioSource):
             task="translate" if translate else None,
             # fp16=torch.cuda.is_available(),
             fp16=False,
-            temperature=0,
+            # temperature=0,
             **transcribe_options
         )
 

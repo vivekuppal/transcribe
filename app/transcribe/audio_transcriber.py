@@ -116,8 +116,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         while True:
             who_spoke, data, time_spoken = audio_queue.get()
             logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} '
-                             f'- Time Spoken: {time_spoken} by : {who_spoke}, queue_backlog - '
-                             f'{audio_queue.qsize()}')
+                        f'- Time Spoken: {time_spoken} by : {who_spoke}, queue_backlog - '
+                        f'{audio_queue.qsize()}')
             self._update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
             source_info = self.audio_sources_properties[who_spoke]
 
