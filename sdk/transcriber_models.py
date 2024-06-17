@@ -80,7 +80,7 @@ class WhisperSTTModel(STTModelInterface):
     """
     def __init__(self, stt_model_config: dict):
         self.model = stt_model_config['local_transcripton_model_file']
-        self.lang = 'en'
+        self.lang = stt_model_config['audio_lang']
         model_filename = MODELS_DIR + self.model + ".pt"
         self.model_name = self.model + ".pt"
         self.model_filename = os.path.join(MODELS_DIR, model_filename)
@@ -206,7 +206,7 @@ class APIWhisperSTTModel(STTModelInterface):
         # A better solution is to create a base class for APIWhisperSTTModel,
         # WhisperSTTModel and create set_lang method there and remove it from
         # this class
-        self.lang = 'en'
+        self.lang = stt_model_config['audio_lang']
 
     def set_lang(self, lang: str):
         """Set STT Language"""
@@ -249,7 +249,8 @@ class APIWhisperSTTModel(STTModelInterface):
         """
         try:
             with open(wav_file_path, "rb") as audio_file:
-                result = self.stt_client.audio.transcriptions.create(model='whisper-1', file=audio_file)
+                result = self.stt_client.audio.transcriptions.create(model='whisper-1', file=audio_file,
+                                                                     language=self.lang)
         except Exception as exception:
             print('Exception in transcribing audio using whisper API.')
             print(exception)
@@ -264,7 +265,7 @@ class WhisperCPPSTTModel(STTModelInterface):
     This model works best when used with GPU
     """
     def __init__(self, stt_model_config: dict):
-        self.lang = 'en-US'
+        self.lang = stt_model_config['audio_lang']
         model = stt_model_config['local_transcripton_model_file']
         self.model_filename = MODELS_DIR + model + ".bin"
         self.model = model
@@ -287,15 +288,18 @@ class WhisperCPPSTTModel(STTModelInterface):
         """
         mod_file_path = wav_file_path
         try:
+            log_file = f"{utilities.get_data_path(app_name='Transcribe')}/logs/whisper.cpp.txt"
             # main.exe <filename> -oj
             if os.path.isfile("../../bin/main.exe"):
-                subprocess.call(["../../bin/main.exe", mod_file_path, '-oj', '-m', self.model_filename],
-                                stdout=open(file='logs/whisper.cpp.txt', mode='a', encoding='utf-8'),
+                subprocess.call(["../../bin/main.exe", mod_file_path, '-oj', '-m',
+                                 self.model_filename, '-l', self.lang],
+                                stdout=open(file=log_file, mode='a', encoding='utf-8'),
                                 stderr=subprocess.STDOUT)
             else:
                 # This path is used in case of binary.
-                subprocess.call(["./bin/main.exe", mod_file_path, '-oj', '-m', self.model_filename],
-                                stdout=open(file='logs/whisper.cpp.txt', mode='a', encoding='utf-8'),
+                subprocess.call(["./bin/main.exe", mod_file_path, '-oj', '-m', self.model_filename,
+                                 '-l', self.lang],
+                                stdout=open(file=log_file, mode='a', encoding='utf-8'),
                                 stderr=subprocess.STDOUT)
         except Exception as ex:
             print(f'ERROR: converting wav file {wav_file_path} to text using whisper.cpp.')
@@ -331,7 +335,15 @@ class WhisperCPPSTTModel(STTModelInterface):
     def get_sentences(self, wav_file_path: str):
         """Not Implemented
         """
-        raise Exception('Method not implemnted')  # pylint: disable=W0719
+        transcript = ''
+        response = self.get_transcription(wav_file_path=wav_file_path)
+        for segment in response["transcription"]:
+            if segment["text"].strip() == '[BLANK_AUDIO]':
+                continue
+            transcript += segment["text"]
+        return transcript
+
+        # raise Exception('Method not implemnted')  # pylint: disable=W0719
 
 
 class DeepgramSTTModel(STTModelInterface):

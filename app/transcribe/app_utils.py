@@ -11,7 +11,7 @@ from db.app_db import AppDB
 sys.path.append('../..')
 import interactions  # noqa: E402 pylint: disable=C0413
 from sdk import transcriber_models as tm  # noqa: E402 pylint: disable=C0413
-from tsutils import utilities
+from tsutils import utilities, language
 
 
 def create_responder(provider_name: str, config, convo, save_to_file: bool,
@@ -134,7 +134,8 @@ def create_transcriber(
 
     if name.lower() == 'deepgram':
         stt_model_config: dict = {
-            'api_key': config['Deepgram']['api_key']
+            'api_key': config['Deepgram']['api_key'],
+            'audio_lang': get_language_code(config['OpenAI']['audio_lang'])
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.DEEPGRAM_API,
@@ -149,6 +150,7 @@ def create_transcriber(
     elif name.lower() == 'whisper.cpp':
         stt_model_config: dict = {
             'local_transcripton_model_file': 'ggml-' + config['WhisperCpp']['local_transcripton_model_file'],
+            'audio_lang': get_language_code(config['OpenAI']['audio_lang'])
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_CPP,
@@ -163,6 +165,7 @@ def create_transcriber(
         stt_model_config: dict = {
             'api_key': config['OpenAI']['api_key'],
             'local_transcripton_model_file': config['OpenAI']['local_transcripton_model_file'],
+            'audio_lang': get_language_code(config['OpenAI']['audio_lang'])
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_LOCAL,
@@ -176,7 +179,8 @@ def create_transcriber(
     elif name.lower() == 'whisper' and api:
         stt_model_config: dict = {
             'api_key': config['OpenAI']['api_key'],
-            'timeout': config['OpenAI']['response_request_timeout_seconds']
+            'timeout': config['OpenAI']['response_request_timeout_seconds'],
+            'audio_lang': get_language_code(config['OpenAI']['audio_lang'])
         }
         model = model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_API,
@@ -190,6 +194,17 @@ def create_transcriber(
     else:
         raise ValueError(f'Unknown transcriber: {name}')
     global_vars.set_transcriber(t)
+
+
+def get_language_code(lang: str) -> str:
+    """Get the language code from the configuration.
+    """
+    lang_lower = lang.lower()
+    try:
+        return next(key for key, value in language.LANGUAGES_DICT.items() if value == lang_lower)
+    except StopIteration:
+        # Return dafault lang if nothing else is found
+        return 'en'
 
 
 def shutdown(global_vars: TranscriptionGlobals):
