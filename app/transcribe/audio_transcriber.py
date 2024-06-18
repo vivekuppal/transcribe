@@ -19,7 +19,7 @@ import constants  # noqa: E402 pylint: disable=C0413
 sys.path.append('../..')
 import custom_speech_recognition as sr  # noqa: E402 pylint: disable=C0413
 from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
-from tsutils import duration  # noqa: E402 pylint: disable=C0413
+from tsutils import duration, utilities  # noqa: E402 pylint: disable=C0413
 from sdk.transcriber_models import WhisperCPPSTTModel
 
 
@@ -228,9 +228,10 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             file_descritor, mod_file_path = tempfile.mkstemp(suffix=".wav")
             os.close(file_descritor)
             # print(f'Convert file {file_path} to 16khz file {mod_file_path}')
+            log_file = f"{utilities.get_data_path(app_name='Transcribe')}/logs/ffmpeg.txt"
             subprocess.call(["ffmpeg", '-i', file_path, '-ar', '16000', '-ac',  # nosec
                              '1', '-c:a', 'pcm_s16le', '-y', mod_file_path],
-                            stdout=open(file='logs/ffmpeg.txt', mode='a', encoding='utf-8'),
+                            stdout=open(file=log_file, mode='a', encoding='utf-8'),
                             stderr=subprocess.STDOUT)
             return mod_file_path
         except Exception as ex:

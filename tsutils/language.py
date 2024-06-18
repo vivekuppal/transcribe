@@ -88,7 +88,7 @@ LANGUAGES_DICT = {
     'tt': 'tatar',
     'te': 'telugu',
     'th': 'thai',
-    'bo': 'tibetan', 
+    'bo': 'tibetan',
     'tr': 'turkish',
     'tk': 'turkmen',
     'uk': 'ukrainian',

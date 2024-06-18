@@ -72,7 +72,11 @@ class AudioPlayer:
     def _get_language_code(self, lang: str) -> str:
         """Get the language code from the configuration.
         """
-        return next(key for key, value in LANGUAGES_DICT.items() if value == lang)
+        try:
+            return next(key for key, value in LANGUAGES_DICT.items() if value == lang)
+        except StopIteration:
+            # Return dafault lang if nothing else is found
+            return 'en'
 
     def _get_speech_text(self) -> str:
         """Get the speech text from the conversation.
