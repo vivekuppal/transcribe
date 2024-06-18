@@ -357,7 +357,8 @@ class DeepgramSTTModel(STTModelInterface):
 
         # This parameter exists primarily to adhere to the interface.
         # Deepgram does auto language detection.
-        self.lang = 'en-US'
+        # self.lang = 'en-US'
+        self.lang = stt_model_config['audio_lang']
 
         print('[INFO] Using Deepgram API for transcription.')
         self.audio_model = DeepgramClient(stt_model_config["api_key"])
@@ -406,18 +407,29 @@ class DeepgramSTTModel(STTModelInterface):
             payload: FileSource = {
                 "buffer": buffer_data
                 }
-
-            options = PrerecordedOptions(
-                model="nova",
-                smart_format=True,
-                utterances=True,
-                punctuate=True,
-                paragraphs=True,
-                detect_language=True)
+            if self.lang.startswith('en'):
+                options = PrerecordedOptions(
+                    model="nova",
+                    smart_format=True,
+                    utterances=True,
+                    punctuate=True,
+                    paragraphs=True,
+                    detect_language=True,
+                    language=self.lang)
+            else:
+                options = PrerecordedOptions(
+                    model="general",
+                    smart_format=True,
+                    utterances=True,
+                    punctuate=True,
+                    paragraphs=True,
+                    detect_language=True,
+                    language=self.lang)
 
             response = self.audio_model.listen.prerecorded.v("1").transcribe_file(payload, options)
             # This is not necessary and just a debugging aid
-            with open('logs/deep.json', mode='a', encoding='utf-8') as deep_log:
+            log_file = f"{utilities.get_data_path(app_name='Transcribe')}/logs/deep.json"
+            with open(log_file, mode='a', encoding='utf-8') as deep_log:
                 deep_log.write(response.to_json(indent=4))
             results = []
             for utterance in response.results.utterances:
