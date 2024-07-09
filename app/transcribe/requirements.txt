@@ -22,3 +22,4 @@ bandit==1.7.8
 SqlAlchemy==2.0.29
 setuptools
 appdirs
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
