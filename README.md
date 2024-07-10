@@ -1,6 +1,4 @@
 <img src="assets/Transcribe-2.png" width="100">
-
-
 We are here to help. File [issues](https://github.com/vivekuppal/transcribe/issues) for any problems and we will resolve them.
 
 ## Source Code Install Video
@@ -17,13 +15,13 @@ Subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read 
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
 Share your email in an issue to receive the invite to the community channel.
 
-Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's GPT API relevant to the current conversation.
+Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's chatGPT (or OpenAI API compatible provider)  relevant to the current conversation.
 
 ## Why Transcribe over other Speech to Text apps ##
 - Use Most of the functionality for **FREE**
 - Multi Lingual support
 - Choose between GPT 4o, 4, 3.5 or other inference models from OpenAI, or a plethora of inference models from [Together](https://docs.together.ai/docs/inference-models)
-- Streaming fast LLM responses instead of waiting for a complete response
+- Streaming LLM responses instead of waiting for a complete response
 - Upto date with the latest OpenAI libraries
 - Get LLM responses for selected text
 - Install and use without python or other dependencies
@@ -46,11 +44,11 @@ Transcribe provides real time transcription for microphone and speaker output. I
 
 ## Response Generation ##
 Response generation requires a paid account with an OpenAI API key. **Encouraged**
-or Deepgram
+or Deepgram ($200 free credits)
 or Together ($25 free Credits)
-oa Azure
+or Azure
 
-OpenAI gpt-4o model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide inaccurate answers if there is not enough conversation content at the beginning.
+Based on feedback from users, OpenAI gpt-4o model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide inaccurate answers if there is not enough conversation content at the beginning.
 Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models). Any of these can be used by making changes to `override.yaml` file.
 
 When using OpenAI, without the OpenAI key, using continuous response or any action that requires interaction with the online LLM gives an error similar to below
