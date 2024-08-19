@@ -1,4 +1,5 @@
 <img src="assets/Transcribe-2.png" width="100">
+
 We are here to help. File [issues](https://github.com/vivekuppal/transcribe/issues) for any problems and we will resolve them.
 
 ## Source Code Install Video
@@ -13,7 +14,8 @@ Subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read 
 # 👂🏻️ Transcribe ✍🏼️
 
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
-Share your email in an issue to receive the invite to the community channel.
+
+Write an [email](waveblueseawave@gmail.com) to receive invite to the community channel or share your email in an issue.
 
 Transcribe provides real time transcription for microphone and speaker output. It generates a suggested conversation response using OpenAI's chatGPT (or OpenAI API compatible provider)  relevant to the current conversation.
 
@@ -43,7 +45,8 @@ Transcribe provides real time transcription for microphone and speaker output. I
 - Response Audio
 
 ## Response Generation ##
-Response generation requires a paid account with an OpenAI API key. **Encouraged**
+Response generation requires a paid account with an API Key for an OpenAI API compatible provider like 
+OpenAI (**Encouraged**)
 or Deepgram ($200 free credits)
 or Together ($25 free Credits)
 or Azure
