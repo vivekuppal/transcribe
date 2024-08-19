@@ -45,7 +45,8 @@ Transcribe provides real time transcription for microphone and speaker output. I
 - Response Audio
 
 ## Response Generation ##
-Response generation requires a paid account with an OpenAI API key. **Encouraged**
+Response generation requires a paid account with an API Key for an OpenAI API compatible provider like 
+OpenAI (**Encouraged**)
 or Deepgram ($200 free credits)
 or Together ($25 free Credits)
 or Azure
