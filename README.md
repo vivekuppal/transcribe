@@ -1,6 +1,6 @@
 <img src="assets/Transcribe-2.png" width="100">
 
-We are here to help. File [issues](https://github.com/vivekuppal/transcribe/issues) for any problems and we will resolve them.
+We all are here to help. File [issues](https://github.com/vivekuppal/transcribe/issues) for any problems and we will resolve them.
 
 ## Promo
 ![kiwi-optimize](https://github.com/user-attachments/assets/8e69e67e-8c47-4832-9a6e-69affd52b7d9)
