@@ -1,7 +1,7 @@
 numpy==1.26.4
-openai-whisper==20231117
+openai-whisper==20240930
 Wave==0.0.2
-openai==1.42.0  # Latest release as of 2024-08-20
+openai==1.57.2  # Latest release as of 2024-08-20
 customtkinter==5.2.2
 tkinter-tooltip  # Needed to show tooltips for ctk components
 PyAudioWPatch==0.2.12.6
