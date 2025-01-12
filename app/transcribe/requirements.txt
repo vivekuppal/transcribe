@@ -22,3 +22,5 @@ bandit==1.7.8
 SqlAlchemy==2.0.29
 setuptools
 appdirs
+pillow==11.1.0
+wordcloud
