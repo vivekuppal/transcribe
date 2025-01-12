@@ -23,4 +23,4 @@ SqlAlchemy==2.0.29
 setuptools
 appdirs
 pillow==11.1.0
-wordcloud
+wordcloud==1.9.4
