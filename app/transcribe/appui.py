@@ -16,6 +16,14 @@ from tsutils import utilities
 from tsutils import app_logging as al
 from tsutils import configuration
 from uicomp.selectable_text import SelectableText
+import numpy as np
+from PIL import Image
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+from io import BytesIO
+from tkinter import *
+from PIL import ImageTk, Image
+import re
 
 
 logger = al.get_module_logger(al.UI_LOGGER)
@@ -133,6 +141,11 @@ class AppUI(ctk.CTk):
         self.summarize_button = ctk.CTkButton(self.bottom_frame, text="Summarize")
         self.summarize_button.grid(row=3, column=4, padx=10, pady=3, sticky="nsew")
         self.summarize_button.configure(command=self.summarize)
+
+        # word cloud button
+        self.word_cloud_button = ctk.CTkButton(self.bottom_frame, text="Display Word Cloud")
+        self.word_cloud_button.grid(row=4, column=4, padx=10, pady=3, sticky="nsew")
+        self.word_cloud_button.configure(command=self.word_cloud)
 
         # Continuous LLM Response label, and slider
         self.update_interval_slider_label = ctk.CTkLabel(self.bottom_frame, text="", font=("Arial", 12),
@@ -520,6 +533,36 @@ class AppUI(ctk.CTk):
         except Exception as e:
             logger.error(f"Error in summarize_threaded: {e}")
 
+    def word_cloud_threaded(self):
+        """Generate a word cloud in a separate thread"""
+        global pop_up
+        try:
+            if pop_up is not None:
+                try:
+                    pop_up.destroy()
+                except Exception as e:
+                    # Somehow we get the exception
+                    # RuntimeError: main thread is not in main loop
+                    logger.info('Exception in word_cloud_threaded')
+                    logger.info(e)
+
+                pop_up = None
+
+            try:
+                words = self.global_vars.convo.get_conversation(sources = [constants.PERSONA_YOU, constants.PERSONA_SPEAKER, constants.PERSONA_ASSISTANT], length = 0)
+                processed_text = re.sub(r'^(You|Speaker|assistant):\s*', '', words, flags=re.MULTILINE)
+                print(processed_text)
+                word_cloud = WordCloud(background_color='white', colormap='binary', width=500, height=500).generate(processed_text[80:])
+                popup_msg_close_button_word_cloud(title='Word Cloud', word_cloud = word_cloud)
+
+            except Exception as e:
+                print(f"Error generating word cloud: {e}")
+                return
+
+        except Exception as e:
+            logger.error(f"Error in word_cloud_threaded: {e}")
+
+
     def summarize(self):
         """Get summary response from LLM
         """
@@ -528,6 +571,14 @@ class AppUI(ctk.CTk):
                                                name='Summarize')
         summarize_ui_thread.daemon = True
         summarize_ui_thread.start()
+
+    def word_cloud(self):
+        """Start the word cloud thread"""
+        cloud = self.capture_action('Generate word cloud')
+        word_cloud_ui_thread = threading.Thread(target=self.word_cloud_threaded, name = 'Word Cloud')
+        word_cloud_ui_thread.daemon = True
+        word_cloud_ui_thread.start()
+
 
     def update_response_ui_and_read_now(self):
         """Get response from LLM right away
@@ -680,6 +731,36 @@ def popup_msg_close_button(title: str, msg: str):
 
     close_button = ctk.CTkButton(popup, text="Close", command=popup.destroy)
     close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+    popup.lift()
+
+def popup_msg_close_button_word_cloud(title: str, word_cloud):
+    """Create a word cloud popup that caller is responsible for closing
+    using the destroy method
+    """
+    popup = ctk.CTkToplevel(T_GLOBALS.main_window)
+    popup.geometry("380x400")
+    popup.title(title)
+    
+    # Render the WordCloud to an image
+    try:
+        buffer = BytesIO()
+        word_cloud.to_image().save(buffer, format="PNG")
+        buffer.seek(0)
+        img = Image.open(buffer)
+        img_tk = ImageTk.PhotoImage(img)
+    except Exception as e:
+        print(f"Error rendering word cloud to image: {e}")
+        return
+
+    # Display the word cloud image
+    word_cloud_label = ctk.CTkLabel(popup, image=img_tk)
+    word_cloud_label.image = img_tk  # Keep a reference to avoid garbage collection
+    word_cloud_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Add a button to close the popup
+    close_button = ctk.CTkButton(popup, text="Close", command=popup.destroy)
+    close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+
     popup.lift()
 
 
