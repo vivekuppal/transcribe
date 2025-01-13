@@ -551,7 +551,6 @@ class AppUI(ctk.CTk):
             try:
                 words = self.global_vars.convo.get_conversation(sources = [constants.PERSONA_YOU, constants.PERSONA_SPEAKER, constants.PERSONA_ASSISTANT], length = 0)
                 processed_text = re.sub(r'^(You|Speaker|assistant):\s*', '', words, flags=re.MULTILINE)
-                print(processed_text)
                 word_cloud = WordCloud(background_color='white', colormap='binary', width=500, height=500).generate(processed_text[80:])
                 popup_msg_close_button_word_cloud(title='Word Cloud', word_cloud = word_cloud)
 
