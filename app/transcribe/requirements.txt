@@ -24,3 +24,4 @@ setuptools
 appdirs
 pillow==11.1.0
 wordcloud==1.9.4
+fonttools>=4.43.0 # not directly required, pinned by Snyk to avoid a vulnerability
