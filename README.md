@@ -1,17 +1,5 @@
 <img src="assets/Transcribe-2.png" width="100">
 
-We all are here to help. File [issues](https://github.com/vivekuppal/transcribe/issues) for any problems and we will resolve them.
-
-## Promo
-![kiwi-optimize](https://github.com/user-attachments/assets/8e69e67e-8c47-4832-9a6e-69affd52b7d9)
-
-
-[Kiwi](https://www.cytrence.com/)
-- The First Advanced KVM over USB 3 - Streamline Your Multi-Device Workflow Effortlessly.
-- We use the product and love it. It makes cross platform development seamless with a windows laptop and a raspberry pi / linux mini pc / mac mini.
-
-- Use promo code KIWI-25765463-P5 for a 5% discount
-
 ## Source Code Install Video
 
 Thanks to [Fahd Mirza](https://www.fahdmirza.com/) for the [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
