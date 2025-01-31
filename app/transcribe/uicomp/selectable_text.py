@@ -77,9 +77,9 @@ class SelectableText(ctk.CTkFrame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.text_widget = Text(self, wrap="word", undo=True,
+        self.text_widget = Text(self, wrap="word", undo=True, width=40,
                                 background='#252422', font=("Arial", 20),
-                                foreground='#639cdc',)
+                                foreground='#639cdc')
         self.scrollbar = Scrollbar(self, command=self.text_widget.yview)
         self.text_widget.config(yscrollcommand=self.scrollbar.set)
 

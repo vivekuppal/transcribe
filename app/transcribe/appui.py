@@ -107,7 +107,7 @@ class AppUI(ctk.CTk):
         self.transcript_text.pack(side="left", fill="both", expand=True, padx=10, pady=10)
         self.transcript_text.set_callbacks(self.global_vars.convo.on_convo_select)
 
-        # Right side
+        # Right side: LLM Response
         self.right_frame = ctk.CTkFrame(self.main_frame)
         self.right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
