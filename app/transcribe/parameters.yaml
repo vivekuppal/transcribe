@@ -11,6 +11,8 @@ OpenAI:
 # See this link for available models
 # https://platform.openai.com/docs/models/continuous-model-upgrades
 # https://platform.openai.com/docs/models
+# We do not support o3-mini out of the box, because it does not support
+# some of the parameters for several API
   ai_model: gpt-4o-mini
 # Local model file to use for transcription.
 # Can also be specified using the -m parameter on command line of the application

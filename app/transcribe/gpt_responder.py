@@ -174,6 +174,7 @@ class GPTResponder:
 
         except Exception as e:
             logger.error(f"Error in generate_response_from_transcript_no_check: {e}")
+            print(f'Error getting response from LLM: {e}')
             return None
 
         self._save_response_to_file(collected_messages)
@@ -352,7 +353,8 @@ class GPTResponder:
     def update_response_interval(self, interval):
         """Change the interval for pinging LLM
         """
-        logger.info(GPTResponder.update_response_interval.__name__)
+        # Very chatty log statement
+        # logger.info(GPTResponder.update_response_interval.__name__)
         self.llm_response_interval = interval
 
     def _pretty_print_openai_request(self, message: str):
