@@ -145,7 +145,8 @@ class Conversation:
                 # Insert in DB
                 # print(f'Add to DB: {inv_id} - {time_spoken} - {persona} - {text}')
                 convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text)
-                self.insert_handler(ui_text)
+                if self.insert_handler is not None:
+                    self.insert_handler(ui_text)
 
         # print(f'Added: {time_spoken} - {new_element}')
         transcript.append((convo_text, time_spoken, convo_id))

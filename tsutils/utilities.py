@@ -243,6 +243,7 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
             ],
             model=model,
             max_tokens=1024
+            # max_completion_tokens=1024
             )
         assert len(chat_completion.choices[0].message.content) > 0
         client.close()
