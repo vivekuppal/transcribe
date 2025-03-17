@@ -242,6 +242,9 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
                 }
             ],
             model=model,
+            # Openai model 03-mini does not support max_tokens parameter.
+            # We do not support this model out of the box.
+            # Comment this line to use 03-mini model
             max_tokens=1024
             # max_completion_tokens=1024
             )

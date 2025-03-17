@@ -353,6 +353,7 @@ class GPTResponder:
     def update_response_interval(self, interval):
         """Change the interval for pinging LLM
         """
+        # Very chatty log statement
         # logger.info(GPTResponder.update_response_interval.__name__)
         self.llm_response_interval = interval
 
