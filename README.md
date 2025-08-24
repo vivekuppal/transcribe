@@ -9,6 +9,8 @@ Subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read 
  <img src="https://img.youtube.com/vi/RX86zKdCpMc/0.jpg" alt="Watch the video" width="240" height="180"/>
 </a>
 
+Thanks to [Lappu AI](httpsL..www.lappuai.com/) for their support and multitude of pro bono contributions to this project.
+
 # 👂🏻️ Transcribe ✍🏼️
 
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
