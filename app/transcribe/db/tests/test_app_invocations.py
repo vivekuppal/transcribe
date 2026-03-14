@@ -1,7 +1,7 @@
 import unittest
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
-from app_invocations import Invocation, ApplicationInvocations
+from app.transcribe.db.app_invocations import Invocation, ApplicationInvocations
 
 
 class TestApplicationInvocations(unittest.TestCase):

@@ -1,10 +1,7 @@
 # import pprint
-from global_vars import TranscriptionGlobals, T_GLOBALS
 
 # TODO: Welcome string needs to be moved to parameters.yaml file, so it can be localized for different languages
-INITIAL_RESPONSE = '👋 Welcome to Transcribe 🤝'
-# INITIAL_RESPONSE = '👋欢迎转录🤝'
-global_vars_module: TranscriptionGlobals = T_GLOBALS
+INITIAL_RESPONSE = 'Welcome to Transcribe'
 
 
 # TODO:

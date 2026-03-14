@@ -1,13 +1,19 @@
-import sys
 import logging
 import sqlalchemy as sqldb
 from sqlalchemy import Engine
-import db.app_invocations as appi
-from db import conversation as convo
-from db import llm_responses as lresp
-from db import summaries as s
-sys.path.append('../..')
-from tsutils import Singleton  # noqa: E402 pylint: disable=C0413
+
+try:
+    from . import app_invocations as appi
+    from . import conversation as convo
+    from . import llm_responses as lresp
+    from . import summaries as s
+except ImportError:
+    import db.app_invocations as appi
+    from db import conversation as convo
+    from db import llm_responses as lresp
+    from db import summaries as s
+
+from tsutils import Singleton
 
 # TO DO
 # Handle the case of clearing the conversation

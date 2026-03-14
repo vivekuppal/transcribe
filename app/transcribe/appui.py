@@ -1,38 +1,44 @@
 import threading
 import datetime
 import time
+import re
+import queue
 import tkinter as tk
 import webbrowser
+from io import BytesIO
 import pyperclip
 import customtkinter as ctk
 from tktooltip import ToolTip
-from audio_transcriber import AudioTranscriber
-import prompts
-from global_vars import TranscriptionGlobals, T_GLOBALS
-import constants
-import gpt_responder as gr
+from wordcloud import WordCloud
+from tkinter import *
+from PIL import ImageTk, Image
+
+try:
+    from .audio_transcriber import AudioTranscriber
+    from . import constants, prompts
+    from .global_vars import TranscriptionGlobals, T_GLOBALS
+    from . import gpt_responder as gr
+    from .uicomp.selectable_text import SelectableText
+except ImportError:
+    from audio_transcriber import AudioTranscriber
+    import prompts
+    from global_vars import TranscriptionGlobals, T_GLOBALS
+    import constants
+    import gpt_responder as gr
+    from uicomp.selectable_text import SelectableText
 from tsutils.language import LANGUAGES_DICT
 from tsutils import utilities
 from tsutils import app_logging as al
 from tsutils import configuration
-from uicomp.selectable_text import SelectableText
-import numpy as np
-from PIL import Image
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-from io import BytesIO
-from tkinter import *
-from PIL import ImageTk, Image
-import re
 
 
 logger = al.get_module_logger(al.UI_LOGGER)
 UI_FONT_SIZE = 20
+UI_POLL_INTERVAL_MS = 50
 # Order of initialization can be unpredictable in python based on where imports are placed.
 # Setting it to None so comparison is deterministic in update_transcript_ui method
 last_transcript_ui_update_time: datetime.datetime = None
 global_vars_module: TranscriptionGlobals = T_GLOBALS
-pop_up = None
 
 
 class AppUI(ctk.CTk):
@@ -44,15 +50,36 @@ class AppUI(ctk.CTk):
     def __init__(self, config: dict):
         super().__init__()
         self.global_vars = TranscriptionGlobals()
+        self.popup_window = None
+        self._ui_action_queue: queue.Queue = queue.Queue()
 
         self.global_vars.main_window = self
         self.create_ui_components(config=config)
         self.set_audio_device_menus(config=config)
+        self.after(UI_POLL_INTERVAL_MS, self.process_ui_actions)
 
     def start(self):
         """Start showing the UI
         """
         self.mainloop()
+
+    def enqueue_ui_action(self, callback, *args, **kwargs):
+        """Queue UI work for the Tk main loop."""
+        self._ui_action_queue.put((callback, args, kwargs))
+
+    def process_ui_actions(self):
+        """Run queued UI actions on the Tk main loop."""
+        try:
+            while True:
+                callback, args, kwargs = self._ui_action_queue.get_nowait()
+                try:
+                    callback(*args, **kwargs)
+                except Exception as exception:
+                    logger.error(f"Error processing queued UI action: {exception}")
+        except queue.Empty:
+            pass
+
+        self.after(UI_POLL_INTERVAL_MS, self.process_ui_actions)
 
     def update_last_row(self, speaker: str, input_text: str):
         # Update the line for this speaker
@@ -69,6 +96,99 @@ class AppUI(ctk.CTk):
 
         self.transcript_text.scroll_to_bottom()
 
+    def queue_update_last_row(self, speaker: str, input_text: str):
+        """Schedule transcript row replacement on the UI thread."""
+        self.enqueue_ui_action(self.update_last_row, speaker, input_text)
+
+    def queue_add_transcript_line(self, input_text: str):
+        """Schedule transcript insertion on the UI thread."""
+        self.enqueue_ui_action(self.transcript_text.add_text_to_bottom, input_text)
+
+    def write_response_text(self, response_string: str):
+        """Render a response string into the response textbox."""
+        self.response_textbox.configure(state="normal")
+        if response_string:
+            write_in_textbox(self.response_textbox, response_string)
+        self.response_textbox.configure(state="disabled")
+        self.response_textbox.see("end")
+
+    def close_popup(self):
+        """Close the currently active popup, if one exists."""
+        if self.popup_window is None:
+            return
+
+        try:
+            self.popup_window.destroy()
+        except Exception as exception:
+            logger.info('Exception closing popup window')
+            logger.info(exception)
+        finally:
+            self.popup_window = None
+
+    def show_loading_popup(self, title: str, msg: str):
+        """Create a temporary status popup on the UI thread."""
+        self.close_popup()
+        popup = ctk.CTkToplevel(self)
+        popup.geometry("220x80")
+        popup.title(title)
+        label = ctk.CTkLabel(popup, text=msg, font=("Arial", 12), text_color="#FFFCF2")
+        label.pack(side="top", fill="x", pady=10, padx=10)
+        popup.lift()
+        self.popup_window = popup
+
+    def show_message_popup(self, title: str, msg: str):
+        """Create a popup with a message and close button."""
+        self.close_popup()
+        popup = ctk.CTkToplevel(self)
+        popup.geometry("380x710")
+        popup.title(title)
+        txtbox = ctk.CTkTextbox(popup, width=350, height=600, font=("Arial", UI_FONT_SIZE),
+                                text_color='#FFFCF2', wrap="word")
+        txtbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        txtbox.insert("0.0", msg)
+
+        def copy_summary_to_clipboard():
+            try:
+                pyperclip.copy(txtbox.get("0.0", "end-1c"))
+            except Exception as exception:
+                logger.error(f"Error copying popup text to clipboard: {exception}")
+
+        copy_button = ctk.CTkButton(popup, text="Copy to Clipboard", command=copy_summary_to_clipboard)
+        copy_button.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
+
+        close_button = ctk.CTkButton(popup, text="Close", command=self.close_popup)
+        close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+        popup.lift()
+        self.popup_window = popup
+
+    def show_word_cloud_popup(self, title: str, word_cloud):
+        """Create a word cloud popup on the UI thread."""
+        self.close_popup()
+        popup = ctk.CTkToplevel(self)
+        popup.geometry("380x400")
+        popup.title(title)
+
+        try:
+            buffer = BytesIO()
+            word_cloud.to_image().save(buffer, format="PNG")
+            buffer.seek(0)
+            img = Image.open(buffer)
+            img_tk = ImageTk.PhotoImage(img)
+        except Exception as exception:
+            logger.error(f"Error rendering word cloud to image: {exception}")
+            popup.destroy()
+            return
+
+        word_cloud_label = ctk.CTkLabel(popup, image=img_tk, text="")
+        word_cloud_label.image = img_tk
+        word_cloud_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        close_button = ctk.CTkButton(popup, text="Close", command=self.close_popup)
+        close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+
+        popup.lift()
+        self.popup_window = popup
+
     def update_initial_transcripts(self):
         """Set initial transcript in UI.
         """
@@ -78,8 +198,8 @@ class AppUI(ctk.CTk):
                            self.response_textbox,
                            self.update_interval_slider_label,
                            self.update_interval_slider)
-        self.global_vars.convo.set_handlers(self.update_last_row,
-                                            self.transcript_text.add_text_to_bottom)
+        self.global_vars.convo.set_handlers(self.queue_update_last_row,
+                                            self.queue_add_transcript_line)
 
     def clear_transcript(self):
         """Clear transcript from all places where it exists.
@@ -474,17 +594,15 @@ class AppUI(ctk.CTk):
         try:
             self.global_vars.update_response_now = True
             response_string = response_generator()
-            self.global_vars.update_response_now = False
             # Set event to play the recording audio if required
             if self.global_vars.read_response:
                 self.global_vars.audio_player_var.speech_text_available.set()
-            self.response_textbox.configure(state="normal")
             if response_string:
-                write_in_textbox(self.response_textbox, response_string)
-            self.response_textbox.configure(state="disabled")
-            self.response_textbox.see("end")
+                self.enqueue_ui_action(self.write_response_text, response_string)
         except Exception as e:
             logger.error(f"Error in threaded response: {e}")
+        finally:
+            self.global_vars.update_response_now = False
 
     def get_response_selected_now(self):
         """Get response from LLM right away for selected_text
@@ -506,53 +624,36 @@ class AppUI(ctk.CTk):
 
     def summarize_threaded(self):
         """Get summary from LLM in a separate thread"""
-        global pop_up  # pylint: disable=W0603
         try:
             print('Summarizing...')
-            popup_msg_no_close(title='Summary', msg='Creating a summary')
+            self.enqueue_ui_action(self.show_loading_popup, 'Summary', 'Creating a summary')
             summary = self.global_vars.responder.summarize()
-            # When API key is not specified, give a chance for the thread to initialize
-
-            if pop_up is not None:
-                try:
-                    pop_up.destroy()
-                except Exception as e:
-                    # Somehow we get the exception
-                    # RuntimeError: main thread is not in main loop
-                    logger.info('Exception in summarize_threaded')
-                    logger.info(e)
-
-                pop_up = None
+            self.enqueue_ui_action(self.close_popup)
             if summary is None:
-                popup_msg_close_button(title='Summary',
-                                       msg='Failed to get summary. Please check you have a valid API key.')
+                self.enqueue_ui_action(
+                    self.show_message_popup,
+                    'Summary',
+                    'Failed to get summary. Please check you have a valid API key.',
+                )
                 return
 
             # Enhancement here would be to get a streaming summary
-            popup_msg_close_button(title='Summary', msg=summary)
+            self.enqueue_ui_action(self.show_message_popup, 'Summary', summary)
         except Exception as e:
             logger.error(f"Error in summarize_threaded: {e}")
 
     def word_cloud_threaded(self):
         """Generate a word cloud in a separate thread"""
-        global pop_up
         try:
-            if pop_up is not None:
-                try:
-                    pop_up.destroy()
-                except Exception as e:
-                    # Somehow we get the exception
-                    # RuntimeError: main thread is not in main loop
-                    logger.info('Exception in word_cloud_threaded')
-                    logger.info(e)
-
-                pop_up = None
-
+            self.enqueue_ui_action(self.close_popup)
             try:
-                words = self.global_vars.convo.get_conversation(sources = [constants.PERSONA_YOU, constants.PERSONA_SPEAKER, constants.PERSONA_ASSISTANT], length = 0)
+                words = self.global_vars.convo.get_conversation(
+                    sources=[constants.PERSONA_YOU, constants.PERSONA_SPEAKER, constants.PERSONA_ASSISTANT],
+                    length=0,
+                )
                 processed_text = re.sub(r'^(You|Speaker|assistant):\s*', '', words, flags=re.MULTILINE)
                 word_cloud = WordCloud(background_color='white', colormap='binary', width=500, height=500).generate(processed_text[80:])
-                popup_msg_close_button_word_cloud(title='Word Cloud', word_cloud = word_cloud)
+                self.enqueue_ui_action(self.show_word_cloud_popup, 'Word Cloud', word_cloud)
 
             except Exception as e:
                 print(f"Error generating word cloud: {e}")

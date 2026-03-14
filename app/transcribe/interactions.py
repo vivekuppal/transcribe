@@ -15,7 +15,12 @@ import subprocess  # nosec
 import socket
 import requests
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
-from global_vars import TranscriptionGlobals
+
+try:
+    from .global_vars import TranscriptionGlobals
+except ImportError:
+    from global_vars import TranscriptionGlobals
+
 from tsutils import app_logging as al
 from tsutils import utilities
 
