@@ -1,5 +1,6 @@
 """Desktop application runtime composition."""
 
+from .bindings import DesktopCommandBinder
 from .controller import DesktopController
 from .runtime import (
     initialize_desktop_runtime,
@@ -15,13 +16,16 @@ from .services import (
     SettingsService,
     TranscriptIOService,
 )
+from .view import DesktopViewBuilder
 from .workflows import DesktopWorkflowService
 
 __all__ = [
     "ActionLogService",
     "BrowserService",
     "ConversationInsightsService",
+    "DesktopCommandBinder",
     "DesktopController",
+    "DesktopViewBuilder",
     "DesktopWorkflowService",
     "SettingsService",
     "TranscriptIOService",
