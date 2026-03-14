@@ -2,32 +2,26 @@ import sys
 import atexit
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
-if str(ROOT_DIR) not in sys.path:
-    sys.path.append(str(ROOT_DIR))
+if __package__ in (None, ""):
+    ROOT_DIR = Path(__file__).resolve().parents[2]
+    if str(ROOT_DIR) not in sys.path:
+        sys.path.insert(0, str(ROOT_DIR))
+    __package__ = "app.transcribe"
 
 from tsutils import app_logging as al
 from tsutils import configuration
 
-try:
-    from .appui import AppUI
-    from .cli.arguments import create_args, update_args_config
-    from .cli.batch import handle_batch_tasks
-    from .core.state import create_app_runtime
-    from .desktop import DesktopController
-    from .desktop.runtime import (
-        initialize_desktop_runtime,
-        initiate_app_threads,
-        shutdown,
-        start_audio_capture,
-    )
-except ImportError:
-    from appui import AppUI
-    from cli.arguments import create_args, update_args_config
-    from cli.batch import handle_batch_tasks
-    from core.state import create_app_runtime
-    from desktop import DesktopController
-    from desktop.runtime import initialize_desktop_runtime, initiate_app_threads, shutdown, start_audio_capture
+from .appui import AppUI
+from .cli.arguments import create_args, update_args_config
+from .cli.batch import handle_batch_tasks
+from .core.state import create_app_runtime
+from .desktop import DesktopController
+from .desktop.runtime import (
+    initialize_desktop_runtime,
+    initiate_app_threads,
+    shutdown,
+    start_audio_capture,
+)
 
 
 def main():

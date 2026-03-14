@@ -9,12 +9,8 @@ import openai
 import yaml
 from sdk import audio_recorder as ar
 
-try:
-    from .. import interactions
-    from ..providers.stt import convert_audio_to_16khz, create_stt_model
-except ImportError:
-    import interactions
-    from providers.stt import convert_audio_to_16khz, create_stt_model
+from .. import interactions
+from ..providers.stt import convert_audio_to_16khz, create_stt_model
 
 from tsutils import configuration, duration, utilities
 

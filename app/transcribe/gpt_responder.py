@@ -3,19 +3,10 @@ import time
 from enum import Enum
 # import pprint
 import openai
-try:
-    from . import constants, conversation, prompts
-    from .db import AppDB as appdb
-    from .db import llm_responses as llmrdb
-    from .db import summaries as s
-except ImportError:
-    import prompts
-    import conversation
-    import constants
-    from db import (
-        AppDB as appdb,
-        llm_responses as llmrdb,
-        summaries as s)
+from . import constants, conversation, prompts
+from .db import AppDB as appdb
+from .db import llm_responses as llmrdb
+from .db import summaries as s
 from tsutils import app_logging as al
 from tsutils import duration, utilities
 

@@ -6,12 +6,8 @@ import tkinter as tk
 
 import customtkinter as ctk
 
-try:
-    from .. import prompts
-    from ..uicomp.selectable_text import SelectableText
-except ImportError:
-    import prompts
-    from uicomp.selectable_text import SelectableText
+from .. import prompts
+from ..uicomp.selectable_text import SelectableText
 
 from tsutils.language import LANGUAGES_DICT
 

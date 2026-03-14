@@ -5,18 +5,11 @@ from __future__ import annotations
 import threading
 import time
 
-try:
-    from .. import interactions
-    from ..audio_player import AudioPlayer
-    from ..db.app_db import AppDB
-    from ..providers.llm import create_responder
-    from ..providers.stt import create_transcriber, ensure_ffmpeg_available
-except ImportError:
-    import interactions
-    from audio_player import AudioPlayer
-    from db.app_db import AppDB
-    from providers.llm import create_responder
-    from providers.stt import create_transcriber, ensure_ffmpeg_available
+from .. import interactions
+from ..audio_player import AudioPlayer
+from ..db.app_db import AppDB
+from ..providers.llm import create_responder
+from ..providers.stt import create_transcriber, ensure_ffmpeg_available
 
 from tsutils import utilities
 

@@ -9,10 +9,7 @@ import webbrowser
 import pyperclip
 from wordcloud import WordCloud
 
-try:
-    from .. import constants
-except ImportError:
-    import constants
+from .. import constants
 
 from tsutils import configuration, utilities
 

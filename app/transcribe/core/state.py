@@ -7,25 +7,15 @@ import queue
 import datetime
 from typing import TYPE_CHECKING
 
-try:
-    from .conversation import Conversation
-except ImportError:
-    from core.conversation import Conversation
+from .conversation import Conversation
 
 from tsutils import task_queue, utilities
 
-try:
-    from ..sdk import audio_recorder as ar
-except ImportError:
-    from sdk import audio_recorder as ar
+from sdk import audio_recorder as ar
 
 if TYPE_CHECKING:
-    try:
-        from ..audio_player import AudioPlayer
-        from ..audio_transcriber import AudioTranscriber
-    except ImportError:
-        from audio_player import AudioPlayer
-        from audio_transcriber import AudioTranscriber
+    from ..audio_player import AudioPlayer
+    from ..audio_transcriber import AudioTranscriber
 
 
 class AppRuntime:

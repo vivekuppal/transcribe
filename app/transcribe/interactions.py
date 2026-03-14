@@ -16,10 +16,7 @@ import socket
 import requests
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
 
-try:
-    from .global_vars import AppRuntime, T_GLOBALS
-except ImportError:
-    from global_vars import AppRuntime, T_GLOBALS
+from .global_vars import AppRuntime, T_GLOBALS
 
 from tsutils import app_logging as al
 from tsutils import utilities

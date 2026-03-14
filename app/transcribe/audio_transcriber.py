@@ -12,11 +12,7 @@ import wave
 import tempfile
 import pyaudiowpatch as pyaudio
 # from db import AppDB as appdb
-try:
-    from . import constants, conversation
-except ImportError:
-    import conversation
-    import constants
+from . import constants, conversation
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
 from tsutils import duration

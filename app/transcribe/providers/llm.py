@@ -1,9 +1,6 @@
 """LLM provider composition for the application."""
 
-try:
-    from ..gpt_responder import InferenceResponderFactory, InferenceEnum
-except ImportError:
-    from gpt_responder import InferenceResponderFactory, InferenceEnum
+from ..gpt_responder import InferenceResponderFactory, InferenceEnum
 
 
 def create_responder(provider_name: str, config, convo, save_to_file: bool, response_file_name: str):

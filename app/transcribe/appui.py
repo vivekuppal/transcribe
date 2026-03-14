@@ -3,12 +3,8 @@ import queue
 import tkinter as tk
 import customtkinter as ctk
 
-try:
-    from .desktop import DesktopCommandBinder, DesktopController, DesktopDisplayManager, DesktopViewBuilder
-    from .global_vars import AppRuntime, create_app_runtime
-except ImportError:
-    from desktop import DesktopCommandBinder, DesktopController, DesktopDisplayManager, DesktopViewBuilder
-    from global_vars import AppRuntime, create_app_runtime
+from .desktop import DesktopCommandBinder, DesktopController, DesktopDisplayManager, DesktopViewBuilder
+from .global_vars import AppRuntime, create_app_runtime
 from tsutils import app_logging as al
 
 

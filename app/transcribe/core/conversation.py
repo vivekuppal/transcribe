@@ -7,16 +7,10 @@ import datetime
 import threading
 from pathlib import Path
 
-try:
-    from .. import constants
-    from ..db import AppDB as appdb
-    from ..db import conversation as convodb
-    from ..db import llm_responses as llmrdb
-except ImportError:
-    import constants
-    from db import AppDB as appdb
-    from db import conversation as convodb
-    from db import llm_responses as llmrdb
+from .. import constants
+from ..db import AppDB as appdb
+from ..db import conversation as convodb
+from ..db import llm_responses as llmrdb
 
 from tsutils import configuration
 

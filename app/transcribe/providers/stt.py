@@ -10,10 +10,7 @@ import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
 from sdk import transcriber_models as tm
 
-try:
-    from ..audio_transcriber import DeepgramTranscriber, WhisperCPPTranscriber, WhisperTranscriber
-except ImportError:
-    from audio_transcriber import DeepgramTranscriber, WhisperCPPTranscriber, WhisperTranscriber
+from ..audio_transcriber import DeepgramTranscriber, WhisperCPPTranscriber, WhisperTranscriber
 
 from tsutils import language, utilities
 
