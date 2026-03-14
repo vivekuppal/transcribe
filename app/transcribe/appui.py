@@ -1,35 +1,25 @@
-import threading
 import datetime
-import time
-import re
 import queue
 import tkinter as tk
-import webbrowser
 from io import BytesIO
 import pyperclip
 import customtkinter as ctk
-from tktooltip import ToolTip
-from wordcloud import WordCloud
 from tkinter import *
 from PIL import ImageTk, Image
 
 try:
     from .audio_transcriber import AudioTranscriber
-    from . import constants, prompts
+    from .desktop import DesktopCommandBinder, DesktopController, DesktopViewBuilder
     from .global_vars import TranscriptionGlobals, T_GLOBALS
     from . import gpt_responder as gr
     from .uicomp.selectable_text import SelectableText
 except ImportError:
     from audio_transcriber import AudioTranscriber
-    import prompts
+    from desktop import DesktopCommandBinder, DesktopController, DesktopViewBuilder
     from global_vars import TranscriptionGlobals, T_GLOBALS
-    import constants
     import gpt_responder as gr
     from uicomp.selectable_text import SelectableText
-from tsutils.language import LANGUAGES_DICT
-from tsutils import utilities
 from tsutils import app_logging as al
-from tsutils import configuration
 
 
 logger = al.get_module_logger(al.UI_LOGGER)
@@ -45,15 +35,25 @@ class AppUI(ctk.CTk):
     """Encapsulates all UI functionality for the app
     """
     global_vars: TranscriptionGlobals
-    ui_filename: str = None
+    ui_font_size: int = UI_FONT_SIZE
 
-    def __init__(self, config: dict):
+    def __init__(
+        self,
+        config: dict,
+        controller: DesktopController = None,
+        view_builder: DesktopViewBuilder = None,
+        command_binder: DesktopCommandBinder = None,
+    ):
         super().__init__()
         self.global_vars = TranscriptionGlobals()
+        self.controller = controller or DesktopController(config=config, global_vars=self.global_vars)
+        self.view_builder = view_builder or DesktopViewBuilder()
+        self.command_binder = command_binder or DesktopCommandBinder()
         self.popup_window = None
         self._ui_action_queue: queue.Queue = queue.Queue()
 
         self.global_vars.main_window = self
+        self.controller.bind_ui(self)
         self.create_ui_components(config=config)
         self.set_audio_device_menus(config=config)
         self.after(UI_POLL_INTERVAL_MS, self.process_ui_actions)
@@ -208,163 +208,9 @@ class AppUI(ctk.CTk):
         self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
 
     def create_ui_components(self, config: dict):
-        """Create all UI components
-        """
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("dark-blue")
-        self.title("Transcribe")
-        self.configure(bg='#252422')
-        self.geometry("1200x800")
-
-        # Frame for the main content
-        self.main_frame = ctk.CTkFrame(self)
-        self.main_frame.pack(fill="both", expand=True)
-
-        self.create_menus()
-
-        # Left side: SelectableTextComponent
-        self.transcript_text: SelectableText = SelectableText(self.main_frame)
-        self.transcript_text.pack(side="left", fill="both", expand=True, padx=10, pady=10)
-        self.transcript_text.set_callbacks(self.global_vars.convo.on_convo_select)
-
-        # Right side: LLM Response
-        self.right_frame = ctk.CTkFrame(self.main_frame)
-        self.right_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
-
-        # LLM Response textbox
-        self.min_response_textbox_width = 300
-        self.response_textbox = ctk.CTkTextbox(self.right_frame, self.min_response_textbox_width,
-                                               font=("Arial", UI_FONT_SIZE),
-                                               text_color='#639cdc',
-                                               wrap="word")
-        self.response_textbox.pack(fill="both", expand=True)
-        self.response_textbox.insert("0.0", prompts.INITIAL_RESPONSE)
-
-        # Bottom Frame for buttons
-        self.bottom_frame = ctk.CTkFrame(self, border_color="white", border_width=2)
-        self.bottom_frame.pack(side="bottom", fill="both", pady=10)
-
-        response_enabled = bool(config['General']['continuous_response'])
-        b_text = "Suggest Responses Continuously" if not response_enabled else "Do Not Suggest Responses Continuously"
-        self.continuous_response_button = ctk.CTkButton(self.bottom_frame, text=b_text)
-        self.continuous_response_button.grid(row=0, column=4, padx=10, pady=3, sticky="nsew")
-        self.continuous_response_button.configure(command=self.freeze_unfreeze)
-
-        self.response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response Now")
-        self.response_now_button.grid(row=1, column=4, padx=10, pady=3, sticky="nsew")
-        self.response_now_button.configure(command=self.get_response_now)
-
-        self.read_response_now_button = ctk.CTkButton(self.bottom_frame, text="Suggest Response and Read")
-        self.read_response_now_button.grid(row=2, column=4, padx=10, pady=3, sticky="nsew")
-        self.read_response_now_button.configure(command=self.update_response_ui_and_read_now)
-
-        self.summarize_button = ctk.CTkButton(self.bottom_frame, text="Summarize")
-        self.summarize_button.grid(row=3, column=4, padx=10, pady=3, sticky="nsew")
-        self.summarize_button.configure(command=self.summarize)
-
-        # word cloud button
-        self.word_cloud_button = ctk.CTkButton(self.bottom_frame, text="Display Word Cloud")
-        self.word_cloud_button.grid(row=4, column=4, padx=10, pady=3, sticky="nsew")
-        self.word_cloud_button.configure(command=self.word_cloud)
-
-        # Continuous LLM Response label, and slider
-        self.update_interval_slider_label = ctk.CTkLabel(self.bottom_frame, text="", font=("Arial", 12),
-                                                         text_color="#FFFCF2")
-        self.update_interval_slider_label.grid(row=0, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
-        self.update_interval_slider = ctk.CTkSlider(self.bottom_frame, from_=1, to=30, width=300,  # height=5,
-                                                    number_of_steps=29)
-        self.update_interval_slider.set(config['General']['llm_response_interval'])
-        self.update_interval_slider.grid(row=1, column=0, columnspan=4, padx=10, pady=3, sticky="nsew")
-        self.update_interval_slider.configure(command=self.update_interval_slider_value)
-
-        label_text = f'LLM Response interval: {int(self.update_interval_slider.get())} seconds'
-        self.update_interval_slider_label.configure(text=label_text)
-
-        # Speech to text language selection label, dropdown
-        audio_lang_label = ctk.CTkLabel(self.bottom_frame, text="Audio Lang: ",
-                                        font=("Arial", 12),
-                                        text_color="#FFFCF2")
-        audio_lang_label.grid(row=2, column=0, padx=10, pady=3, sticky='nw')
-
-        audio_lang = config['OpenAI']['audio_lang']
-        self.audio_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15, values=list(LANGUAGES_DICT.values()))
-        self.audio_lang_combobox.set(audio_lang)
-        self.audio_lang_combobox.grid(row=2, column=1, ipadx=60, padx=10, pady=3, sticky="ne")
-        self.audio_lang_combobox.configure(command=self.set_audio_language)
-
-        # LLM Response language selection label, dropdown
-        response_lang_label = ctk.CTkLabel(self.bottom_frame,
-                                           text="Response Lang: ",
-                                           font=("Arial", 12), text_color="#FFFCF2")
-        response_lang_label.grid(row=2, column=2, padx=10, pady=3, sticky="nw")
-
-        response_lang = config['OpenAI']['response_lang']
-        self.response_lang_combobox = ctk.CTkOptionMenu(self.bottom_frame, width=15,
-                                                        values=list(LANGUAGES_DICT.values()))
-        self.response_lang_combobox.set(response_lang)
-        self.response_lang_combobox.grid(row=2, column=3, ipadx=60, padx=10, pady=3, sticky="ne")
-        self.response_lang_combobox.configure(command=self.set_response_language)
-
-        self.github_link = ctk.CTkLabel(self.bottom_frame, text="Star the Github Repo",
-                                        text_color="#639cdc", cursor="hand2")
-        self.github_link.grid(row=3, column=0, padx=10, pady=3, sticky="wn")
-        self.github_link.bind('<Button-1>', lambda e:
-                              self.open_link('https://github.com/vivekuppal/transcribe?referer=desktop'))
-
-        self.issue_link = ctk.CTkLabel(self.bottom_frame, text="Report an issue", text_color="#639cdc", cursor="hand2")
-        self.issue_link.grid(row=3, column=1, padx=10, pady=3, sticky="wn")
-        self.issue_link.bind('<Button-1>', lambda e: self.open_link(
-            'https://github.com/vivekuppal/transcribe/issues/new?referer=desktop'))
-
-        # Create right click menu for transcript textbox.
-        self.transcript_text.add_right_click_menu(label="Generate response for selected text",
-                                                  command=self.get_response_selected_now)
-        self.transcript_text.add_right_click_menu(label="Save Transcript to File", command=self.save_file)
-        self.transcript_text.add_right_click_menu(label="Clear Audio Transcript", command=self.clear_transcript)
-        self.transcript_text.add_right_click_menu(label="Copy Transcript to Clipboard", command=self.copy_to_clipboard)
-        self.transcript_text.add_right_click_menu(label="Edit line", command=self.edit_current_line)
-        self.transcript_text.add_right_menu_separator()
-        self.transcript_text.add_right_click_menu(label="Quit", command=self.quit)
-
-        chat_inference_provider = config['General']['chat_inference_provider']
-        if chat_inference_provider == 'openai':
-            api_key = config['OpenAI']['api_key']
-            base_url = config['OpenAI']['base_url']
-            model = config['OpenAI']['ai_model']
-        elif chat_inference_provider == 'together':
-            api_key = config['Together']['api_key']
-            base_url = config['Together']['base_url']
-            model = config['Together']['ai_model']
-
-        if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
-            # Disable buttons that interact with backend services
-            self.continuous_response_button.configure(state='disabled')
-            self.response_now_button.configure(state='disabled')
-            self.read_response_now_button.configure(state='disabled')
-            self.summarize_button.configure(state='disabled')
-
-            tt_msg = 'Add API Key in override.yaml to enable button'
-            # Add tooltips for disabled buttons
-            ToolTip(self.continuous_response_button, msg=tt_msg,
-                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                    padx=7, pady=7)
-            ToolTip(self.response_now_button, msg=tt_msg,
-                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                    padx=7, pady=7)
-            ToolTip(self.read_response_now_button, msg=tt_msg,
-                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                    padx=7, pady=7)
-            ToolTip(self.summarize_button, msg=tt_msg,
-                    delay=0.01, follow=True, parent_kwargs={"padx": 3, "pady": 3},
-                    padx=7, pady=7)
-
-        # self.grid_rowconfigure(0, weight=100)
-        # self.grid_rowconfigure(1, weight=1)
-        # self.grid_rowconfigure(2, weight=1)
-        # self.grid_rowconfigure(3, weight=1)
-        # self.grid_columnconfigure(0, weight=1)
-        # self.grid_columnconfigure(1, weight=1)
-
+        """Create all UI components."""
+        self.view_builder.build(self, config)
+        self.command_binder.bind(self, config)
 
     def edit_current_line(self):
         """Edit the selected line of text required
@@ -424,444 +270,104 @@ class AppUI(ctk.CTk):
             pass  # No text in the line
 
     def create_menus(self):
-        """Create menus for the application
-        """
-        # Create the menu bar
-        menubar = tk.Menu(self)
-
-        # Create a file menu
-        self.filemenu = tk.Menu(menubar, tearoff=False)
-
-        # Add a "Save" menu item to the file menu
-        self.filemenu.add_command(label="Save Transcript to File", command=self.save_file)
-
-        # Add a "Pause" menu item to the file menu
-        self.filemenu.add_command(label="Pause Transcription", command=self.set_transcript_state)
-
-        # Add a "Quit" menu item to the file menu
-        self.filemenu.add_command(label="Quit", command=self.quit)
-
-        # Add the file menu to the menu bar
-        menubar.add_cascade(label="File", menu=self.filemenu)
-
-        # Create an edit menu
-        self.editmenu = tk.Menu(menubar, tearoff=False)
-
-        # Add a "Clear Audio Transcript" menu item to the file menu
-        self.editmenu.add_command(label="Clear Audio Transcript", command=self.clear_transcript)
-
-        # Add a "Copy To Clipboard" menu item to the file menu
-        self.editmenu.add_command(label="Copy Transcript to Clipboard",
-                                  command=self.copy_to_clipboard)
-
-        # Add "Disable Speaker" menu item to file menu
-        self.editmenu.add_command(label="Disable Speaker",
-                                  command=self.enable_disable_speaker)
-
-        # Add "Disable Microphone" menu item to file menu
-        self.editmenu.add_command(label="Disable Microphone",
-                                  command=self.enable_disable_microphone)
-
-        # Add the edit menu to the menu bar
-        menubar.add_cascade(label="Edit", menu=self.editmenu)
-
-        # Create help menu, add items in help menu
-        helpmenu = tk.Menu(menubar, tearoff=False)
-        helpmenu.add_command(label="Github Repo", command=self.open_github)
-        helpmenu.add_command(label="Star the Github repo", command=self.open_github)
-        helpmenu.add_command(label="Report an Issue", command=self.open_support)
-        menubar.add_cascade(label="Help", menu=helpmenu)
-
-        # Add the menu bar to the main window
-        self.config(menu=menubar)
+        """Create and bind window menus for the application."""
+        self.view_builder.create_menus(self)
+        self.command_binder.bind_menus(self)
 
     def set_audio_device_menus(self, config):
-        if config['General']['disable_speaker']:
-            print('[INFO] Disabling Speaker')
-            self.enable_disable_speaker()
-
-        if config['General']['disable_mic']:
-            print('[INFO] Disabling Microphone')
-            self.enable_disable_microphone()
+        self.controller.set_audio_device_menus()
 
     def copy_to_clipboard(self):
-        """Copy transcription text data to clipboard.
-           Does not include responses from assistant.
-        """
-        logger.info(AppUI.copy_to_clipboard.__name__)
-        self.capture_action("Copy transcript to clipboard")
-        try:
-            pyperclip.copy(self.global_vars.transcriber.get_transcript())
-        except Exception as e:
-            logger.error(f"Error copying to clipboard: {e}")
+        """Copy transcription text data to clipboard."""
+        return self.controller.copy_to_clipboard()
 
     def save_file(self):
-        """Save transcription text data to file.
-           Does not include responses from assistant.
-        """
-        logger.info(AppUI.save_file.__name__)
-        filename = ctk.filedialog.asksaveasfilename(defaultextension='.txt',
-                                                    title='Save Transcription',
-                                                    filetypes=[("Text Files", "*.txt")])
-        self.capture_action(f'Save transcript to file:{filename}')
-        if not filename:
-            return
-        try:
-            with open(file=filename, mode="w", encoding='utf-8') as file_handle:
-                file_handle.write(self.global_vars.transcriber.get_transcript())
-        except Exception as e:
-            logger.error(f"Error saving file {filename}: {e}")
+        """Save transcription text data to file."""
+        return self.controller.save_file()
 
     def freeze_unfreeze(self):
-        """Respond to start / stop of seeking responses from openAI API
-        """
-        logger.info(AppUI.freeze_unfreeze.__name__)
-        try:
-            # Invert the state
-            self.global_vars.responder.enabled = not self.global_vars.responder.enabled
-            self.capture_action(f'{"Enabled " if self.global_vars.responder.enabled else "Disabled "} continuous LLM responses')
-            self.continuous_response_button.configure(
-                text="Suggest Responses Continuously" if not self.global_vars.responder.enabled else "Do Not Suggest Responses Continuously"
-            )
-        except Exception as e:
-            logger.error(f"Error toggling responder state: {e}")
+        """Respond to start / stop of seeking responses from the LLM."""
+        return self.controller.freeze_unfreeze()
 
     def enable_disable_speaker(self):
-        """Toggles the state of speaker
-        """
-        try:
-            self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
-            self.editmenu.entryconfigure(2, label="Disable Speaker" if self.global_vars.speaker_audio_recorder.enabled else "Enable Speaker")
-            self.capture_action(f'{"Enabled " if self.global_vars.speaker_audio_recorder.enabled else "Disabled "} speaker input')
-        except Exception as e:
-            logger.error(f"Error toggling speaker state: {e}")
+        """Toggle the state of speaker input."""
+        return self.controller.enable_disable_speaker()
 
     def enable_disable_microphone(self):
-        """Toggles the state of microphone
-        """
-        try:
-            self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
-            self.editmenu.entryconfigure(3, label="Disable Microphone" if self.global_vars.user_audio_recorder.enabled else "Enable Microphone")
-            self.capture_action(f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input')
-        except Exception as e:
-            logger.error(f"Error toggling microphone state: {e}")
+        """Toggle the state of microphone input."""
+        return self.controller.enable_disable_microphone()
 
     def update_interval_slider_value(self, slider_value):
-        """Update interval slider label to match the slider value
-           Update the config value
-        """
-        try:
-            config_obj = configuration.Config()
-            # Save config
-            altered_config = {'General': {'llm_response_interval': int(slider_value)}}
-            config_obj.add_override_value(altered_config)
-
-            label_text = f'LLM Response interval: {int(slider_value)} seconds'
-            self.update_interval_slider_label.configure(text=label_text)
-            self.capture_action(f'Update LLM response interval to {int(slider_value)}')
-        except Exception as e:
-            logger.error(f"Error updating slider value: {e}")
+        """Update the LLM response interval."""
+        return self.controller.update_interval_slider_value(slider_value)
 
     def get_response_now(self):
-        """Get response from LLM right away
-           Update the Response UI with the response
-        """
-        if self.global_vars.update_response_now:
-            # We are already in the middle of getting a response
-            return
-        # We need a separate thread to ensure UI is responsive as responses are
-        # streamed back. Without the thread UI appears stuck as we stream the
-        # responses back
-        self.capture_action('Get LLM response now')
-        response_ui_thread = threading.Thread(target=self.get_response_now_threaded,
-                                              name='GetResponseNow')
-        response_ui_thread.daemon = True
-        response_ui_thread.start()
+        """Get an LLM response immediately."""
+        return self.controller.get_response_now()
 
     def get_response_selected_now_threaded(self, text: str):
-        """Update response UI in a separate thread
-        """
-        self.update_response_ui_threaded(lambda: self.global_vars.responder.generate_response_for_selected_text(text))
+        """Update response UI in a separate thread."""
+        return self.controller.get_response_selected_now_threaded(text)
 
     def get_response_now_threaded(self):
-        """Update response UI in a separate thread
-        """
-        self.update_response_ui_threaded(self.global_vars.responder.generate_response_from_transcript_no_check)
+        """Update response UI in a separate thread."""
+        return self.controller.get_response_now_threaded()
 
     def update_response_ui_threaded(self, response_generator):
-        """Helper method to update response UI in a separate thread
-        """
-        try:
-            self.global_vars.update_response_now = True
-            response_string = response_generator()
-            # Set event to play the recording audio if required
-            if self.global_vars.read_response:
-                self.global_vars.audio_player_var.speech_text_available.set()
-            if response_string:
-                self.enqueue_ui_action(self.write_response_text, response_string)
-        except Exception as e:
-            logger.error(f"Error in threaded response: {e}")
-        finally:
-            self.global_vars.update_response_now = False
+        """Helper method to update response UI in a separate thread."""
+        return self.controller.update_response_ui_threaded(response_generator)
 
     def get_response_selected_now(self):
-        """Get response from LLM right away for selected_text
-           Update the Response UI with the response
-        """
-        if self.global_vars.update_response_now:
-            # We are already in the middle of getting a response
-            return
-        # We need a separate thread to ensure UI is responsive as responses are
-        # streamed back. Without the thread UI appears stuck as we stream the
-        # responses back
-        self.capture_action('Get LLM response selected now')
-        selected_text = self.transcript_text.selection_get()
-        response_ui_thread = threading.Thread(target=self.get_response_selected_now_threaded,
-                                              args=(selected_text,),
-                                              name='GetResponseSelectedNow')
-        response_ui_thread.daemon = True
-        response_ui_thread.start()
+        """Get an LLM response for the current transcript selection."""
+        return self.controller.get_response_selected_now()
 
     def summarize_threaded(self):
-        """Get summary from LLM in a separate thread"""
-        try:
-            print('Summarizing...')
-            self.enqueue_ui_action(self.show_loading_popup, 'Summary', 'Creating a summary')
-            summary = self.global_vars.responder.summarize()
-            self.enqueue_ui_action(self.close_popup)
-            if summary is None:
-                self.enqueue_ui_action(
-                    self.show_message_popup,
-                    'Summary',
-                    'Failed to get summary. Please check you have a valid API key.',
-                )
-                return
-
-            # Enhancement here would be to get a streaming summary
-            self.enqueue_ui_action(self.show_message_popup, 'Summary', summary)
-        except Exception as e:
-            logger.error(f"Error in summarize_threaded: {e}")
+        """Get summary from LLM in a separate thread."""
+        return self.controller.summarize_threaded()
 
     def word_cloud_threaded(self):
-        """Generate a word cloud in a separate thread"""
-        try:
-            self.enqueue_ui_action(self.close_popup)
-            try:
-                words = self.global_vars.convo.get_conversation(
-                    sources=[constants.PERSONA_YOU, constants.PERSONA_SPEAKER, constants.PERSONA_ASSISTANT],
-                    length=0,
-                )
-                processed_text = re.sub(r'^(You|Speaker|assistant):\s*', '', words, flags=re.MULTILINE)
-                word_cloud = WordCloud(background_color='white', colormap='binary', width=500, height=500).generate(processed_text[80:])
-                self.enqueue_ui_action(self.show_word_cloud_popup, 'Word Cloud', word_cloud)
-
-            except Exception as e:
-                print(f"Error generating word cloud: {e}")
-                return
-
-        except Exception as e:
-            logger.error(f"Error in word_cloud_threaded: {e}")
-
+        """Generate a word cloud in a separate thread."""
+        return self.controller.word_cloud_threaded()
 
     def summarize(self):
-        """Get summary response from LLM
-        """
-        self.capture_action('Get summary from LLM')
-        summarize_ui_thread = threading.Thread(target=self.summarize_threaded,
-                                               name='Summarize')
-        summarize_ui_thread.daemon = True
-        summarize_ui_thread.start()
+        """Get summary response from LLM."""
+        return self.controller.summarize()
 
     def word_cloud(self):
-        """Start the word cloud thread"""
-        cloud = self.capture_action('Generate word cloud')
-        word_cloud_ui_thread = threading.Thread(target=self.word_cloud_threaded, name = 'Word Cloud')
-        word_cloud_ui_thread.daemon = True
-        word_cloud_ui_thread.start()
-
+        """Start the word cloud thread."""
+        return self.controller.word_cloud()
 
     def update_response_ui_and_read_now(self):
-        """Get response from LLM right away
-        Update the Response UI with the response
-        Read the response
-        """
-        self.capture_action('Get LLM response now and read aloud')
-        self.global_vars.set_read_response(True)
-        self.get_response_now()
+        """Get a response, update the UI, and read it aloud."""
+        return self.controller.update_response_ui_and_read_now()
 
     def set_transcript_state(self):
-        """Enables, disables transcription.
-           Text of menu item File -> Pause Transcription toggles accordingly
-        """
-        logger.info(AppUI.set_transcript_state.__name__)
-        try:
-            self.global_vars.transcriber.transcribe = not self.global_vars.transcriber.transcribe
-            self.capture_action(f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.')
-            if self.global_vars.transcriber.transcribe:
-                self.filemenu.entryconfigure(1, label="Pause Transcription")
-            else:
-                self.filemenu.entryconfigure(1, label="Start Transcription")
-        except Exception as e:
-            logger.error(f"Error setting transcript state: {e}")
+        """Enable or disable transcription."""
+        return self.controller.set_transcript_state()
 
     def open_link(self, url: str):
-        """Open the link in a web browser
-        """
-        self.capture_action(f'Navigate to {url}.')
-        try:
-            webbrowser.open(url=url, new=2)
-        except Exception as e:
-            logger.error(f"Error opening URL {url}: {e}")
+        """Open the link in a web browser."""
+        return self.controller.open_link(url)
 
     def open_github(self):
-        """Link to git repo main page
-        """
-        self.capture_action('open_github.')
-        self.open_link('https://github.com/vivekuppal/transcribe?referer=desktop')
+        """Link to git repo main page."""
+        return self.controller.open_github()
 
     def open_support(self):
-        """Link to git repo issues page
-        """
-        self.capture_action('open_support.')
-        self.open_link('https://github.com/vivekuppal/transcribe/issues/new?referer=desktop')
+        """Link to git repo issues page."""
+        return self.controller.open_support()
 
     def capture_action(self, action_text: str):
-        """Write to file
-        """
-        try:
-            if not self.ui_filename:
-                data_dir = utilities.get_data_path(app_name='Transcribe')
-                self.ui_filename = utilities.incrementing_filename(filename=f'{data_dir}/logs/ui', extension='txt')
-            with open(self.ui_filename, mode='a', encoding='utf-8') as ui_file:
-                ui_file.write(f'{datetime.datetime.now()}: {action_text}\n')
-        except Exception as e:
-            logger.error(f"Error capturing action {action_text}: {e}")
+        """Write a UI action to the session log."""
+        return self.controller.capture_action(action_text)
 
     def set_audio_language(self, lang: str):
-        """Alter audio language in memory and persist it in config file
-        """
-        try:
-            self.global_vars.transcriber.stt_model.set_lang(lang)
-            config_obj = configuration.Config()
-            # Save config
-            altered_config = {'OpenAI': {'audio_lang': lang}}
-            config_obj.add_override_value(altered_config)
-        except Exception as e:
-            logger.error(f"Error setting audio language: {e}")
+        """Alter audio language in memory and persist it in config file."""
+        return self.controller.set_audio_language(lang)
 
     def set_response_language(self, lang: str):
-        """Alter response language in memory and persist it in config file
-        """
-        try:
-            config_obj = configuration.Config()
-            altered_config = {'OpenAI': {'response_lang': lang}}
-            # Save config
-            config_obj.add_override_value(altered_config)
-            config_data = config_obj.data
-
-            # Create a new system prompt
-            prompt = config_data["General"]["system_prompt"]
-            response_lang = config_data["OpenAI"]["response_lang"]
-            if response_lang is not None:
-                prompt += f'.  Respond exclusively in {response_lang}.'
-            convo = self.global_vars.convo
-            convo.update_conversation(persona=constants.PERSONA_SYSTEM,
-                                      text=prompt,
-                                      time_spoken=datetime.datetime.utcnow(),
-                                      update_previous=True)
-        except Exception as e:
-            logger.error(f"Error setting response language: {e}")
-
-
-def popup_msg_no_close_threaded(title, msg):
-    """Create a pop up with no close button.
-    """
-    global pop_up  # pylint: disable=W0603
-    try:
-        popup = ctk.CTkToplevel(T_GLOBALS.main_window)
-        popup.geometry("100x50")
-        popup.title(title)
-        label = ctk.CTkLabel(popup, text=msg, font=("Arial", 12),
-                             text_color="#FFFCF2")
-        label.pack(side="top", fill="x", pady=10)
-        pop_up = popup
-        popup.lift()
-    except Exception as e:
-        # Sometimes get the error - calling Tcl from different apartment
-        logger.info('Exception in popup_msg_no_close_threaded')
-        logger.info(e)
-        return
-
-
-def popup_msg_no_close(title: str, msg: str):
-    """Create a popup that the caller is responsible for closing
-    using the destroy method
-    """
-    kwargs = {}
-    kwargs['title'] = title
-    kwargs['msg'] = msg
-    pop_ui_thread = threading.Thread(target=popup_msg_no_close_threaded,
-                                     name='Pop up thread',
-                                     kwargs=kwargs)
-    pop_ui_thread.daemon = True
-    pop_ui_thread.start()
-    # Give a chance for the thread to initialize
-    # When API key is not specified, need the thread to initialize to
-    # allow summarize window to show and ultimately be closed.
-    time.sleep(0.1)
-
-
-def popup_msg_close_button(title: str, msg: str):
-    """Create a popup that the caller is responsible for closing
-    using the destroy method
-    """
-    popup = ctk.CTkToplevel(T_GLOBALS.main_window)
-    popup.geometry("380x710")
-    popup.title(title)
-    txtbox = ctk.CTkTextbox(popup, width=350, height=600, font=("Arial", UI_FONT_SIZE),
-                            text_color='#FFFCF2', wrap="word")
-    txtbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-    txtbox.insert("0.0", msg)
-
-    def copy_summary_to_clipboard():
-        pyperclip.copy(txtbox.cget("text"))
-
-    copy_button = ctk.CTkButton(popup, text="Copy to Clipboard", command=copy_summary_to_clipboard)
-    copy_button.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
-
-    close_button = ctk.CTkButton(popup, text="Close", command=popup.destroy)
-    close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
-    popup.lift()
-
-def popup_msg_close_button_word_cloud(title: str, word_cloud):
-    """Create a word cloud popup that caller is responsible for closing
-    using the destroy method
-    """
-    popup = ctk.CTkToplevel(T_GLOBALS.main_window)
-    popup.geometry("380x400")
-    popup.title(title)
-    
-    # Render the WordCloud to an image
-    try:
-        buffer = BytesIO()
-        word_cloud.to_image().save(buffer, format="PNG")
-        buffer.seek(0)
-        img = Image.open(buffer)
-        img_tk = ImageTk.PhotoImage(img)
-    except Exception as e:
-        print(f"Error rendering word cloud to image: {e}")
-        return
-
-    # Display the word cloud image
-    word_cloud_label = ctk.CTkLabel(popup, image=img_tk)
-    word_cloud_label.image = img_tk  # Keep a reference to avoid garbage collection
-    word_cloud_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-
-    # Add a button to close the popup
-    close_button = ctk.CTkButton(popup, text="Close", command=popup.destroy)
-    close_button.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
-
-    popup.lift()
+        """Alter response language in memory and persist it in config file."""
+        return self.controller.set_response_language(lang)
 
 
 def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
