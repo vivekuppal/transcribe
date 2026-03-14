@@ -2,6 +2,7 @@
 
 from .bindings import DesktopCommandBinder
 from .controller import DesktopController
+from .presenter import DesktopPresenter
 from .runtime import (
     initialize_desktop_runtime,
     initiate_app_threads,
@@ -25,6 +26,7 @@ __all__ = [
     "ConversationInsightsService",
     "DesktopCommandBinder",
     "DesktopController",
+    "DesktopPresenter",
     "DesktopViewBuilder",
     "DesktopWorkflowService",
     "SettingsService",
