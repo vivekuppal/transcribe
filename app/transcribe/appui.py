@@ -1,29 +1,34 @@
 import threading
 import datetime
 import time
+import re
 import tkinter as tk
 import webbrowser
+from io import BytesIO
 import pyperclip
 import customtkinter as ctk
 from tktooltip import ToolTip
-from audio_transcriber import AudioTranscriber
-import prompts
-from global_vars import TranscriptionGlobals, T_GLOBALS
-import constants
-import gpt_responder as gr
+from wordcloud import WordCloud
+from tkinter import *
+from PIL import ImageTk, Image
+
+try:
+    from .audio_transcriber import AudioTranscriber
+    from . import constants, prompts
+    from .global_vars import TranscriptionGlobals, T_GLOBALS
+    from . import gpt_responder as gr
+    from .uicomp.selectable_text import SelectableText
+except ImportError:
+    from audio_transcriber import AudioTranscriber
+    import prompts
+    from global_vars import TranscriptionGlobals, T_GLOBALS
+    import constants
+    import gpt_responder as gr
+    from uicomp.selectable_text import SelectableText
 from tsutils.language import LANGUAGES_DICT
 from tsutils import utilities
 from tsutils import app_logging as al
 from tsutils import configuration
-from uicomp.selectable_text import SelectableText
-import numpy as np
-from PIL import Image
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-from io import BytesIO
-from tkinter import *
-from PIL import ImageTk, Image
-import re
 
 
 logger = al.get_module_logger(al.UI_LOGGER)

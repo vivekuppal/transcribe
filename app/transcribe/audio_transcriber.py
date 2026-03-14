@@ -14,12 +14,15 @@ import wave
 import tempfile
 import pyaudiowpatch as pyaudio
 # from db import AppDB as appdb
-import conversation  # noqa: E402 pylint: disable=C0413
-import constants  # noqa: E402 pylint: disable=C0413
+try:
+    from . import constants, conversation
+except ImportError:
+    import conversation
+    import constants
 sys.path.append('../..')
-import custom_speech_recognition as sr  # noqa: E402 pylint: disable=C0413
-from tsutils import app_logging as al  # noqa: E402 pylint: disable=C0413
-from tsutils import duration, utilities  # noqa: E402 pylint: disable=C0413
+import custom_speech_recognition as sr
+from tsutils import app_logging as al
+from tsutils import duration, utilities
 from sdk.transcriber_models import WhisperCPPSTTModel
 
 

@@ -1,7 +1,7 @@
 import unittest
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
-from summaries import Summary, Summaries  # Replace 'your_module' with the actual module name
+from app.transcribe.db.summaries import Summary, Summaries
 
 
 class TestSummaries(unittest.TestCase):

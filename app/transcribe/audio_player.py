@@ -9,8 +9,14 @@ import tempfile
 import threading
 import playsound
 import gtts
-from conversation import Conversation
-import constants
+
+try:
+    from .conversation import Conversation
+    from . import constants
+except ImportError:
+    from conversation import Conversation
+    import constants
+
 from tsutils import app_logging as al
 from tsutils.language import LANGUAGES_DICT
 
