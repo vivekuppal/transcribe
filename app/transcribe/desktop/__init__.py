@@ -1,5 +1,6 @@
 """Desktop application runtime composition."""
 
+from .controller import DesktopController
 from .runtime import (
     initialize_desktop_runtime,
     initiate_app_threads,
@@ -9,6 +10,7 @@ from .runtime import (
 )
 
 __all__ = [
+    "DesktopController",
     "initialize_desktop_runtime",
     "initiate_app_threads",
     "initiate_db",

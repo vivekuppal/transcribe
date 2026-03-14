@@ -11,6 +11,7 @@ try:
     from .cli.arguments import create_args, update_args_config
     from .cli.batch import handle_batch_tasks
     from .core.state import T_GLOBALS
+    from .desktop import DesktopController
     from .desktop.runtime import (
         initialize_desktop_runtime,
         initiate_app_threads,
@@ -22,6 +23,7 @@ except ImportError:
     from cli.arguments import create_args, update_args_config
     from cli.batch import handle_batch_tasks
     from core.state import T_GLOBALS
+    from desktop import DesktopController
     from desktop.runtime import initialize_desktop_runtime, initiate_app_threads, shutdown, start_audio_capture
 
 from tsutils import app_logging as al
@@ -50,7 +52,8 @@ def main():
     # Initiate logging
     log_listener = al.initiate_log(config=config)
 
-    aui = AppUI(config=config)
+    controller = DesktopController(config=config, global_vars=global_vars)
+    aui = AppUI(config=config, controller=controller)
     initiate_app_threads(global_vars=global_vars, config=config)
 
     print("READY")
