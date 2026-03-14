@@ -8,7 +8,8 @@ import customtkinter as ctk
 
 try:
     from .. import constants
-    from ..core.state import TranscriptionGlobals
+    from ..core.state import AppRuntime
+    from .presenter import DesktopPresenter
     from .services import (
         ActionLogService,
         BrowserService,
@@ -19,7 +20,8 @@ try:
     from .workflows import DesktopWorkflowService
 except ImportError:
     import constants
-    from core.state import TranscriptionGlobals
+    from core.state import AppRuntime
+    from presenter import DesktopPresenter
     from services import (
         ActionLogService,
         BrowserService,
@@ -47,30 +49,33 @@ class DesktopController:
     def __init__(
         self,
         config: dict,
-        global_vars: TranscriptionGlobals,
+        runtime: AppRuntime,
         action_log_service: ActionLogService = None,
         settings_service: SettingsService = None,
         transcript_io_service: TranscriptIOService = None,
         browser_service: BrowserService = None,
         insights_service: ConversationInsightsService = None,
         workflow_service: DesktopWorkflowService = None,
+        presenter: DesktopPresenter = None,
     ):
         self.config = config
-        self.global_vars = global_vars
+        self.global_vars = runtime
         self.ui: AppUI | None = None
+        self.presenter = presenter or DesktopPresenter()
         self.action_log_service = action_log_service or ActionLogService()
         self.settings_service = settings_service or SettingsService()
         self.transcript_io_service = transcript_io_service or TranscriptIOService()
         self.browser_service = browser_service or BrowserService()
         self.insights_service = insights_service or ConversationInsightsService()
         self.workflow_service = workflow_service or DesktopWorkflowService(
-            global_vars=self.global_vars,
+            runtime=self.global_vars,
             insights_service=self.insights_service,
         )
 
     def bind_ui(self, ui: "AppUI"):
         """Attach the active UI instance to the controller."""
         self.ui = ui
+        self.presenter.bind_ui(ui)
 
     def set_audio_device_menus(self):
         """Apply configured audio-device startup state to the UI."""
@@ -118,13 +123,7 @@ class DesktopController:
             self.capture_action(
                 f'{"Enabled " if self.global_vars.responder.enabled else "Disabled "} continuous LLM responses'
             )
-            self.ui.continuous_response_button.configure(
-                text=(
-                    "Suggest Responses Continuously"
-                    if not self.global_vars.responder.enabled
-                    else "Do Not Suggest Responses Continuously"
-                )
-            )
+            self.presenter.set_continuous_response_enabled(self.global_vars.responder.enabled)
         except Exception as exception:
             logger.error(f"Error toggling responder state: {exception}")
 
@@ -132,12 +131,7 @@ class DesktopController:
         """Toggle speaker capture state."""
         try:
             self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
-            label = (
-                "Disable Speaker"
-                if self.global_vars.speaker_audio_recorder.enabled
-                else "Enable Speaker"
-            )
-            self.ui.editmenu.entryconfigure(2, label=label)
+            self.presenter.set_speaker_enabled(self.global_vars.speaker_audio_recorder.enabled)
             self.capture_action(
                 f'{"Enabled " if self.global_vars.speaker_audio_recorder.enabled else "Disabled "} speaker input'
             )
@@ -148,12 +142,7 @@ class DesktopController:
         """Toggle microphone capture state."""
         try:
             self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
-            label = (
-                "Disable Microphone"
-                if self.global_vars.user_audio_recorder.enabled
-                else "Enable Microphone"
-            )
-            self.ui.editmenu.entryconfigure(3, label=label)
+            self.presenter.set_microphone_enabled(self.global_vars.user_audio_recorder.enabled)
             self.capture_action(
                 f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input'
             )
@@ -164,8 +153,7 @@ class DesktopController:
         """Persist the LLM response interval and update its label."""
         try:
             interval = self.settings_service.save_llm_response_interval(slider_value)
-            label_text = f"LLM Response interval: {interval} seconds"
-            self.ui.update_interval_slider_label.configure(text=label_text)
+            self.presenter.set_response_interval(interval)
             self.capture_action(f"Update LLM response interval to {interval}")
         except Exception as exception:
             logger.error(f"Error updating slider value: {exception}")
@@ -203,7 +191,7 @@ class DesktopController:
     def get_response_selected_now(self):
         """Generate an LLM response for the selected transcript text."""
         self.capture_action("Get LLM response selected now")
-        selected_text = self.ui.transcript_text.selection_get()
+        selected_text = self.presenter.get_selected_transcript_text()
         self.workflow_service.start_response_workflow(
             response_generator=lambda: self.global_vars.responder.generate_response_for_selected_text(selected_text),
             on_response=self._enqueue_response_text,
@@ -262,10 +250,7 @@ class DesktopController:
             self.capture_action(
                 f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.'
             )
-            self.ui.filemenu.entryconfigure(
-                1,
-                label="Pause Transcription" if self.global_vars.transcriber.transcribe else "Start Transcription",
-            )
+            self.presenter.set_transcription_enabled(self.global_vars.transcriber.transcribe)
         except Exception as exception:
             logger.error(f"Error setting transcript state: {exception}")
 
@@ -313,23 +298,23 @@ class DesktopController:
 
     def _enqueue_response_text(self, response_string: str):
         """Queue response text rendering on the UI thread."""
-        self.ui.enqueue_ui_action(self.ui.write_response_text, response_string)
+        self.presenter.queue_response_text(response_string)
 
     def _enqueue_loading_popup(self, title: str, message: str):
         """Queue a loading popup on the UI thread."""
-        self.ui.enqueue_ui_action(self.ui.show_loading_popup, title, message)
+        self.presenter.queue_loading_popup(title, message)
 
     def _enqueue_close_popup(self):
         """Queue popup closure on the UI thread."""
-        self.ui.enqueue_ui_action(self.ui.close_popup)
+        self.presenter.queue_close_popup()
 
     def _enqueue_message_popup(self, title: str, message: str):
         """Queue a text popup on the UI thread."""
-        self.ui.enqueue_ui_action(self.ui.show_message_popup, title, message)
+        self.presenter.queue_message_popup(title, message)
 
     def _enqueue_word_cloud_popup(self, title: str, word_cloud):
         """Queue a word cloud popup on the UI thread."""
-        self.ui.enqueue_ui_action(self.ui.show_word_cloud_popup, title, word_cloud)
+        self.presenter.queue_word_cloud_popup(title, word_cloud)
 
     def _get_word_cloud_words(self):
         """Return the transcript text used for word cloud generation."""

@@ -17,9 +17,9 @@ import requests
 from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
 
 try:
-    from .global_vars import TranscriptionGlobals
+    from .global_vars import AppRuntime, T_GLOBALS
 except ImportError:
-    from global_vars import TranscriptionGlobals
+    from global_vars import AppRuntime, T_GLOBALS
 
 from tsutils import app_logging as al
 from tsutils import utilities
@@ -114,9 +114,9 @@ def detect_ps():
         return False
 
 
-def exit_params():
+def exit_params(runtime: AppRuntime = None):
     """Params for exit of program"""
-    global_vars = TranscriptionGlobals()
+    global_vars = runtime or T_GLOBALS
     end = datetime.datetime.now()
     query_params = create_params(args=None)
     duration = end - global_vars.start
@@ -185,9 +185,9 @@ def check_dir() -> bool:
 
 class HostConfig:
     """Host Configuration"""
-    def __init__(self):
+    def __init__(self, runtime: AppRuntime = None):
         root_logger.info(HostConfig.__name__)
-        self.global_vars = TranscriptionGlobals()
+        self.global_vars = runtime or T_GLOBALS
         self._initial_req_interval = 30
         self._regular_req_interval = 7200
 
