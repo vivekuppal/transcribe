@@ -1,8 +1,6 @@
 """Encapsulates all Speech to Text functionality
 """
-import sys
 import os
-import subprocess  # nosec
 import queue
 import time
 import threading
@@ -19,11 +17,9 @@ try:
 except ImportError:
     import conversation
     import constants
-sys.path.append('../..')
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
-from tsutils import duration, utilities
-from sdk.transcriber_models import WhisperCPPSTTModel
+from tsutils import duration
 
 
 # There can be prompts for speech to text aspects as well, that have not been considered as yet.
@@ -42,7 +38,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
 
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
-                 config: dict):
+                 config: dict,
+                 audio_chunk_preprocessor=None):
         logger.info(self.__class__.__name__)
         # Transcript_data should be replaced with the conversation object.
         # We do not need to store transcription in 2 different places.
@@ -53,6 +50,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         # using separate mutex for each audio source
         self.mutex = threading.Lock()
         self.config = config
+        self.audio_chunk_preprocessor = audio_chunk_preprocessor
         self.clear_transcript_periodically: bool = \
             self.config['General']['clear_transcript_periodically']
         self.clear_transcript_interval_seconds: int = \
@@ -216,44 +214,6 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         # print(f'filesize: {os.path.getsize(file_path)}')
         return file_path
 
-    # Once these 2 PR's are resolved, we might be able to get rid of this method
-    # and use whisper.cpp for conversion to 16khz format
-    # https://github.com/ggerganov/whisper.cpp/pull/1549
-    # https://github.com/ggerganov/whisper.cpp/pull/1524
-    def convert_wav_to_16khz_format(self, file_path: str) -> str:
-        """Convert input wav file to 16 khz format, since this is the only format accepted by
-        whisper.cpp at the moment.
-        """
-        try:
-            # Convert input file to 16khz. That is a requirement for using whisper.cpp
-            # ffmpeg -i <input audio filename> -ar 16000 -ac 1 -c:a pcm_s16le -y <output audio file>
-
-            file_descritor, mod_file_path = tempfile.mkstemp(suffix=".wav")
-            os.close(file_descritor)
-            # print(f'Convert file {file_path} to 16khz file {mod_file_path}')
-            log_file = f"{utilities.get_data_path(app_name='Transcribe')}/logs/ffmpeg.txt"
-            subprocess.call(["ffmpeg", '-i', file_path, '-ar', '16000', '-ac',  # nosec
-                             '1', '-c:a', 'pcm_s16le', '-y', mod_file_path],
-                            stdout=open(file=log_file, mode='a', encoding='utf-8'),
-                            stderr=subprocess.STDOUT)
-            return mod_file_path
-        except Exception as ex:
-            print(f'ERROR: converting wav file {file_path} to 16khz.')
-            print(ex)
-            return ''
-
-    def get_wav_file_data(self, file_path):
-        """Return just the data from wav file. Does not include wav format headers and such.
-        """
-        data = None
-        try:
-            with wave.open(file_path, 'rb') as file_handle:
-                data = file_handle.readframes(file_handle.getnframes())
-        except Exception as ex:
-            print(f'ERROR: reading from wav file {file_path} to 16khz.')
-            print(ex)
-        return data
-
     def _update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken):
         logger.info(AudioTranscriber._update_last_sample_and_phrase_status.__name__)
         if not self.transcribe:
@@ -269,35 +229,12 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             else:
                 source_info["new_phrase"] = False
 
-            if isinstance(self.stt_model, WhisperCPPSTTModel):
-                # Target sample_rate: For Whisper CPP target sample rate is 16000 khz
-                # if source and target sample rates are not the same, conver to target sample rate
-                # Write wav data to file
-                # Convert to desired sample rate using ffmpeg
-                channels = int(source_info["channels"])
-                p = pyaudio.PyAudio()
-                sample_width = p.get_sample_size(pyaudio.paInt16)
-                frame_rate = int(source_info["sample_rate"])
-                file_descritor, file_path = tempfile.mkstemp(suffix=".wav")
-                os.close(file_descritor)
-
-                # Distinguish audio from speaker, microphone.
-                # Microphone audio requires a little bit of extra processing.
-                if who_spoke == 'Speaker':
-                    file_path = self.write_wav_data_to_file(data,
-                                                            channels=channels,
-                                                            sample_width=sample_width,
-                                                            frame_rate=frame_rate,
-                                                            file_path=file_path)
-                if who_spoke == 'You':
-                    audio_data = sr.AudioData(data, frame_rate, sample_width)
-                    with open(file_path, 'w+b') as file_handle:
-                        file_handle.write(audio_data.get_wav_data())
-                mod_file_path = self.convert_wav_to_16khz_format(file_path)
-                data = self.get_wav_file_data(mod_file_path)
-
-                os.unlink(file_path)
-                os.unlink(mod_file_path)
+            if self.audio_chunk_preprocessor is not None:
+                data = self.audio_chunk_preprocessor(
+                    who_spoke=who_spoke,
+                    data=data,
+                    source_info=source_info,
+                )
 
             source_info["last_sample"] += data
             source_info["last_spoken"] = time_spoken
@@ -576,8 +513,16 @@ class WhisperCPPTranscriber(AudioTranscriber):
     """
 
     def __init__(self, mic_source, speaker_source, model,
-                 convo: conversation.Conversation, config: dict):
-        super().__init__(mic_source, speaker_source, model, convo, config)
+                 convo: conversation.Conversation, config: dict,
+                 audio_chunk_preprocessor=None):
+        super().__init__(
+            mic_source,
+            speaker_source,
+            model,
+            convo,
+            config,
+            audio_chunk_preprocessor=audio_chunk_preprocessor,
+        )
         # Whisper CPP transcriber requires all files to be mono and have a
         # sample rate of 16khz
         self.audio_sources_properties["You"]["target_sample_rate"] = 16000

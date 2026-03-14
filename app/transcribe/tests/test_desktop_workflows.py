@@ -36,7 +36,7 @@ class TestDesktopWorkflowService(unittest.TestCase):
         )
         self.insights_service = MagicMock()
         self.service = DesktopWorkflowService(
-            global_vars=self.global_vars,
+            runtime=self.global_vars,
             insights_service=self.insights_service,
             thread_factory=ImmediateThread,
         )

@@ -22,11 +22,11 @@ class DesktopWorkflowService:
 
     def __init__(
         self,
-        global_vars,
+        runtime,
         insights_service: ConversationInsightsService = None,
         thread_factory=threading.Thread,
     ):
-        self.global_vars = global_vars
+        self.global_vars = runtime
         self.insights_service = insights_service or ConversationInsightsService()
         self.thread_factory = thread_factory
 

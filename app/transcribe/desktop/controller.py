@@ -8,7 +8,7 @@ import customtkinter as ctk
 
 try:
     from .. import constants
-    from ..core.state import TranscriptionGlobals
+    from ..core.state import AppRuntime
     from .services import (
         ActionLogService,
         BrowserService,
@@ -19,7 +19,7 @@ try:
     from .workflows import DesktopWorkflowService
 except ImportError:
     import constants
-    from core.state import TranscriptionGlobals
+    from core.state import AppRuntime
     from services import (
         ActionLogService,
         BrowserService,
@@ -47,7 +47,7 @@ class DesktopController:
     def __init__(
         self,
         config: dict,
-        global_vars: TranscriptionGlobals,
+        runtime: AppRuntime,
         action_log_service: ActionLogService = None,
         settings_service: SettingsService = None,
         transcript_io_service: TranscriptIOService = None,
@@ -56,7 +56,7 @@ class DesktopController:
         workflow_service: DesktopWorkflowService = None,
     ):
         self.config = config
-        self.global_vars = global_vars
+        self.global_vars = runtime
         self.ui: AppUI | None = None
         self.action_log_service = action_log_service or ActionLogService()
         self.settings_service = settings_service or SettingsService()
@@ -64,7 +64,7 @@ class DesktopController:
         self.browser_service = browser_service or BrowserService()
         self.insights_service = insights_service or ConversationInsightsService()
         self.workflow_service = workflow_service or DesktopWorkflowService(
-            global_vars=self.global_vars,
+            runtime=self.global_vars,
             insights_service=self.insights_service,
         )
 

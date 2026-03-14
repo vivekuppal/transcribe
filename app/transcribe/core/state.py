@@ -12,7 +12,7 @@ try:
 except ImportError:
     from core.conversation import Conversation
 
-from tsutils import Singleton, task_queue, utilities
+from tsutils import task_queue, utilities
 
 try:
     from ..sdk import audio_recorder as ar
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
         from audio_transcriber import AudioTranscriber
 
 
-class TranscriptionGlobals(Singleton.Singleton):
-    """Shared runtime state for the application."""
+class AppRuntime:
+    """Explicit runtime state for a single application instance."""
 
     audio_queue: queue.Queue = None
     user_audio_recorder: ar.MicRecorder = None
@@ -48,7 +48,7 @@ class TranscriptionGlobals(Singleton.Singleton):
     current_working_dir: str = None
     db_context: dict = None
     convo: Conversation = None
-    _initialized: bool = None
+    _initialized: bool = False
 
     def __init__(self):
         if self._initialized:
@@ -112,6 +112,22 @@ class TranscriptionGlobals(Singleton.Singleton):
         self.read_response = value
         if self.audio_player_var is not None:
             self.audio_player_var.read_response = value
+
+
+def create_app_runtime() -> AppRuntime:
+    """Create a new application runtime instance."""
+    return AppRuntime()
+
+
+class TranscriptionGlobals(AppRuntime):
+    """Compatibility singleton wrapper for legacy imports."""
+
+    _default_instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._default_instance is None:
+            cls._default_instance = super().__new__(cls)
+        return cls._default_instance
 
 
 T_GLOBALS = TranscriptionGlobals()

@@ -5,6 +5,9 @@ from __future__ import annotations
 import os
 import subprocess  # nosec
 import tempfile
+import wave
+import pyaudiowpatch as pyaudio
+import custom_speech_recognition as sr
 from sdk import transcriber_models as tm
 
 try:
@@ -36,6 +39,44 @@ def ensure_ffmpeg_available():
     except FileNotFoundError:
         print("ERROR: The ffmpeg library is not installed. Please install ffmpeg and try again.")
         raise SystemExit(1)
+
+
+def read_wav_file_data(file_path: str):
+    """Return raw frame data from a wav file."""
+    with wave.open(file_path, "rb") as file_handle:
+        return file_handle.readframes(file_handle.getnframes())
+
+
+class WhisperCppAudioPreprocessor:
+    """Normalize audio chunks into whisper.cpp's required 16 kHz mono format."""
+
+    def __call__(self, who_spoke: str, data, source_info: dict):
+        channels = int(source_info["channels"])
+        sample_width = pyaudio.PyAudio().get_sample_size(pyaudio.paInt16)
+        frame_rate = int(source_info["sample_rate"])
+        file_descriptor, file_path = tempfile.mkstemp(suffix=".wav")
+        os.close(file_descriptor)
+        converted_path = None
+
+        try:
+            if who_spoke == "Speaker":
+                with wave.open(file_path, "wb") as wav_file:
+                    wav_file.setnchannels(channels)  # pylint: disable=E1101
+                    wav_file.setsampwidth(sample_width)  # pylint: disable=E1101
+                    wav_file.setframerate(frame_rate)  # pylint: disable=E1101
+                    wav_file.writeframes(data)  # pylint: disable=E1101
+            else:
+                audio_data = sr.AudioData(data, frame_rate, sample_width)
+                with open(file_path, "w+b") as file_handle:
+                    file_handle.write(audio_data.get_wav_data())
+
+            converted_path = convert_audio_to_16khz(file_path)
+            return read_wav_file_data(converted_path)
+        finally:
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+            if converted_path and os.path.exists(converted_path):
+                os.unlink(converted_path)
 
 
 def create_stt_model(name: str, config: dict, api: bool):
@@ -87,36 +128,38 @@ def create_stt_model(name: str, config: dict, api: bool):
     raise ValueError(f"Unknown transcriber: {name}")
 
 
-def create_transcriber(name: str, config: dict, api: bool, global_vars):
+def create_transcriber(name: str, config: dict, api: bool, runtime):
     """Create the application transcriber for the selected STT provider."""
     model = create_stt_model(name=name, config=config, api=api)
+    audio_chunk_preprocessor = WhisperCppAudioPreprocessor() if name.lower() == "whisper.cpp" else None
 
     if name.lower() == "deepgram":
         transcriber = DeepgramTranscriber(
-            global_vars.user_audio_recorder.source,
-            global_vars.speaker_audio_recorder.source,
+            runtime.user_audio_recorder.source,
+            runtime.speaker_audio_recorder.source,
             model,
-            convo=global_vars.convo,
+            convo=runtime.convo,
             config=config,
         )
     elif name.lower() == "whisper.cpp":
         transcriber = WhisperCPPTranscriber(
-            global_vars.user_audio_recorder.source,
-            global_vars.speaker_audio_recorder.source,
+            runtime.user_audio_recorder.source,
+            runtime.speaker_audio_recorder.source,
             model,
-            convo=global_vars.convo,
+            convo=runtime.convo,
             config=config,
+            audio_chunk_preprocessor=audio_chunk_preprocessor,
         )
     else:
         transcriber = WhisperTranscriber(
-            global_vars.user_audio_recorder.source,
-            global_vars.speaker_audio_recorder.source,
+            runtime.user_audio_recorder.source,
+            runtime.speaker_audio_recorder.source,
             model,
-            convo=global_vars.convo,
+            convo=runtime.convo,
             config=config,
         )
 
-    global_vars.set_transcriber(transcriber)
+    runtime.set_transcriber(transcriber)
     return transcriber
 
 
@@ -126,9 +169,10 @@ def convert_audio_to_16khz(file_path: str) -> str:
     file_descriptor, mod_file_path = tempfile.mkstemp(suffix=".wav")
     os.close(file_descriptor)
     log_file = f"{utilities.get_data_path(app_name='Transcribe')}/logs/ffmpeg.txt"
-    subprocess.call(
-        ["ffmpeg", "-i", file_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", "-y", mod_file_path],
-        stdout=open(file=log_file, mode="a", encoding="utf-8"),
-        stderr=subprocess.STDOUT,
-    )
+    with open(file=log_file, mode="a", encoding="utf-8") as log_handle:
+        subprocess.call(
+            ["ffmpeg", "-i", file_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", "-y", mod_file_path],
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+        )
     return mod_file_path

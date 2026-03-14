@@ -21,20 +21,20 @@ except ImportError:
 from tsutils import utilities
 
 
-def initialize_desktop_runtime(global_vars, config: dict):
+def initialize_desktop_runtime(runtime, config: dict):
     """Initialize the desktop runtime state without launching the UI."""
     ensure_ffmpeg_available()
-    initiate_db(global_vars)
-    global_vars.initiate_audio_devices(config)
+    initiate_db(runtime)
+    runtime.initiate_audio_devices(config)
     create_transcriber(
         name=config["General"]["stt"],
         config=config,
         api=bool(config["General"]["use_api"]),
-        global_vars=global_vars,
+        runtime=runtime,
     )
-    global_vars.transcriber.set_source_properties(
-        mic_source=global_vars.user_audio_recorder.source,
-        speaker_source=global_vars.speaker_audio_recorder.source,
+    runtime.transcriber.set_source_properties(
+        mic_source=runtime.user_audio_recorder.source,
+        speaker_source=runtime.speaker_audio_recorder.source,
     )
 
     data_dir = utilities.get_data_path(app_name="Transcribe")
@@ -48,23 +48,23 @@ def initialize_desktop_runtime(global_vars, config: dict):
     )
 
 
-def start_audio_capture(global_vars):
+def start_audio_capture(runtime):
     """Start microphone and speaker capture threads."""
-    user_stop_func = global_vars.user_audio_recorder.record_audio(global_vars.audio_queue)
-    global_vars.user_audio_recorder.stop_record_func = user_stop_func
+    user_stop_func = runtime.user_audio_recorder.record_audio(runtime.audio_queue)
+    runtime.user_audio_recorder.stop_record_func = user_stop_func
     time.sleep(2)
-    speaker_stop_func = global_vars.speaker_audio_recorder.record_audio(global_vars.audio_queue)
-    global_vars.speaker_audio_recorder.stop_record_func = speaker_stop_func
+    speaker_stop_func = runtime.speaker_audio_recorder.record_audio(runtime.audio_queue)
+    runtime.speaker_audio_recorder.stop_record_func = speaker_stop_func
 
 
-def initiate_app_threads(global_vars, config: dict):
+def initiate_app_threads(runtime, config: dict):
     """Start all background threads required by the desktop app."""
-    global_vars.audio_player_var = AudioPlayer(convo=global_vars.convo)
+    runtime.audio_player_var = AudioPlayer(convo=runtime.convo)
 
     transcribe_thread = threading.Thread(
-        target=global_vars.transcriber.transcribe_audio_queue,
+        target=runtime.transcriber.transcribe_audio_queue,
         name="Transcribe",
-        args=(global_vars.audio_queue,),
+        args=(runtime.audio_queue,),
         daemon=True,
     )
     transcribe_thread.start()
@@ -73,28 +73,28 @@ def initiate_app_threads(global_vars, config: dict):
     data_dir = utilities.get_data_path(app_name="Transcribe")
     llm_response_file = f"{data_dir}/{config['General']['llm_response_file']}"
     chat = config["General"]["chat_inference_provider"]
-    global_vars.responder = create_responder(
+    runtime.responder = create_responder(
         provider_name=chat,
         config=config,
-        convo=global_vars.convo,
+        convo=runtime.convo,
         save_to_file=save_llm_response_to_file,
         response_file_name=llm_response_file,
     )
-    if global_vars.responder is None:
+    if runtime.responder is None:
         print(f"FATAL: Could not create Chat Reponder for {chat}")
         raise SystemExit(1)
-    global_vars.responder.enabled = bool(config["General"]["continuous_response"])
+    runtime.responder.enabled = bool(config["General"]["continuous_response"])
 
     respond_thread = threading.Thread(
-        target=global_vars.responder.respond_to_transcriber,
+        target=runtime.responder.respond_to_transcriber,
         name="Respond",
-        args=(global_vars.transcriber,),
+        args=(runtime.transcriber,),
         daemon=True,
     )
     respond_thread.start()
 
     audio_response_thread = threading.Thread(
-        target=global_vars.audio_player_var.play_audio_loop,
+        target=runtime.audio_player_var.play_audio_loop,
         name="AudioResponse",
         args=(config,),
         daemon=True,
@@ -102,37 +102,37 @@ def initiate_app_threads(global_vars, config: dict):
     audio_response_thread.start()
 
     host_config_thread = threading.Thread(
-        target=interactions.HostConfig().host_config_loop,
+        target=interactions.HostConfig(runtime).host_config_loop,
         name="HostConfig",
         daemon=True,
     )
     host_config_thread.start()
 
     clear_transcript_thread = threading.Thread(
-        target=global_vars.transcriber.clear_transcript_data_loop,
+        target=runtime.transcriber.clear_transcript_data_loop,
         name="ClearTranscript",
-        args=(global_vars.audio_queue,),
+        args=(runtime.audio_queue,),
         daemon=True,
     )
     clear_transcript_thread.start()
 
     work_queue_thread = threading.Thread(
-        target=global_vars.task_worker.task_exec_thread,
+        target=runtime.task_worker.task_exec_thread,
         name="WorkQueue",
         daemon=True,
     )
     work_queue_thread.start()
 
 
-def initiate_db(global_vars):
+def initiate_db(runtime):
     """Set up the application database and initialize the current invocation."""
     adb = AppDB()
-    adb.initialize_db(db_context=global_vars.db_context)
+    adb.initialize_db(db_context=runtime.db_context)
     adb.initialize_app()
 
 
-def shutdown(global_vars):
+def shutdown(runtime):
     """Activities to be performed right before application shutdown."""
-    global_vars.user_audio_recorder.write_wav_data_to_file()
-    global_vars.speaker_audio_recorder.write_wav_data_to_file()
+    runtime.user_audio_recorder.write_wav_data_to_file()
+    runtime.speaker_audio_recorder.write_wav_data_to_file()
     AppDB().shutdown_app()

@@ -10,13 +10,13 @@ from PIL import ImageTk, Image
 try:
     from .audio_transcriber import AudioTranscriber
     from .desktop import DesktopCommandBinder, DesktopController, DesktopViewBuilder
-    from .global_vars import TranscriptionGlobals, T_GLOBALS
+    from .global_vars import AppRuntime, create_app_runtime
     from . import gpt_responder as gr
     from .uicomp.selectable_text import SelectableText
 except ImportError:
     from audio_transcriber import AudioTranscriber
     from desktop import DesktopCommandBinder, DesktopController, DesktopViewBuilder
-    from global_vars import TranscriptionGlobals, T_GLOBALS
+    from global_vars import AppRuntime, create_app_runtime
     import gpt_responder as gr
     from uicomp.selectable_text import SelectableText
 from tsutils import app_logging as al
@@ -28,25 +28,25 @@ UI_POLL_INTERVAL_MS = 50
 # Order of initialization can be unpredictable in python based on where imports are placed.
 # Setting it to None so comparison is deterministic in update_transcript_ui method
 last_transcript_ui_update_time: datetime.datetime = None
-global_vars_module: TranscriptionGlobals = T_GLOBALS
 
 
 class AppUI(ctk.CTk):
     """Encapsulates all UI functionality for the app
     """
-    global_vars: TranscriptionGlobals
+    global_vars: AppRuntime
     ui_font_size: int = UI_FONT_SIZE
 
     def __init__(
         self,
         config: dict,
+        runtime: AppRuntime = None,
         controller: DesktopController = None,
         view_builder: DesktopViewBuilder = None,
         command_binder: DesktopCommandBinder = None,
     ):
         super().__init__()
-        self.global_vars = TranscriptionGlobals()
-        self.controller = controller or DesktopController(config=config, global_vars=self.global_vars)
+        self.global_vars = runtime or create_app_runtime()
+        self.controller = controller or DesktopController(config=config, runtime=self.global_vars)
         self.view_builder = view_builder or DesktopViewBuilder()
         self.command_binder = command_binder or DesktopCommandBinder()
         self.popup_window = None
@@ -193,11 +193,13 @@ class AppUI(ctk.CTk):
         """Set initial transcript in UI.
         """
         update_transcript_ui(self.global_vars.transcriber,
-                             self.transcript_text)
+                             self.transcript_text,
+                             self.global_vars)
         update_response_ui(self.global_vars.responder,
                            self.response_textbox,
                            self.update_interval_slider_label,
-                           self.update_interval_slider)
+                           self.update_interval_slider,
+                           self.global_vars)
         self.global_vars.convo.set_handlers(self.queue_update_last_row,
                                             self.queue_add_transcript_line)
 
@@ -385,21 +387,16 @@ def write_in_textbox(textbox: ctk.CTkTextbox, text: str):
         textbox.tag_add('sel', a[0], a[1])
 
 
-def update_transcript_ui(transcriber: AudioTranscriber, textbox: SelectableText):
+def update_transcript_ui(transcriber: AudioTranscriber, textbox: SelectableText, runtime: AppRuntime):
     """Update the text of transcription textbox with the given text
         Args:
           transcriber: AudioTranscriber Object
           textbox: SelectableText to be updated
     """
-
     global last_transcript_ui_update_time  # pylint: disable=W0603
-    global global_vars_module  # pylint: disable=W0603
-
-    if global_vars_module is None:
-        global_vars_module = TranscriptionGlobals()
 
     # None comparison is for initialization
-    if last_transcript_ui_update_time is None or last_transcript_ui_update_time < global_vars_module.convo.last_update:
+    if last_transcript_ui_update_time is None or last_transcript_ui_update_time < runtime.convo.last_update:
         transcript_strings = transcriber.get_transcript()
         if isinstance(transcript_strings, list):
             for line in transcript_strings:
@@ -414,27 +411,22 @@ def update_transcript_ui(transcriber: AudioTranscriber, textbox: SelectableText)
 def update_response_ui(responder: gr.GPTResponder,
                        textbox: ctk.CTkTextbox,
                        update_interval_slider_label: ctk.CTkLabel,
-                       update_interval_slider: ctk.CTkSlider):
+                       update_interval_slider: ctk.CTkSlider,
+                       runtime: AppRuntime):
     """Update the text of response textbox with the given text
         Args:
           textbox: textbox to be updated
           text: updated text
     """
-    global global_vars_module  # pylint: disable=W0603
-
-    if global_vars_module is None:
-        global_vars_module = TranscriptionGlobals()
     response = None
 
-    # global_vars_module.responder.enabled --> This is continous response mode from LLM
-    # global_vars_module.update_response_now --> Get Response now from LLM
-    if global_vars_module.responder.enabled or global_vars_module.update_response_now:
+    if runtime.responder.enabled or runtime.update_response_now:
         response = responder.response
 
-    if global_vars_module.previous_response is not None:
+    if runtime.previous_response is not None:
         # User selection of previous response takes precedence over
         # Automated ping of LLM Response
-        response = global_vars_module.previous_response
+        response = runtime.previous_response
 
     if response:
         textbox.configure(state="normal")
@@ -448,4 +440,4 @@ def update_response_ui(responder: gr.GPTResponder,
                                            f'{update_interval} seconds')
 
     textbox.after(300, update_response_ui, responder, textbox,
-                  update_interval_slider_label, update_interval_slider)
+                  update_interval_slider_label, update_interval_slider, runtime)
