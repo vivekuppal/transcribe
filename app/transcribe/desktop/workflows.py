@@ -9,7 +9,7 @@ from tsutils import app_logging as al
 try:
     from .services import ConversationInsightsService
 except ImportError:
-    from services import ConversationInsightsService
+    from desktop.services import ConversationInsightsService
 
 
 logger = al.get_module_logger(al.UI_LOGGER)

@@ -6,6 +6,9 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
+from tsutils import app_logging as al
+from tsutils import configuration
+
 try:
     from .appui import AppUI
     from .cli.arguments import create_args, update_args_config
@@ -25,9 +28,6 @@ except ImportError:
     from core.state import create_app_runtime
     from desktop import DesktopController
     from desktop.runtime import initialize_desktop_runtime, initiate_app_threads, shutdown, start_audio_capture
-
-from tsutils import app_logging as al
-from tsutils import configuration
 
 
 def main():

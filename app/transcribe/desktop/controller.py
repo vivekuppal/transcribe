@@ -21,15 +21,15 @@ try:
 except ImportError:
     import constants
     from core.state import AppRuntime
-    from presenter import DesktopPresenter
-    from services import (
+    from desktop.presenter import DesktopPresenter
+    from desktop.services import (
         ActionLogService,
         BrowserService,
         ConversationInsightsService,
         SettingsService,
         TranscriptIOService,
     )
-    from workflows import DesktopWorkflowService
+    from desktop.workflows import DesktopWorkflowService
 
 from tsutils import app_logging as al
 

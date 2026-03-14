@@ -4,11 +4,9 @@ import tkinter as tk
 import customtkinter as ctk
 
 try:
-    from .audio_transcriber import AudioTranscriber
     from .desktop import DesktopCommandBinder, DesktopController, DesktopDisplayManager, DesktopViewBuilder
     from .global_vars import AppRuntime, create_app_runtime
 except ImportError:
-    from audio_transcriber import AudioTranscriber
     from desktop import DesktopCommandBinder, DesktopController, DesktopDisplayManager, DesktopViewBuilder
     from global_vars import AppRuntime, create_app_runtime
 from tsutils import app_logging as al
@@ -17,6 +15,8 @@ from tsutils import app_logging as al
 logger = al.get_module_logger(al.UI_LOGGER)
 UI_FONT_SIZE = 20
 UI_POLL_INTERVAL_MS = 50
+
+
 class AppUI(ctk.CTk):
     """Encapsulates all UI functionality for the app
     """
