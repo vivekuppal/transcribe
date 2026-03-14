@@ -15,12 +15,14 @@ from .services import (
     SettingsService,
     TranscriptIOService,
 )
+from .workflows import DesktopWorkflowService
 
 __all__ = [
     "ActionLogService",
     "BrowserService",
     "ConversationInsightsService",
     "DesktopController",
+    "DesktopWorkflowService",
     "SettingsService",
     "TranscriptIOService",
     "initialize_desktop_runtime",

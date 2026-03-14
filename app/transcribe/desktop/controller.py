@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import threading
 from typing import TYPE_CHECKING
 
 import customtkinter as ctk
@@ -17,6 +16,7 @@ try:
         SettingsService,
         TranscriptIOService,
     )
+    from .workflows import DesktopWorkflowService
 except ImportError:
     import constants
     from core.state import TranscriptionGlobals
@@ -27,6 +27,7 @@ except ImportError:
         SettingsService,
         TranscriptIOService,
     )
+    from workflows import DesktopWorkflowService
 
 from tsutils import app_logging as al
 
@@ -52,6 +53,7 @@ class DesktopController:
         transcript_io_service: TranscriptIOService = None,
         browser_service: BrowserService = None,
         insights_service: ConversationInsightsService = None,
+        workflow_service: DesktopWorkflowService = None,
     ):
         self.config = config
         self.global_vars = global_vars
@@ -61,6 +63,10 @@ class DesktopController:
         self.transcript_io_service = transcript_io_service or TranscriptIOService()
         self.browser_service = browser_service or BrowserService()
         self.insights_service = insights_service or ConversationInsightsService()
+        self.workflow_service = workflow_service or DesktopWorkflowService(
+            global_vars=self.global_vars,
+            insights_service=self.insights_service,
+        )
 
     def bind_ui(self, ui: "AppUI"):
         """Attach the active UI instance to the controller."""
@@ -166,104 +172,81 @@ class DesktopController:
 
     def get_response_now(self):
         """Generate an LLM response from the current transcript."""
-        if self.global_vars.update_response_now:
-            return
-
         self.capture_action("Get LLM response now")
-        response_ui_thread = threading.Thread(target=self.get_response_now_threaded, name="GetResponseNow")
-        response_ui_thread.daemon = True
-        response_ui_thread.start()
+        self.workflow_service.start_response_workflow(
+            response_generator=self.global_vars.responder.generate_response_from_transcript_no_check,
+            on_response=self._enqueue_response_text,
+            thread_name="GetResponseNow",
+        )
 
     def get_response_selected_now_threaded(self, text: str):
         """Generate an LLM response for the selected transcript text."""
-        self.update_response_ui_threaded(
-            lambda: self.global_vars.responder.generate_response_for_selected_text(text)
+        self.workflow_service.run_response_workflow(
+            response_generator=lambda: self.global_vars.responder.generate_response_for_selected_text(text),
+            on_response=self._enqueue_response_text,
         )
 
     def get_response_now_threaded(self):
         """Generate an LLM response for the full transcript."""
-        self.update_response_ui_threaded(
-            self.global_vars.responder.generate_response_from_transcript_no_check
+        self.workflow_service.run_response_workflow(
+            response_generator=self.global_vars.responder.generate_response_from_transcript_no_check,
+            on_response=self._enqueue_response_text,
         )
 
     def update_response_ui_threaded(self, response_generator):
         """Run response generation off the UI thread and marshal updates back."""
-        try:
-            self.global_vars.update_response_now = True
-            response_string = response_generator()
-            if self.global_vars.read_response:
-                self.global_vars.audio_player_var.speech_text_available.set()
-            if response_string:
-                self.ui.enqueue_ui_action(self.ui.write_response_text, response_string)
-        except Exception as exception:
-            logger.error(f"Error in threaded response: {exception}")
-        finally:
-            self.global_vars.update_response_now = False
+        self.workflow_service.run_response_workflow(
+            response_generator=response_generator,
+            on_response=self._enqueue_response_text,
+        )
 
     def get_response_selected_now(self):
         """Generate an LLM response for the selected transcript text."""
-        if self.global_vars.update_response_now:
-            return
-
         self.capture_action("Get LLM response selected now")
         selected_text = self.ui.transcript_text.selection_get()
-        response_ui_thread = threading.Thread(
-            target=self.get_response_selected_now_threaded,
-            args=(selected_text,),
-            name="GetResponseSelectedNow",
+        self.workflow_service.start_response_workflow(
+            response_generator=lambda: self.global_vars.responder.generate_response_for_selected_text(selected_text),
+            on_response=self._enqueue_response_text,
+            thread_name="GetResponseSelectedNow",
         )
-        response_ui_thread.daemon = True
-        response_ui_thread.start()
 
     def summarize_threaded(self):
         """Generate a summary off the UI thread."""
-        try:
-            print("Summarizing...")
-            self.ui.enqueue_ui_action(self.ui.show_loading_popup, "Summary", "Creating a summary")
-            summary = self.global_vars.responder.summarize()
-            self.ui.enqueue_ui_action(self.ui.close_popup)
-            if summary is None:
-                self.ui.enqueue_ui_action(
-                    self.ui.show_message_popup,
-                    "Summary",
-                    "Failed to get summary. Please check you have a valid API key.",
-                )
-                return
-
-            self.ui.enqueue_ui_action(self.ui.show_message_popup, "Summary", summary)
-        except Exception as exception:
-            logger.error(f"Error in summarize_threaded: {exception}")
+        self.workflow_service.run_summary_workflow(
+            summarize_fn=self.global_vars.responder.summarize,
+            on_loading=self._enqueue_loading_popup,
+            on_close=self._enqueue_close_popup,
+            on_message=self._enqueue_message_popup,
+        )
 
     def word_cloud_threaded(self):
         """Generate a word cloud off the UI thread."""
-        try:
-            self.ui.enqueue_ui_action(self.ui.close_popup)
-            words = self.global_vars.convo.get_conversation(
-                sources=[
-                    constants.PERSONA_YOU,
-                    constants.PERSONA_SPEAKER,
-                    constants.PERSONA_ASSISTANT,
-                ],
-                length=0,
-            )
-            word_cloud = self.insights_service.build_word_cloud(words)
-            self.ui.enqueue_ui_action(self.ui.show_word_cloud_popup, "Word Cloud", word_cloud)
-        except Exception as exception:
-            logger.error(f"Error in word_cloud_threaded: {exception}")
+        self.workflow_service.run_word_cloud_workflow(
+            words_provider=self._get_word_cloud_words,
+            on_close=self._enqueue_close_popup,
+            on_word_cloud=self._enqueue_word_cloud_popup,
+        )
 
     def summarize(self):
         """Start the summary worker thread."""
         self.capture_action("Get summary from LLM")
-        summarize_ui_thread = threading.Thread(target=self.summarize_threaded, name="Summarize")
-        summarize_ui_thread.daemon = True
-        summarize_ui_thread.start()
+        self.workflow_service.start_summary_workflow(
+            summarize_fn=self.global_vars.responder.summarize,
+            on_loading=self._enqueue_loading_popup,
+            on_close=self._enqueue_close_popup,
+            on_message=self._enqueue_message_popup,
+            thread_name="Summarize",
+        )
 
     def word_cloud(self):
         """Start the word cloud worker thread."""
         self.capture_action("Generate word cloud")
-        word_cloud_ui_thread = threading.Thread(target=self.word_cloud_threaded, name="WordCloud")
-        word_cloud_ui_thread.daemon = True
-        word_cloud_ui_thread.start()
+        self.workflow_service.start_word_cloud_workflow(
+            words_provider=self._get_word_cloud_words,
+            on_close=self._enqueue_close_popup,
+            on_word_cloud=self._enqueue_word_cloud_popup,
+            thread_name="WordCloud",
+        )
 
     def update_response_ui_and_read_now(self):
         """Generate a response and signal the audio player to read it aloud."""
@@ -327,3 +310,34 @@ class DesktopController:
             self.settings_service.save_response_language(lang=lang, convo=self.global_vars.convo)
         except Exception as exception:
             logger.error(f"Error setting response language: {exception}")
+
+    def _enqueue_response_text(self, response_string: str):
+        """Queue response text rendering on the UI thread."""
+        self.ui.enqueue_ui_action(self.ui.write_response_text, response_string)
+
+    def _enqueue_loading_popup(self, title: str, message: str):
+        """Queue a loading popup on the UI thread."""
+        self.ui.enqueue_ui_action(self.ui.show_loading_popup, title, message)
+
+    def _enqueue_close_popup(self):
+        """Queue popup closure on the UI thread."""
+        self.ui.enqueue_ui_action(self.ui.close_popup)
+
+    def _enqueue_message_popup(self, title: str, message: str):
+        """Queue a text popup on the UI thread."""
+        self.ui.enqueue_ui_action(self.ui.show_message_popup, title, message)
+
+    def _enqueue_word_cloud_popup(self, title: str, word_cloud):
+        """Queue a word cloud popup on the UI thread."""
+        self.ui.enqueue_ui_action(self.ui.show_word_cloud_popup, title, word_cloud)
+
+    def _get_word_cloud_words(self):
+        """Return the transcript text used for word cloud generation."""
+        return self.global_vars.convo.get_conversation(
+            sources=[
+                constants.PERSONA_YOU,
+                constants.PERSONA_SPEAKER,
+                constants.PERSONA_ASSISTANT,
+            ],
+            length=0,
+        )
