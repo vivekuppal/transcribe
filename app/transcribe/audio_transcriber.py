@@ -13,6 +13,11 @@ import tempfile
 import pyaudiowpatch as pyaudio
 # from db import AppDB as appdb
 from . import constants, conversation
+from .live_transcription import (
+    DEFAULT_AUDIO_CONTEXT_SECONDS,
+    DEFAULT_WINDOW_SECONDS,
+    LiveTranscriptManager,
+)
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
 from tsutils import duration
@@ -47,6 +52,14 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         self.mutex = threading.Lock()
         self.config = config
         self.audio_chunk_preprocessor = audio_chunk_preprocessor
+        general_config = self.config.get("General", {})
+        self.live_transcript_manager = LiveTranscriptManager(config=config)
+        self.live_transcription_window_seconds = float(
+            general_config.get("live_transcription_window_seconds", DEFAULT_WINDOW_SECONDS)
+        )
+        self.live_transcription_audio_context_seconds = float(
+            general_config.get("live_transcription_audio_context_seconds", DEFAULT_AUDIO_CONTEXT_SECONDS)
+        )
         self.clear_transcript_periodically: bool = \
             self.config['General']['clear_transcript_periodically']
         self.clear_transcript_interval_seconds: int = \
@@ -62,6 +75,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 # int
                 "channels": mic_source.channels,
                 "last_sample": bytes(),  # Raw bytes for wav format data
+                "buffer_start_seconds": 0.0,
                 # Timestamp (UTC) for when the last transcribed audio record was put in queue
                 "last_spoken": None,
                 # bool
@@ -79,6 +93,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 # int
                 "channels": speaker_source.channels,
                 "last_sample": bytes(),  # Raw bytes for wav format data
+                "buffer_start_seconds": 0.0,
                 # Timestamp (UTC) for when the last transcribed audio record was put in queue
                 "last_spoken": None,
                 # bool
@@ -119,6 +134,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             source_info = self.audio_sources_properties[who_spoke]
 
             text = ''
+            update_previous = None
             try:
                 file_descritor, path = tempfile.mkstemp(suffix=".wav")
                 os.close(file_descritor)
@@ -127,9 +143,22 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                     with duration.Duration('Transcription (Speech to Text)', screen=False):
                         logger.info(f'{datetime.datetime.now()} - Begin transcription')
                         response = self.stt_model.get_transcription(path)
-                        text = self.stt_model.process_response(response)
-                        if text != '':
-                            self._prune_audio_file(response, who_spoke, time_spoken, path)
+                        raw_text = self.stt_model.process_response(response)
+                        if raw_text != '':
+                            audio_start_seconds, audio_end_seconds = \
+                                self._get_audio_window_seconds(source_info)
+                            hypothesis = self.stt_model.normalize_response(
+                                response,
+                                audio_start_seconds=audio_start_seconds,
+                                audio_end_seconds=audio_end_seconds,
+                            )
+                            live_update = self.live_transcript_manager.process_hypothesis(
+                                speaker=who_spoke,
+                                hypothesis=hypothesis,
+                                new_phrase=source_info["new_phrase"],
+                            )
+                            text = live_update.text if live_update.changed else ''
+                            update_previous = live_update.update_previous
 
                         logger.info(f'{datetime.datetime.utcnow()} = Transcribed text: {text}')
                         logger.info(f'{datetime.datetime.utcnow()} - End transcription')
@@ -141,7 +170,12 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 os.unlink(path)
 
             if text != '' and text.lower() != 'you':
-                self.update_transcript(who_spoke, text, time_spoken)
+                self.update_transcript(
+                    who_spoke,
+                    text,
+                    time_spoken,
+                    update_previous=update_previous,
+                )
                 self.transcript_changed_event.set()
 
     def _prune_audio_file(self, results, who_spoke, time_spoken, path):
@@ -221,6 +255,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             if source_info["last_spoken"] and time_spoken - source_info["last_spoken"] \
                     > datetime.timedelta(seconds=PHRASE_TIMEOUT):
                 source_info["last_sample"] = bytes()
+                source_info["buffer_start_seconds"] = 0.0
                 source_info["new_phrase"] = True
             else:
                 source_info["new_phrase"] = False
@@ -233,7 +268,54 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 )
 
             source_info["last_sample"] += data
+            self._trim_audio_buffer_locked(source_info)
             source_info["last_spoken"] = time_spoken
+
+    def _trim_audio_buffer_locked(self, source_info: dict):
+        """Trim retained audio to the configured rolling live transcription window."""
+        bytes_per_second = self._bytes_per_second(source_info)
+        if bytes_per_second <= 0:
+            return
+
+        frame_size = self._frame_size(source_info)
+        max_bytes = int(self.live_transcription_window_seconds * bytes_per_second)
+        max_bytes -= max_bytes % frame_size
+        if max_bytes <= 0 or len(source_info["last_sample"]) <= max_bytes:
+            return
+
+        trim_bytes = len(source_info["last_sample"]) - max_bytes
+        trim_bytes -= trim_bytes % frame_size
+        if trim_bytes <= 0:
+            return
+
+        source_info["last_sample"] = source_info["last_sample"][trim_bytes:]
+        source_info["buffer_start_seconds"] += trim_bytes / bytes_per_second
+
+    def _get_audio_window_seconds(self, source_info: dict) -> tuple[float, float]:
+        """Return the retained audio window boundaries in source-relative seconds."""
+        with source_info["mutex"]:
+            start_seconds = float(source_info.get("buffer_start_seconds", 0.0))
+            duration_seconds = self._audio_duration_seconds(source_info)
+            return start_seconds, start_seconds + duration_seconds
+
+    def _audio_duration_seconds(self, source_info: dict) -> float:
+        bytes_per_second = self._bytes_per_second(source_info)
+        if bytes_per_second <= 0:
+            return 0.0
+        return len(source_info["last_sample"]) / bytes_per_second
+
+    @staticmethod
+    def _frame_size(source_info: dict) -> int:
+        sample_width = int(source_info.get("sample_width", 2))
+        channels = int(source_info.get("target_channels", source_info.get("channels", 1)))
+        return max(sample_width * channels, 1)
+
+    @classmethod
+    def _bytes_per_second(cls, source_info: dict) -> int:
+        sample_width = int(source_info.get("sample_width", 2))
+        channels = int(source_info.get("target_channels", source_info.get("channels", 1)))
+        sample_rate = int(source_info.get("target_sample_rate", source_info.get("sample_rate", 0)))
+        return max(sample_width * channels * sample_rate, 0)
 
     def process_mic_data(self, data, temp_file_name):
         """Processes audio data received from the microphone
@@ -270,7 +352,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                                     frame_rate=frame_rate,
                                     file_path=temp_file_name)
 
-    def update_transcript(self, who_spoke, text, time_spoken):
+    def update_transcript(self, who_spoke, text, time_spoken, update_previous=None):
         """Update transcript with new data
         Args:
         who_spoke: Person this audio is attributed to
@@ -278,9 +360,11 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         time_spoken: Time at which audio was taken, relative to start time
         """
         source_info = self.audio_sources_properties[who_spoke]
+        if update_previous is None:
+            update_previous = not source_info["new_phrase"]
 
         # if source_info["new_phrase"] or len(transcript) == 0:
-        if source_info["new_phrase"]:
+        if not update_previous:
             self.conversation.update_conversation(persona=who_spoke,
                                                   time_spoken=time_spoken,
                                                   text=text)
@@ -333,9 +417,12 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         """
         self.audio_sources_properties["You"]["last_sample"] = bytes()
         self.audio_sources_properties["Speaker"]["last_sample"] = bytes()
+        self.audio_sources_properties["You"]["buffer_start_seconds"] = 0.0
+        self.audio_sources_properties["Speaker"]["buffer_start_seconds"] = 0.0
 
         self.audio_sources_properties["You"]["new_phrase"] = True
         self.audio_sources_properties["Speaker"]["new_phrase"] = True
+        self.live_transcript_manager.clear()
 
         self.conversation.clear_conversation_data()
 

@@ -1,0 +1,120 @@
+"""Tests for live transcription reconciliation."""
+
+import unittest
+
+from app.transcribe.live_transcription import LiveTranscriptManager
+from sdk.transcription_result import TranscriptSegment, TranscriptionHypothesis
+
+
+def hypothesis(text, segments=None, start=0.0, end=10.0):
+    return TranscriptionHypothesis(
+        provider="test",
+        text=text,
+        segments=segments or [],
+        audio_start_seconds=start,
+        audio_end_seconds=end,
+    )
+
+
+class TestLiveTranscriptManager(unittest.TestCase):
+    def setUp(self):
+        self.manager = LiveTranscriptManager(
+            {
+                "General": {
+                    "live_transcription_mutable_tail_seconds": 5,
+                    "live_transcription_stability_passes": 2,
+                }
+            }
+        )
+
+    def test_overlapping_windows_do_not_duplicate_text(self):
+        first = self.manager.process_hypothesis(
+            "You",
+            hypothesis("hello world"),
+            new_phrase=True,
+        )
+        second = self.manager.process_hypothesis(
+            "You",
+            hypothesis("world again"),
+            new_phrase=False,
+        )
+
+        self.assertEqual(first.text, "hello world")
+        self.assertFalse(first.update_previous)
+        self.assertEqual(second.text, "hello world again")
+        self.assertTrue(second.update_previous)
+
+    def test_mutable_tail_correction_updates_current_text(self):
+        self.manager.process_hypothesis(
+            "You",
+            hypothesis("hello wrld"),
+            new_phrase=True,
+        )
+        update = self.manager.process_hypothesis(
+            "You",
+            hypothesis("hello world"),
+            new_phrase=False,
+        )
+
+        self.assertEqual(update.text, "hello world")
+        self.assertTrue(update.update_previous)
+
+    def test_finalized_text_is_not_rewritten_outside_mutable_tail(self):
+        self.manager.process_hypothesis(
+            "You",
+            hypothesis(
+                "first sentence second thought",
+                segments=[
+                    TranscriptSegment(0, 0.0, 3.0, "first sentence"),
+                    TranscriptSegment(1, 6.0, 9.0, "second thought"),
+                ],
+                end=10.0,
+            ),
+            new_phrase=True,
+        )
+        update = self.manager.process_hypothesis(
+            "You",
+            hypothesis("changed sentence second thought", start=5.0, end=12.0),
+            new_phrase=False,
+        )
+
+        self.assertTrue(update.text.startswith("first sentence"))
+        self.assertNotIn("changed sentence changed sentence", update.text)
+
+    def test_new_phrase_creates_new_conversation_row(self):
+        self.manager.process_hypothesis(
+            "Speaker",
+            hypothesis("old phrase"),
+            new_phrase=True,
+        )
+        update = self.manager.process_hypothesis(
+            "Speaker",
+            hypothesis("new phrase"),
+            new_phrase=True,
+        )
+
+        self.assertEqual(update.text, "new phrase")
+        self.assertFalse(update.update_previous)
+
+    def test_speakers_have_independent_state(self):
+        self.manager.process_hypothesis("You", hypothesis("hello world"), new_phrase=True)
+        self.manager.process_hypothesis("Speaker", hypothesis("different start"), new_phrase=True)
+
+        you_update = self.manager.process_hypothesis("You", hypothesis("world again"), new_phrase=False)
+        speaker_update = self.manager.process_hypothesis("Speaker", hypothesis("start here"), new_phrase=False)
+
+        self.assertEqual(you_update.text, "hello world again")
+        self.assertEqual(speaker_update.text, "different start here")
+
+    def test_clear_resets_all_state(self):
+        self.manager.process_hypothesis("You", hypothesis("hello world"), new_phrase=True)
+        self.manager.clear()
+
+        update = self.manager.process_hypothesis("You", hypothesis("fresh"), new_phrase=False)
+
+        self.assertEqual(update.text, "fresh")
+        self.assertTrue(update.update_previous)
+
+
+if __name__ == "__main__":
+    unittest.main()

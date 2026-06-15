@@ -51,6 +51,14 @@ General:
   llm_response_file: 'logs/response.txt'
 # Attempt transcription of the sound file after these number of seconds
   transcript_audio_duration_seconds: 3
+# Maximum rolling audio window retained for live transcription.
+  live_transcription_window_seconds: 30
+# Text newer than this remains mutable so later overlapping windows can correct it.
+  live_transcription_mutable_tail_seconds: 5
+# Audio context retained after stable text is committed.
+  live_transcription_audio_context_seconds: 10
+# Number of repeated hypotheses before text is considered stable.
+  live_transcription_stability_passes: 2
 # These two parameters are used together.
 # Setting clear_transcript_periodically: yes will clear transcript data at a regular interval
 # clear_transcript_interval_seconds is applicable when clear_transcript_periodically is set to Yes

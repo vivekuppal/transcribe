@@ -1,6 +1,6 @@
 # Experimental SenseVoiceSmall Backend
 
-SenseVoiceSmall is available as an optional, Windows-only speech-to-text backend. It supports ordinary file transcription and Transcribe's existing chunk-based live transcription. This integration does not implement FunASR's streaming Paraformer protocol.
+SenseVoiceSmall is available as an optional, Windows-only speech-to-text backend. It supports ordinary file transcription and Transcribe's rolling-window live transcription. This integration does not implement FunASR's streaming Paraformer protocol.
 
 ## Installation
 
