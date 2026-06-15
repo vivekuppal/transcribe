@@ -44,6 +44,52 @@ class TestLiveTranscriptManager(unittest.TestCase):
         self.assertEqual(second.text, "hello world again")
         self.assertTrue(second.update_previous)
 
+    def test_rolling_window_replaces_overlapping_region_with_minor_wording_changes(self):
+        self.manager.process_hypothesis(
+            "Speaker",
+            hypothesis(
+                "Which is a little bit annoying, but I'm gonna try to do a brutal cana rush anyway "
+                "So normally what you do against Zerg is that you just kind of expand anyway"
+            ),
+            new_phrase=True,
+        )
+
+        update = self.manager.process_hypothesis(
+            "Speaker",
+            hypothesis(
+                "Which is a little bit annoying, but I'm gonna try to do a brutal cana-rush anyway "
+                "So normally what you do against Zerg is that you just kind of expand anyway, "
+                "oh it's actually what never mind"
+            ),
+            new_phrase=False,
+        )
+
+        self.assertEqual(update.text.count("Which is a little bit annoying"), 1)
+        self.assertIn("oh it's actually what never mind", update.text)
+
+    def test_repeated_rolling_windows_do_not_grow_duplicate_blocks(self):
+        windows = [
+            "Which is a little bit annoying, but I'm gonna try to do a brutal cana rush anyway "
+            "So normally what you do against Zerg is that you just kind of expand anyway",
+            "Which is a little bit annoying, but I'm gonna try to do a brutal cana-rush anyway "
+            "So normally what you do against Zerg is that you just kind of expand anyway, oh it's actually",
+            "Which is a little bit annoying, but I'm gonna try to do a brutal canaverse anyway "
+            "So normally what you do against Zerg is that you just kind of expand anyway, oh it's actually "
+            "what never mind",
+        ]
+
+        update = None
+        for index, text in enumerate(windows):
+            update = self.manager.process_hypothesis(
+                "Speaker",
+                hypothesis(text),
+                new_phrase=index == 0,
+            )
+
+        self.assertIsNotNone(update)
+        self.assertEqual(update.text.count("Which is a little bit annoying"), 1)
+        self.assertEqual(update.text.count("So normally what you do against Zerg"), 1)
+
     def test_mutable_tail_correction_updates_current_text(self):
         self.manager.process_hypothesis(
             "You",

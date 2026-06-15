@@ -121,6 +121,10 @@ class LiveTranscriptManager:
         if overlap:
             return " ".join(existing_tokens + hypothesis_tokens[overlap:])
 
+        rolling_window_merge = cls._merge_rolling_window(existing_tokens, hypothesis_tokens)
+        if rolling_window_merge:
+            return rolling_window_merge
+
         similarity = SequenceMatcher(
             None,
             cls._normalize_for_match(existing_text),
@@ -129,6 +133,33 @@ class LiveTranscriptManager:
         if similarity >= 0.72:
             return hypothesis_text
         return f"{existing_text} {hypothesis_text}".strip()
+
+    @classmethod
+    def _merge_rolling_window(cls, existing_tokens: list[str], hypothesis_tokens: list[str]) -> str:
+        """Replace an overlapping rolling-window region instead of appending it."""
+        if not existing_tokens or not hypothesis_tokens:
+            return ""
+
+        matcher = SequenceMatcher(
+            None,
+            [cls._normalize_for_match(token) for token in existing_tokens],
+            [cls._normalize_for_match(token) for token in hypothesis_tokens],
+            autojunk=False,
+        )
+        best_match = max(matcher.get_matching_blocks(), key=lambda match: match.size)
+        if best_match.size == 0:
+            return ""
+
+        hypothesis_coverage = best_match.size / len(hypothesis_tokens)
+        existing_coverage = best_match.size / len(existing_tokens)
+        has_substantial_overlap = best_match.size >= 5 and (
+            hypothesis_coverage >= 0.35 or existing_coverage >= 0.35
+        )
+        if not has_substantial_overlap:
+            return ""
+
+        merged_tokens = existing_tokens[:best_match.a] + hypothesis_tokens[best_match.b:]
+        return " ".join(merged_tokens)
 
     @staticmethod
     def _token_overlap(existing_tokens: list[str], hypothesis_tokens: list[str]) -> int:
