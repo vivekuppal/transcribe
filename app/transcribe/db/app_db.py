@@ -61,13 +61,23 @@ class AppDB(Singleton.Singleton):
 
         # Initialize DB logger
         db_log_file_name = f'{self._db_context["db_log_file"]}'
-        db_handler = logging.FileHandler(db_log_file_name, encoding='utf-8')
         self._db_logger = logging.getLogger('sqlalchemy')
         db_handler_log_level = logging.INFO
-        db_logger_log_level = logging.DEBUG
-        db_handler.setLevel(db_handler_log_level)
-        self._db_logger.addHandler(db_handler)
+        db_logger_log_level = logging.INFO
+
+        db_log_path = str(db_log_file_name)
+        has_db_handler = any(
+            isinstance(handler, logging.FileHandler)
+            and handler.baseFilename == db_log_path
+            for handler in self._db_logger.handlers
+        )
+        if not has_db_handler:
+            db_handler = logging.FileHandler(db_log_file_name, encoding='utf-8')
+            db_handler.setLevel(db_handler_log_level)
+            self._db_logger.addHandler(db_handler)
+
         self._db_logger.setLevel(db_logger_log_level)
+        self._db_logger.propagate = False
 
         # Initialize all the tables
         self._tables[appi.TABLE_NAME] = appi.ApplicationInvocations(engine=self._engine)

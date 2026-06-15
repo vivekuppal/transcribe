@@ -100,6 +100,19 @@ def create_stt_model(name: str, config: dict, api: bool):
             stt_model_config=stt_model_config,
         )
 
+    if name.lower() == "sensevoice":
+        sensevoice_config = config.get("SenseVoice", {})
+        stt_model_config = {
+            "model": sensevoice_config.get("model", "FunAudioLLM/SenseVoiceSmall"),
+            "device": sensevoice_config.get("device", "auto"),
+            "use_itn": sensevoice_config.get("use_itn", True),
+            "audio_lang": get_language_code(config["OpenAI"]["audio_lang"]),
+        }
+        return model_factory.get_stt_model_instance(
+            stt_model=tm.STTEnum.SENSEVOICE_LOCAL,
+            stt_model_config=stt_model_config,
+        )
+
     if name.lower() == "whisper" and not api:
         stt_model_config = {
             "api_key": config["OpenAI"]["api_key"],

@@ -2,7 +2,9 @@ import sys
 import os
 import datetime
 import json
+import re
 import subprocess
+import wave
 from enum import Enum
 from abc import abstractmethod
 import openai
@@ -20,6 +22,7 @@ class STTEnum(Enum):
     WHISPER_API = 2
     WHISPER_CPP = 3
     DEEPGRAM_API = 4
+    SENSEVOICE_LOCAL = 5
 
 
 MODELS_DIR = f"{utilities.get_data_path(app_name='Transcribe')}/models/"
@@ -48,6 +51,8 @@ class STTModelFactory:
             return WhisperCPPSTTModel(stt_model_config=stt_model_config)
         elif stt_model == STTEnum.DEEPGRAM_API:
             return DeepgramSTTModel(stt_model_config=stt_model_config)
+        elif stt_model == STTEnum.SENSEVOICE_LOCAL:
+            return SenseVoiceSTTModel(stt_model_config=stt_model_config)
         raise ValueError("Unknown Speech to Text Model Type")
 
 
@@ -74,6 +79,118 @@ class STTModelInterface:
         """
         pass  # pylint: disable=W0107
 
+
+class SenseVoiceSTTModel(STTModelInterface):
+    """Optional Windows-only SenseVoiceSmall transcription backend."""
+
+    SUPPORTED_LANGUAGES = {"zh", "en", "yue", "ja", "ko", "auto"}
+    LANGUAGE_NAMES = {
+        "chinese": "zh",
+        "english": "en",
+        "cantonese": "yue",
+        "japanese": "ja",
+        "korean": "ko",
+        "auto": "auto",
+    }
+
+    def __init__(self, stt_model_config: dict):
+        if sys.platform != "win32":
+            raise RuntimeError("The experimental SenseVoice backend currently supports Windows only.")
+
+        try:
+            from funasr import AutoModel  # pylint: disable=import-outside-toplevel
+            from funasr.utils.postprocess_utils import (  # pylint: disable=import-outside-toplevel
+                rich_transcription_postprocess,
+            )
+        except ImportError as exception:
+            raise RuntimeError(
+                "SenseVoice dependencies are not installed. Run "
+                "'pip install -r requirements-sensevoice.txt' from app\\transcribe."
+            ) from exception
+
+        self.lang = self._normalize_language(stt_model_config.get("audio_lang", "auto"))
+        self.use_itn = bool(stt_model_config.get("use_itn", True))
+        self.postprocess = rich_transcription_postprocess
+        model_name = stt_model_config.get("model", "FunAudioLLM/SenseVoiceSmall")
+        device = stt_model_config.get("device", "auto")
+        if device == "auto":
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        print("[INFO] Using SenseVoiceSmall for transcription.")
+        self.audio_model = AutoModel(
+            model=model_name,
+            vad_model="fsmn-vad",
+            hub="hf",
+            disable_pbar=True,
+            vad_kwargs={"max_single_segment_time": 30000},
+            device=device,
+        )
+
+    @classmethod
+    def _normalize_language(cls, lang: str) -> str:
+        normalized = str(lang).strip().lower()
+        normalized = cls.LANGUAGE_NAMES.get(normalized, normalized)
+        return normalized if normalized in cls.SUPPORTED_LANGUAGES else "auto"
+
+    def set_lang(self, lang: str):
+        """Set the recognition language, falling back to automatic detection."""
+        self.lang = self._normalize_language(lang)
+
+    @staticmethod
+    def _audio_duration(wav_file_path: str) -> float:
+        with wave.open(wav_file_path, "rb") as wav_file:
+            return wav_file.getnframes() / float(wav_file.getframerate())
+
+    @staticmethod
+    def _sentence_segments(text: str, duration_seconds: float) -> list[dict]:
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?\u3002\uff01\uff1f])\s*", text) if part.strip()]
+        if not sentences:
+            return []
+
+        total_chars = sum(len(sentence) for sentence in sentences)
+        start = 0.0
+        segments = []
+        for segment_id, sentence in enumerate(sentences):
+            fraction = len(sentence) / total_chars if total_chars else 1 / len(sentences)
+            end = duration_seconds if segment_id == len(sentences) - 1 else start + duration_seconds * fraction
+            segments.append({"id": segment_id, "start": start, "end": end, "text": sentence})
+            start = end
+        return segments
+
+    def get_transcription(self, wav_file_path: str) -> dict:
+        """Transcribe a WAV file and normalize the result for the application."""
+        raw_response = self.audio_model.generate(
+            input=wav_file_path,
+            cache={},
+            language=self.lang,
+            use_itn=self.use_itn,
+            batch_size_s=60,
+            merge_vad=True,
+            merge_length_s=15,
+        )
+        text = " ".join(
+            self.postprocess(item.get("text", "")).strip()
+            for item in raw_response
+            if item.get("text")
+        ).strip()
+        return {
+            "text": text,
+            "segments": self._sentence_segments(text, self._audio_duration(wav_file_path)),
+            "raw_response": raw_response,
+        }
+
+    def process_response(self, response) -> str:
+        """Extract normalized transcription text."""
+        return response.get("text", "").strip() if response else ""
+
+    def get_sentences(self, wav_file_path: str) -> list[str]:
+        """Return timestamped sentences for batch file transcription."""
+        response = self.get_transcription(wav_file_path)
+        return [
+            f"{datetime.timedelta(seconds=int(segment['start']))} - "
+            f"{datetime.timedelta(seconds=int(segment['end']))}: {segment['text']}"
+            for segment in response["segments"]
+        ]
 
 class WhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper Local model

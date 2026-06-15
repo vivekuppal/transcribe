@@ -8,6 +8,32 @@ from app.transcribe.providers import stt
 
 
 class TestSTTProviders(unittest.TestCase):
+    @patch("app.transcribe.providers.stt.tm.STTModelFactory")
+    def test_create_sensevoice_model_uses_optional_configuration(self, mock_factory_class):
+        factory = mock_factory_class.return_value
+        factory.get_stt_model_instance.return_value = "sensevoice-model"
+        config = {
+            "OpenAI": {"audio_lang": "English"},
+            "SenseVoice": {
+                "model": "FunAudioLLM/SenseVoiceSmall",
+                "device": "cpu",
+                "use_itn": False,
+            },
+        }
+
+        model = stt.create_stt_model(name="sensevoice", config=config, api=False)
+
+        self.assertEqual(model, "sensevoice-model")
+        factory.get_stt_model_instance.assert_called_once_with(
+            stt_model=stt.tm.STTEnum.SENSEVOICE_LOCAL,
+            stt_model_config={
+                "model": "FunAudioLLM/SenseVoiceSmall",
+                "device": "cpu",
+                "use_itn": False,
+                "audio_lang": "en",
+            },
+        )
+
     @patch("app.transcribe.providers.stt.WhisperCPPTranscriber")
     @patch("app.transcribe.providers.stt.create_stt_model")
     def test_create_transcriber_injects_whispercpp_preprocessor(self, mock_create_stt_model, mock_transcriber):
