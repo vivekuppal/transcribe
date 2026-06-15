@@ -19,7 +19,7 @@ Then run the Windows setup script from the repository root:
 app\transcribe\setup-sensevoice.bat
 ```
 
-The script installs matching CPU builds of PyTorch 2.11 and TorchAudio 2.11, followed by the optional dependencies in `requirements-sensevoice.txt`. It stops with an error if the virtual environment is not using Python 3.11.
+The script preserves an existing CPU or CUDA PyTorch installation and installs the matching TorchAudio build. If PyTorch is not installed, it installs CPU builds of PyTorch 2.11 and TorchAudio 2.11. It then installs the optional dependencies in `requirements-sensevoice.txt`. The script stops with an error if the virtual environment is not using Python 3.11.
 
 The model files are downloaded from Hugging Face on first use. SenseVoice model weights use the FunASR Model Open Source License Agreement rather than the Transcribe project license. Review the license before distributing the model files or a bundled application.
 

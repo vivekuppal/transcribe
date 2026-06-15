@@ -25,11 +25,26 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Installing PyTorch and TorchAudio CPU builds...
-"%PYTHON%" -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url "https://download.pytorch.org/whl/cpu"
+echo Checking the installed PyTorch build...
+"%PYTHON%" -c "import torch" >nul 2>&1
 
 if errorlevel 1 (
-    echo Could not install PyTorch and TorchAudio CPU builds.
+    echo PyTorch is not installed. Installing CPU builds of PyTorch and TorchAudio...
+    "%PYTHON%" -m pip install torch==2.11.0 torchaudio==2.11.0 --index-url "https://download.pytorch.org/whl/cpu"
+) else (
+    set "TORCH_INFO_FILE=%TEMP%\transcribe-torch-info-!RANDOM!.txt"
+    "%PYTHON%" -c "import torch; print(torch.__version__.split('+')[0], 'cu' + torch.version.cuda.replace('.', '') if torch.version.cuda else 'cpu')" > "!TORCH_INFO_FILE!"
+    for /f "usebackq tokens=1,2" %%A in ("!TORCH_INFO_FILE!") do (
+        set "TORCH_VERSION=%%A"
+        set "TORCH_FLAVOR=%%B"
+    )
+    del "!TORCH_INFO_FILE!"
+    echo Preserving PyTorch !TORCH_VERSION! !TORCH_FLAVOR! and installing matching TorchAudio...
+    "%PYTHON%" -m pip install torchaudio==!TORCH_VERSION! --index-url "https://download.pytorch.org/whl/!TORCH_FLAVOR!"
+)
+
+if errorlevel 1 (
+    echo Could not prepare matching PyTorch and TorchAudio builds.
     exit /b 1
 )
 
@@ -42,7 +57,7 @@ if errorlevel 1 (
 )
 
 echo Verifying installation...
-"%PYTHON%" -c "import torch, torchaudio, funasr, modelscope; from funasr import AutoModel; print('torch=' + torch.__version__); print('torchaudio=' + torchaudio.__version__); print('funasr=' + funasr.__version__); print('modelscope=' + modelscope.__version__)"
+"%PYTHON%" -c "import torch, torchaudio, funasr, modelscope; from funasr import AutoModel; print('torch=' + torch.__version__); print('torchaudio=' + torchaudio.__version__); print('cuda_available=' + str(torch.cuda.is_available())); print('device=' + (torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')); print('funasr=' + funasr.__version__); print('modelscope=' + modelscope.__version__)"
 
 if errorlevel 1 (
     echo SenseVoice dependency verification failed.
