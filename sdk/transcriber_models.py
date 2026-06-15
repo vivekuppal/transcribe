@@ -604,8 +604,9 @@ class DeepgramSTTModel(STTModelInterface):
         # Deepgram does auto language detection.
         # self.lang = 'en-US'
         self.lang = stt_model_config['audio_lang']
+        self.model = stt_model_config.get("model", "nova-3")
 
-        print('[INFO] Using Deepgram API for transcription.')
+        print(f'[INFO] Using Deepgram API for transcription. Model: {self.model}')
         self.audio_model = DeepgramClient(stt_model_config["api_key"])
 
     def set_lang(self, lang: str):
@@ -624,7 +625,7 @@ class DeepgramSTTModel(STTModelInterface):
                 }
 
             options = PrerecordedOptions(
-                model="nova",
+                model=self.model,
                 smart_format=True,
                 utterances=True,
                 punctuate=True,
@@ -654,7 +655,7 @@ class DeepgramSTTModel(STTModelInterface):
                 }
             if self.lang.startswith('en'):
                 options = PrerecordedOptions(
-                    model="nova",
+                    model=self.model,
                     smart_format=True,
                     utterances=True,
                     punctuate=True,
@@ -663,7 +664,7 @@ class DeepgramSTTModel(STTModelInterface):
                     language=self.lang)
             else:
                 options = PrerecordedOptions(
-                    model="general",
+                    model=self.model,
                     smart_format=True,
                     utterances=True,
                     punctuate=True,

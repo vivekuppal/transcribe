@@ -26,6 +26,9 @@ OpenAI:
 
 Deepgram:
   api_key: 'API_KEY'
+  # Nova-3 is Deepgram's current high-accuracy general transcription model.
+  # It is the default for this app's chunked/pre-recorded Deepgram path.
+  model: 'nova-3'
 
 Together:
   api_key: 'API_KEY'

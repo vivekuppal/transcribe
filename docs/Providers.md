@@ -18,3 +18,14 @@ Default `base_url` for OpenAI is `https://api.openai.com/v1`
 Default `ai_model` for OpenAI is `gpt-5.4-mini`
 
 Our users have found this to be very useful in countries like Australia and China, where they cannot access the default providers directly or it is cost prohibitive to access these providers.
+
+## Deepgram Speech To Text
+
+The default Deepgram STT model is `nova-3`, configured in `parameters.yaml`:
+
+```yaml
+Deepgram:
+  model: 'nova-3'
+```
+
+Deepgram describes Nova-3 as its current high-accuracy general transcription model. For Transcribe's chunked live transcription path, this uses Deepgram's pre-recorded transcription endpoint rather than a native streaming protocol.

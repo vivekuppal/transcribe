@@ -253,6 +253,9 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
     except openai.AuthenticationError as e:
         print(e)
         return False
+    except openai.OpenAIError as e:
+        print(e)
+        return False
 
     valid_api_key = True
     return True

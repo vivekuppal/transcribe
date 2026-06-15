@@ -1,9 +1,11 @@
 import unittest
 from unittest.mock import patch
+import openai
 from tsutils.utilities import (
     merge, incrementing_filename, naturalsize,
-    download_using_bits, ensure_directory_exists
+    download_using_bits, ensure_directory_exists, is_api_key_valid
 )
+import tsutils.utilities as utilities
 
 
 class TestFunctions(unittest.TestCase):
@@ -44,6 +46,18 @@ class TestFunctions(unittest.TestCase):
     def test_ensure_directory_exists(self, mock_exists, mock_makedirs):
         ensure_directory_exists('.')
         mock_makedirs.assert_called_once_with('.')
+
+    @patch('tsutils.utilities.openai.OpenAI')
+    def test_is_api_key_valid_returns_false_for_openai_provider_errors(self, mock_openai):
+        utilities.valid_api_key = False
+        client = mock_openai.return_value
+        client.chat.completions.create.side_effect = openai.OpenAIError('model not available')
+
+        self.assertFalse(is_api_key_valid(
+            api_key='key',
+            base_url='https://api.example.com',
+            model='unavailable-model',
+        ))
 
 
 if __name__ == '__main__':
