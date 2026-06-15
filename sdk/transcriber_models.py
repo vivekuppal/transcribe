@@ -116,7 +116,7 @@ class SenseVoiceSTTModel(STTModelInterface):
         if device == "auto":
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-        print(f"[INFO] Using SenseVoiceSmall for transcription on {device}.")
+        print("[INFO] Using SenseVoiceSmall for transcription.")
         self.audio_model = AutoModel(
             model=model_name,
             vad_model="fsmn-vad",
