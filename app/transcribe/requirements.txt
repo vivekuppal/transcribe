@@ -1,10 +1,13 @@
-numpy==1.26.4
-openai-whisper==20240930
+numpy==1.26.4; python_version < "3.13"
+numpy==2.1.3; python_version >= "3.13"
+openai-whisper==20250625
 Wave==0.0.2
+standard-aifc==3.13.0; python_version >= "3.13"
+audioop-lts==0.2.2; python_version >= "3.13"
 openai==1.66.3  # Latest release as of 2025-03-17
 customtkinter==5.2.2
 tkinter-tooltip  # Needed to show tooltips for ctk components
-PyAudioWPatch==0.2.12.6
+PyAudioWPatch==0.2.12.8
 pyperclip
 PyYAML
 soundfile
@@ -19,7 +22,7 @@ deepgram-sdk==3.2.5
 --extra-index-url https://download.pytorch.org/whl/cu121
 torch
 bandit==1.7.8
-SqlAlchemy==2.0.29
+SqlAlchemy==2.0.31
 setuptools
 appdirs
 pillow==12.2.0
