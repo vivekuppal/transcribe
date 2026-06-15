@@ -83,6 +83,7 @@ Connect on LinkedIn to discuss further.
 - [Speech Mode](./docs/SpeechMode.md)
 - [Save Content](./docs/SaveContent.md)
 - [Model Selection](./docs/ModelSelection.md)
+- [Experimental SenseVoiceSmall backend](./docs/SenseVoice.md)
 - [Batch Operations](./docs/BatchOperations.md)
 - [Application Configuration](./docs/AppConfig.md)
 - [OpenAI API Compatible Provider Support](./docs/Providers.md)

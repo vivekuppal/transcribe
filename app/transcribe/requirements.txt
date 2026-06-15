@@ -16,11 +16,8 @@ gtts
 # in case of continuous play back of files in quick succession
 playsound==1.2.2
 deepgram-sdk==3.2.5
-# Use 117 to build for CPU only
-# --extra-index-url https://download.pytorch.org/whl/cu117
-#--extra-index-url https://download.pytorch.org/whl/cu118
---extra-index-url https://download.pytorch.org/whl/cu121
-torch
+# PyTorch is installed separately by setup.bat so its package index is not
+# used to resolve unrelated dependencies from this file.
 bandit==1.7.8
 SqlAlchemy==2.0.31
 setuptools

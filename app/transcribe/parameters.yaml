@@ -1,19 +1,10 @@
 OpenAI:
   api_key: 'API_KEY'
   base_url: 'https://api.openai.com/v1'
-# Possible model values
-# gpt-4o, gpt-4o-2024-05-13
-# gpt-4-turbo, gpt-4-turbo-2024-04-09, gpt-4, gpt-4-0613, gpt-4-32k, gpt-4-32k-0613
-# gpt-3.5-turbo, gpt-3.5-turbo-16k, gpt-3.5-turbo-0613, gpt-3.5-turbo-16k-0613
-# gpt-4o
-# Legacy models
-# text-davinci-003, text-davinci-002, code-davinci-002
-# See this link for available models
-# https://platform.openai.com/docs/models/continuous-model-upgrades
-# https://platform.openai.com/docs/models
-# We do not support o3-mini out of the box, because it does not support
-# some of the parameters for several API
-  ai_model: gpt-4o-mini
+# gpt-5.4-mini is the default price/performance option for general responses.
+# Use gpt-5.4-nano for simpler, lower-cost workloads, or gpt-5.4 for higher quality.
+# See https://developers.openai.com/api/docs/models
+  ai_model: gpt-5.4-mini
 # Local model file to use for transcription.
 # Can also be specified using the -m parameter on command line of the application
   local_transcripton_model_file: 'base'
@@ -45,6 +36,12 @@ Together:
 WhisperCpp:
   # Can also be specified using the -m parameter on command line of the application
   local_transcripton_model_file: 'base'
+
+SenseVoice:
+  # Experimental Windows-only backend. Run setup-sensevoice.bat first.
+  model: 'FunAudioLLM/SenseVoiceSmall'
+  device: 'auto'  # auto, cpu, or cuda:0
+  use_itn: True
 
 General:
   log_file: 'logs/Transcribe.log'

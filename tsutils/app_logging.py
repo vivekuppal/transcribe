@@ -31,6 +31,7 @@ def initiate_log(config: dict) -> handlers.QueueListener:
     log_listener = handlers.QueueListener(que, handler)
     root_logger.setLevel(level=logging.INFO)
     root_logger.addHandler(queue_handler)
+    root_logger.propagate = False
     log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(threadName)s: %(message)s')
     handler.setFormatter(log_formatter)
 

@@ -27,7 +27,7 @@ def create_args() -> argparse.Namespace:
         "--speech_to_text",
         action="store",
         default=None,
-        choices=["whisper", "whisper.cpp", "deepgram"],
+        choices=["whisper", "whisper.cpp", "deepgram", "sensevoice"],
         help="Specify the Speech to text Engine.\nLocal STT models tend to perform best for response times.\nAPI based STT models tend to perform best for accuracy.",
     )
     cmd_args.add_argument(
