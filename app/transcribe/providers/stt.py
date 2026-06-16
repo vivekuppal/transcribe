@@ -83,6 +83,7 @@ def create_stt_model(name: str, config: dict, api: bool):
     if name.lower() == "deepgram":
         stt_model_config = {
             "api_key": config["Deepgram"]["api_key"],
+            "model": config["Deepgram"].get("model", "nova-3"),
             "audio_lang": get_language_code(config["OpenAI"]["audio_lang"]),
         }
         return model_factory.get_stt_model_instance(

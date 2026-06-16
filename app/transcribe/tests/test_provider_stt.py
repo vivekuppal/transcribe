@@ -9,6 +9,50 @@ from app.transcribe.providers import stt
 
 class TestSTTProviders(unittest.TestCase):
     @patch("app.transcribe.providers.stt.tm.STTModelFactory")
+    def test_create_deepgram_model_uses_configured_nova3_model(self, mock_factory_class):
+        factory = mock_factory_class.return_value
+        factory.get_stt_model_instance.return_value = "deepgram-model"
+        config = {
+            "OpenAI": {"audio_lang": "English"},
+            "Deepgram": {
+                "api_key": "key",
+                "model": "nova-3",
+            },
+        }
+
+        model = stt.create_stt_model(name="deepgram", config=config, api=True)
+
+        self.assertEqual(model, "deepgram-model")
+        factory.get_stt_model_instance.assert_called_once_with(
+            stt_model=stt.tm.STTEnum.DEEPGRAM_API,
+            stt_model_config={
+                "api_key": "key",
+                "model": "nova-3",
+                "audio_lang": "en",
+            },
+        )
+
+    @patch("app.transcribe.providers.stt.tm.STTModelFactory")
+    def test_create_deepgram_model_defaults_to_nova3(self, mock_factory_class):
+        factory = mock_factory_class.return_value
+        factory.get_stt_model_instance.return_value = "deepgram-model"
+        config = {
+            "OpenAI": {"audio_lang": "English"},
+            "Deepgram": {"api_key": "key"},
+        }
+
+        stt.create_stt_model(name="deepgram", config=config, api=True)
+
+        factory.get_stt_model_instance.assert_called_once_with(
+            stt_model=stt.tm.STTEnum.DEEPGRAM_API,
+            stt_model_config={
+                "api_key": "key",
+                "model": "nova-3",
+                "audio_lang": "en",
+            },
+        )
+
+    @patch("app.transcribe.providers.stt.tm.STTModelFactory")
     def test_create_sensevoice_model_uses_optional_configuration(self, mock_factory_class):
         factory = mock_factory_class.return_value
         factory.get_stt_model_instance.return_value = "sensevoice-model"

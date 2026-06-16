@@ -11,6 +11,7 @@ import openai
 import whisper
 import torch
 from deepgram import (DeepgramClient, FileSource, PrerecordedOptions)
+from sdk.transcription_result import TranscriptSegment, TranscriptionHypothesis
 from tsutils import utilities
 # import pprint
 
@@ -78,6 +79,44 @@ class STTModelInterface:
         """Extract transcription from the response of the specific STT Model
         """
         pass  # pylint: disable=W0107
+
+    @abstractmethod
+    def normalize_response(
+        self,
+        response,
+        audio_start_seconds: float = 0.0,
+        audio_end_seconds: float = 0.0,
+    ) -> TranscriptionHypothesis:
+        """Normalize a provider response for live transcription reconciliation."""
+        pass  # pylint: disable=W0107
+
+
+def _segment_from_mapping(segment_id: int, segment: dict, offset_seconds: float = 0.0) -> TranscriptSegment:
+    return TranscriptSegment(
+        id=int(segment.get("id", segment_id)),
+        start_seconds=offset_seconds + float(segment.get("start", 0.0)),
+        end_seconds=offset_seconds + float(segment.get("end", 0.0)),
+        text=str(segment.get("text", "")).strip(),
+        confidence=segment.get("confidence"),
+    )
+
+
+def _single_segment(
+    text: str,
+    audio_start_seconds: float,
+    audio_end_seconds: float,
+) -> list[TranscriptSegment]:
+    text = str(text or "").strip()
+    if not text:
+        return []
+    return [
+        TranscriptSegment(
+            id=0,
+            start_seconds=audio_start_seconds,
+            end_seconds=audio_end_seconds,
+            text=text,
+        )
+    ]
 
 
 class SenseVoiceSTTModel(STTModelInterface):
@@ -182,6 +221,26 @@ class SenseVoiceSTTModel(STTModelInterface):
     def process_response(self, response) -> str:
         """Extract normalized transcription text."""
         return response.get("text", "").strip() if response else ""
+
+    def normalize_response(
+        self,
+        response,
+        audio_start_seconds: float = 0.0,
+        audio_end_seconds: float = 0.0,
+    ) -> TranscriptionHypothesis:
+        """Normalize SenseVoice's application response shape."""
+        text = self.process_response(response)
+        segments = [
+            _segment_from_mapping(index, segment, offset_seconds=audio_start_seconds)
+            for index, segment in enumerate(response.get("segments", []))
+        ] if response else []
+        return TranscriptionHypothesis(
+            provider="sensevoice",
+            text=text,
+            segments=segments or _single_segment(text, audio_start_seconds, audio_end_seconds),
+            audio_start_seconds=audio_start_seconds,
+            audio_end_seconds=audio_end_seconds,
+        )
 
     def get_sentences(self, wav_file_path: str) -> list[str]:
         """Return timestamped sentences for batch file transcription."""
@@ -307,6 +366,26 @@ class WhisperSTTModel(STTModelInterface):
         # pprint.pprint(response)
         return response['text'].strip()
 
+    def normalize_response(
+        self,
+        response,
+        audio_start_seconds: float = 0.0,
+        audio_end_seconds: float = 0.0,
+    ) -> TranscriptionHypothesis:
+        """Normalize local Whisper responses."""
+        text = self.process_response(response) if response else ""
+        segments = [
+            _segment_from_mapping(index, segment, offset_seconds=audio_start_seconds)
+            for index, segment in enumerate(response.get("segments", []))
+        ] if response else []
+        return TranscriptionHypothesis(
+            provider="whisper",
+            text=text,
+            segments=segments or _single_segment(text, audio_start_seconds, audio_end_seconds),
+            audio_start_seconds=audio_start_seconds,
+            audio_end_seconds=audio_end_seconds,
+        )
+
 
 class APIWhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper API
@@ -375,6 +454,22 @@ class APIWhisperSTTModel(STTModelInterface):
 
         return [result.text]
 
+    def normalize_response(
+        self,
+        response,
+        audio_start_seconds: float = 0.0,
+        audio_end_seconds: float = 0.0,
+    ) -> TranscriptionHypothesis:
+        """Normalize Whisper API responses, which may only include text."""
+        text = self.process_response(response) if response else ""
+        return TranscriptionHypothesis(
+            provider="whisper-api",
+            text=text,
+            segments=_single_segment(text, audio_start_seconds, audio_end_seconds),
+            audio_start_seconds=audio_start_seconds,
+            audio_end_seconds=audio_end_seconds,
+        )
+
 
 class WhisperCPPSTTModel(STTModelInterface):
     """Speech to Text using the local whisper cpp exes.
@@ -433,8 +528,10 @@ class WhisperCPPSTTModel(STTModelInterface):
             print(f'Error reading json file: {json_file_path}')
             print(exception)
 
-        os.unlink(json_file_path)
-        os.unlink(mod_file_path)
+        if os.path.exists(json_file_path):
+            os.unlink(json_file_path)
+        if mod_file_path != wav_file_path and os.path.exists(mod_file_path):
+            os.unlink(mod_file_path)
 
         return None
 
@@ -462,6 +559,37 @@ class WhisperCPPSTTModel(STTModelInterface):
 
         # raise Exception('Method not implemnted')  # pylint: disable=W0719
 
+    def normalize_response(
+        self,
+        response,
+        audio_start_seconds: float = 0.0,
+        audio_end_seconds: float = 0.0,
+    ) -> TranscriptionHypothesis:
+        """Normalize whisper.cpp JSON responses."""
+        text = self.process_response(response) if response else ""
+        segments = []
+        if response:
+            for index, segment in enumerate(response.get("transcription", [])):
+                segment_text = str(segment.get("text", "")).strip()
+                if segment_text == "[BLANK_AUDIO]":
+                    continue
+                offsets = segment.get("offsets", {})
+                segments.append(
+                    TranscriptSegment(
+                        id=index,
+                        start_seconds=audio_start_seconds + float(offsets.get("from", 0)) / 1000,
+                        end_seconds=audio_start_seconds + float(offsets.get("to", 0)) / 1000,
+                        text=segment_text,
+                    )
+                )
+        return TranscriptionHypothesis(
+            provider="whisper.cpp",
+            text=text.strip(),
+            segments=segments or _single_segment(text, audio_start_seconds, audio_end_seconds),
+            audio_start_seconds=audio_start_seconds,
+            audio_end_seconds=audio_end_seconds,
+        )
+
 
 class DeepgramSTTModel(STTModelInterface):
     """Speech to Text using the Deepgram API.
@@ -476,8 +604,9 @@ class DeepgramSTTModel(STTModelInterface):
         # Deepgram does auto language detection.
         # self.lang = 'en-US'
         self.lang = stt_model_config['audio_lang']
+        self.model = stt_model_config.get("model", "nova-3")
 
-        print('[INFO] Using Deepgram API for transcription.')
+        print(f'[INFO] Using Deepgram API for transcription. Model: {self.model}')
         self.audio_model = DeepgramClient(stt_model_config["api_key"])
 
     def set_lang(self, lang: str):
@@ -496,7 +625,7 @@ class DeepgramSTTModel(STTModelInterface):
                 }
 
             options = PrerecordedOptions(
-                model="nova",
+                model=self.model,
                 smart_format=True,
                 utterances=True,
                 punctuate=True,
@@ -526,7 +655,7 @@ class DeepgramSTTModel(STTModelInterface):
                 }
             if self.lang.startswith('en'):
                 options = PrerecordedOptions(
-                    model="nova",
+                    model=self.model,
                     smart_format=True,
                     utterances=True,
                     punctuate=True,
@@ -535,7 +664,7 @@ class DeepgramSTTModel(STTModelInterface):
                     language=self.lang)
             else:
                 options = PrerecordedOptions(
-                    model="general",
+                    model=self.model,
                     smart_format=True,
                     utterances=True,
                     punctuate=True,
@@ -566,3 +695,42 @@ class DeepgramSTTModel(STTModelInterface):
         text = response.results.channels[0].alternatives[0].transcript
         # print(f'Transcript: {text}')
         return text
+
+    def normalize_response(
+        self,
+        response,
+        audio_start_seconds: float = 0.0,
+        audio_end_seconds: float = 0.0,
+    ) -> TranscriptionHypothesis:
+        """Normalize Deepgram prerecorded responses."""
+        text = self.process_response(response) if response else ""
+        segments = []
+        try:
+            utterances = response.results.utterances
+        except AttributeError:
+            utterances = []
+
+        for index, utterance in enumerate(utterances or []):
+            start = utterance.get("start") if isinstance(utterance, dict) else getattr(utterance, "start", 0.0)
+            end = utterance.get("end") if isinstance(utterance, dict) else getattr(utterance, "end", 0.0)
+            transcript = (
+                utterance.get("transcript")
+                if isinstance(utterance, dict)
+                else getattr(utterance, "transcript", "")
+            )
+            segments.append(
+                TranscriptSegment(
+                    id=index,
+                    start_seconds=audio_start_seconds + float(start),
+                    end_seconds=audio_start_seconds + float(end),
+                    text=str(transcript).strip(),
+                )
+            )
+
+        return TranscriptionHypothesis(
+            provider="deepgram",
+            text=text.strip(),
+            segments=segments or _single_segment(text, audio_start_seconds, audio_end_seconds),
+            audio_start_seconds=audio_start_seconds,
+            audio_end_seconds=audio_end_seconds,
+        )

@@ -12,6 +12,18 @@ cd transcribe\app\transcribe
 run_tests.bat
 ```
 
+Live transcription provider smoke tests are opt-in because they require local
+models, provider binaries, optional dependencies, or API keys:
+
+```
+cd transcribe
+set TRANSCRIBE_REAL_STT_SMOKE=1
+venv\Scripts\python.exe -m unittest app.transcribe.tests.test_provider_smoke_optional -v
+```
+
+The deterministic live transcription tests use provider fixtures and mocks and
+run as part of the normal `app.transcribe.tests` suite.
+
 ## Security Scanning
 
 We use bandit for security scanning
