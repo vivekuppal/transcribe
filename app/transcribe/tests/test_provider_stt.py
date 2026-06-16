@@ -88,6 +88,8 @@ class TestSTTProviders(unittest.TestCase):
             set_transcriber=MagicMock(),
         )
         transcriber_instance = MagicMock()
+        transcriber_instance.supports_diarization = True
+        transcriber_instance.diarization_service.enabled = False
         mock_transcriber.return_value = transcriber_instance
         mock_create_stt_model.return_value = "model"
 
@@ -114,6 +116,8 @@ class TestSTTProviders(unittest.TestCase):
             set_transcriber=MagicMock(),
         )
         transcriber_instance = MagicMock()
+        transcriber_instance.supports_diarization = True
+        transcriber_instance.diarization_service.enabled = False
         mock_transcriber.return_value = transcriber_instance
         mock_create_stt_model.return_value = "model"
 
@@ -126,6 +130,30 @@ class TestSTTProviders(unittest.TestCase):
 
         kwargs = mock_transcriber.call_args.kwargs
         self.assertNotIn("audio_chunk_preprocessor", kwargs)
+
+    @patch("app.transcribe.providers.stt.WhisperTranscriber")
+    @patch("app.transcribe.providers.stt.create_stt_model")
+    def test_create_transcriber_warms_up_enabled_diarization(self, mock_create_stt_model, mock_transcriber):
+        runtime = SimpleNamespace(
+            user_audio_recorder=SimpleNamespace(source="mic"),
+            speaker_audio_recorder=SimpleNamespace(source="speaker"),
+            convo="conversation",
+            set_transcriber=MagicMock(),
+        )
+        transcriber_instance = MagicMock()
+        transcriber_instance.supports_diarization = True
+        transcriber_instance.diarization_service.enabled = True
+        mock_transcriber.return_value = transcriber_instance
+        mock_create_stt_model.return_value = "model"
+
+        stt.create_transcriber(
+            name="whisper",
+            config={"General": {}, "OpenAI": {}},
+            api=False,
+            runtime=runtime,
+        )
+
+        transcriber_instance.diarization_service.warm_up.assert_called_once_with()
 
 
 if __name__ == "__main__":

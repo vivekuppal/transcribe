@@ -80,7 +80,7 @@ class Conversation:
     def update_conversation_by_id(self, persona: str, convo_id: int, text: str):
         """Update a single conversation row by its persisted id."""
         with self._lock:
-            transcript = self.transcript_data[persona]
+            transcript = self.transcript_data.setdefault(persona, [])
             for index, (_, time_spoken, current_convo_id) in enumerate(transcript):
                 if current_convo_id == convo_id:
                     new_convo_text = f"{persona}: [{text}]\n\n"
@@ -108,7 +108,7 @@ class Conversation:
         callback_args = ()
 
         with self._lock:
-            transcript = self.transcript_data[persona]
+            transcript = self.transcript_data.setdefault(persona, [])
             convo_id = None
             convo_object = None
 
@@ -118,7 +118,6 @@ class Conversation:
                 convo_id = convo_object.get_max_convo_id(speaker=persona, inv_id=inv_id)
 
             convo_text = f"{persona}: [{text}]\n\n"
-            ui_text = f"{persona}: [{text}]\n"
 
             should_update_previous = (
                 update_previous
@@ -135,6 +134,7 @@ class Conversation:
                     convo_object.update_conversation(convo_id, text)
                     if persona.lower() != "assistant" and self.update_handler is not None:
                         callback = self.update_handler
+                        ui_text = self._format_display_entry(persona, text, time_spoken, newline_count=1)
                         callback_args = (persona, ui_text)
             else:
                 if (
@@ -146,6 +146,7 @@ class Conversation:
                     convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text)
                     if self.insert_handler is not None:
                         callback = self.insert_handler
+                        ui_text = self._format_display_entry(persona, text, time_spoken, newline_count=1)
                         callback_args = (ui_text,)
 
             transcript.append((convo_text, time_spoken, convo_id))
@@ -184,9 +185,9 @@ class Conversation:
         persona = input_text[:end_speaker].strip()
         convo_id = None
         with self._lock:
-            transcript = self.transcript_data[persona]
+            transcript = self.transcript_data.get(persona, [])
             for first, _, third in transcript:
-                if first.strip() == input_text.strip():
+                if first.strip() == self._display_text_to_conversation_text(input_text).strip():
                     convo_id = third
                     break
 
@@ -201,6 +202,19 @@ class Conversation:
 
     def get_conversation(self, sources: list | None = None, length: int = 0) -> str:
         """Return a merged transcript for the requested personas."""
+        return self._get_conversation(sources=sources, length=length, display_timestamps=False)
+
+    def get_display_conversation(self, sources: list | None = None, length: int = 0) -> str:
+        """Return a merged transcript formatted for the transcript window."""
+        return self._get_conversation(sources=sources, length=length, display_timestamps=True)
+
+    def _get_conversation(
+        self,
+        sources: list | None = None,
+        length: int = 0,
+        display_timestamps: bool = False,
+    ) -> str:
+        """Return a merged transcript for the requested personas."""
         if sources is None:
             sources = [
                 constants.PERSONA_YOU,
@@ -212,31 +226,94 @@ class Conversation:
         with self._lock:
             combined_transcript = list(
                 merge(
-                    self.transcript_data[constants.PERSONA_YOU][-length:]
-                    if constants.PERSONA_YOU in sources
-                    else [],
-                    self.transcript_data[constants.PERSONA_SPEAKER][-length:]
-                    if constants.PERSONA_SPEAKER in sources
-                    else [],
-                    self.transcript_data[constants.PERSONA_ASSISTANT][-length:]
-                    if constants.PERSONA_ASSISTANT in sources
-                    else [],
-                    self.transcript_data[constants.PERSONA_SYSTEM][-length:]
-                    if constants.PERSONA_SYSTEM in sources
-                    else [],
+                    *self._transcript_lists_for_sources(sources=sources, length=length),
                     key=lambda x: x[1],
                 )
             )
             combined_transcript = combined_transcript[-length:]
+            if display_timestamps:
+                return "".join(
+                    [
+                        self._format_display_conversation_text(t[0], t[1])
+                        for t in combined_transcript
+                    ]
+                )
             return "".join([t[0] for t in combined_transcript])
+
+    @classmethod
+    def _format_display_entry(
+        cls,
+        persona: str,
+        text: str,
+        time_spoken,
+        newline_count: int = 2,
+    ) -> str:
+        """Format one transcript row for the desktop transcript view."""
+        return f"{persona}: [{cls._format_timestamp(time_spoken)}] [{text}]" + ("\n" * newline_count)
+
+    @classmethod
+    def _format_display_conversation_text(cls, conversation_text: str, time_spoken) -> str:
+        """Add a timestamp to a stored conversation row for display."""
+        stripped_text = conversation_text.strip()
+        speaker_end = stripped_text.find(":")
+        if speaker_end == -1:
+            return conversation_text
+
+        persona = stripped_text[:speaker_end].strip()
+        text = stripped_text[speaker_end + 1 :].strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+
+        return cls._format_display_entry(persona, text, time_spoken)
+
+    @staticmethod
+    def _format_timestamp(time_spoken) -> str:
+        """Format a transcript timestamp in local clock time."""
+        if hasattr(time_spoken, "strftime"):
+            if time_spoken.tzinfo is None:
+                time_spoken = time_spoken.replace(tzinfo=datetime.timezone.utc)
+            return time_spoken.astimezone().strftime("%H:%M:%S")
+        return str(time_spoken)
+
+    @staticmethod
+    def _display_text_to_conversation_text(input_text: str) -> str:
+        """Remove a display timestamp from a transcript row."""
+        stripped_text = input_text.strip()
+        speaker_end = stripped_text.find(":")
+        if speaker_end == -1:
+            return input_text
+
+        persona = stripped_text[:speaker_end].strip()
+        remainder = stripped_text[speaker_end + 1 :].strip()
+        if not remainder.startswith("["):
+            return input_text
+
+        timestamp_end = remainder.find("]")
+        remaining_text = remainder[timestamp_end + 1 :].strip() if timestamp_end != -1 else ""
+        timestamp_text = remainder[1:timestamp_end] if timestamp_end != -1 else ""
+        if timestamp_end == -1 or not remaining_text.startswith("[") or not Conversation._is_display_timestamp(timestamp_text):
+            return input_text
+
+        return f"{persona}: {remaining_text}"
+
+    @staticmethod
+    def _is_display_timestamp(value: str) -> bool:
+        """Return whether text matches the transcript display timestamp format."""
+        parts = value.split(":")
+        return len(parts) == 3 and all(part.isdigit() and len(part) == 2 for part in parts)
 
     def get_merged_conversation_summary(self, length: int = 0) -> list:
         """Return the conversation history formatted for summary prompts."""
         with self._lock:
-            combined_transcript = (
-                self.transcript_data[constants.PERSONA_YOU][-length:]
-                + self.transcript_data[constants.PERSONA_SPEAKER][-length:]
-                + self.transcript_data[constants.PERSONA_ASSISTANT][-length:]
+            combined_transcript = self._flatten_transcript_lists(
+                self._transcript_lists_for_sources(
+                    sources=[
+                        constants.PERSONA_YOU,
+                        constants.PERSONA_SPEAKER,
+                        constants.PERSONA_ASSISTANT,
+                    ],
+                    length=length,
+                )
             )
             sorted_transcript = sorted(combined_transcript, key=lambda x: x[1])
             sorted_transcript = sorted_transcript[-length:]
@@ -254,10 +331,15 @@ class Conversation:
     def get_merged_conversation_response(self, length: int = 0) -> list:
         """Return the conversation history formatted for response prompts."""
         with self._lock:
-            combined_transcript = (
-                self.transcript_data[constants.PERSONA_YOU][-length:]
-                + self.transcript_data[constants.PERSONA_SPEAKER][-length:]
-                + self.transcript_data[constants.PERSONA_ASSISTANT][-length:]
+            combined_transcript = self._flatten_transcript_lists(
+                self._transcript_lists_for_sources(
+                    sources=[
+                        constants.PERSONA_YOU,
+                        constants.PERSONA_SPEAKER,
+                        constants.PERSONA_ASSISTANT,
+                    ],
+                    length=length,
+                )
             )
             sorted_transcript = sorted(combined_transcript, key=lambda x: x[1])
             sorted_transcript = sorted_transcript[-length:]
@@ -274,3 +356,23 @@ class Conversation:
             print(f"    {item[1]}")
             print("  }")
         print("]")
+
+    def _transcript_lists_for_sources(self, sources: list, length: int = 0) -> list[list]:
+        """Return transcript lists matching exact or diarized source personas."""
+        return [
+            transcript[-length:]
+            for persona, transcript in self.transcript_data.items()
+            if self._persona_matches_sources(persona, sources)
+        ]
+
+    @staticmethod
+    def _flatten_transcript_lists(transcript_lists: list[list]) -> list:
+        """Flatten transcript list groups."""
+        return [item for transcript in transcript_lists for item in transcript]
+
+    @staticmethod
+    def _persona_matches_sources(persona: str, sources: list) -> bool:
+        """Return whether a persona should be included for requested sources."""
+        if persona in sources:
+            return True
+        return any(persona.startswith(f"{source} ") for source in sources)

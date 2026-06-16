@@ -7,6 +7,9 @@ from tktooltip import ToolTip
 from tsutils import utilities
 
 
+TOOLTIP_FONT_SIZE = 12
+
+
 class DesktopCommandBinder:
     """Bind menu items, widget commands, and availability state."""
 
@@ -118,10 +121,12 @@ class DesktopCommandBinder:
             button.configure(state="disabled")
 
         tooltip_message = "Add API Key in override.yaml to enable button"
+        tooltip_font = ("Arial", TOOLTIP_FONT_SIZE)
         for button in disabled_buttons:
             self.tooltip_factory(
                 button,
                 msg=tooltip_message,
+                font=tooltip_font,
                 delay=0.01,
                 follow=True,
                 parent_kwargs={"padx": 3, "pady": 3},

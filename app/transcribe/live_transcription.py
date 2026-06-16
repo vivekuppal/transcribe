@@ -174,7 +174,76 @@ class LiveTranscriptManager:
 
     @staticmethod
     def _clean_text(text: str) -> str:
-        return re.sub(r"\s+", " ", str(text or "")).strip()
+        text = re.sub(r"\s+", " ", str(text or "")).strip()
+        text = LiveTranscriptManager._collapse_repeated_sentences(text)
+        text = LiveTranscriptManager._collapse_repeated_token_phrases(text)
+        return text
+
+    @staticmethod
+    def _collapse_repeated_sentences(text: str) -> str:
+        sentences = re.findall(r"[^.!?]+[.!?]|[^.!?]+$", text)
+        if len(sentences) < 3:
+            return text
+
+        collapsed = []
+        index = 0
+        while index < len(sentences):
+            sentence = sentences[index].strip()
+            normalized = LiveTranscriptManager._normalize_for_match(sentence)
+            repeat_count = 1
+            while (
+                index + repeat_count < len(sentences)
+                and LiveTranscriptManager._normalize_for_match(sentences[index + repeat_count]) == normalized
+            ):
+                repeat_count += 1
+
+            collapsed.extend([sentence] if repeat_count >= 3 else [s.strip() for s in sentences[index:index + repeat_count]])
+            index += repeat_count
+
+        return " ".join(sentence for sentence in collapsed if sentence).strip()
+
+    @staticmethod
+    def _collapse_repeated_token_phrases(text: str) -> str:
+        tokens = text.split()
+        if len(tokens) < 9:
+            return text
+
+        output = []
+        index = 0
+        while index < len(tokens):
+            phrase_length, repeat_count = LiveTranscriptManager._repeated_phrase_at(tokens, index)
+            if repeat_count >= 3:
+                output.extend(tokens[index:index + phrase_length])
+                index += phrase_length * repeat_count
+            else:
+                output.append(tokens[index])
+                index += 1
+
+        return " ".join(output).strip()
+
+    @staticmethod
+    def _repeated_phrase_at(tokens: list[str], start: int) -> tuple[int, int]:
+        remaining = len(tokens) - start
+        max_phrase_length = min(12, remaining // 3)
+        normalized_tokens = [
+            LiveTranscriptManager._normalize_for_match(token)
+            for token in tokens
+        ]
+        for phrase_length in range(max_phrase_length, 2, -1):
+            phrase = normalized_tokens[start:start + phrase_length]
+            if not any(phrase):
+                continue
+
+            repeat_count = 1
+            next_start = start + phrase_length
+            while normalized_tokens[next_start:next_start + phrase_length] == phrase:
+                repeat_count += 1
+                next_start += phrase_length
+
+            if repeat_count >= 3:
+                return phrase_length, repeat_count
+
+        return 0, 0
 
     @staticmethod
     def _normalize_for_match(text: str) -> str:

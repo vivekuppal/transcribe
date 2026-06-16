@@ -14,6 +14,7 @@ class TranscriptSegment:
     end_seconds: float
     text: str
     confidence: float | None = None
+    speaker: str | None = None
 
 
 @dataclass(frozen=True)

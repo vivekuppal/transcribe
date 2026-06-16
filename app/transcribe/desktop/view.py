@@ -12,6 +12,9 @@ from ..uicomp.selectable_text import SelectableText
 from tsutils.language import LANGUAGES_DICT
 
 
+MENU_FONT_SIZE = 12
+
+
 class DesktopViewBuilder:
     """Build the desktop window layout and widgets."""
 
@@ -33,10 +36,12 @@ class DesktopViewBuilder:
 
     def create_menus(self, ui):
         """Create the window menu shells without binding commands."""
-        ui.menubar = tk.Menu(ui)
-        ui.filemenu = tk.Menu(ui.menubar, tearoff=False)
-        ui.editmenu = tk.Menu(ui.menubar, tearoff=False)
-        ui.helpmenu = tk.Menu(ui.menubar, tearoff=False)
+        menu_font = ("Arial", MENU_FONT_SIZE)
+        ui.option_add("*Menu.font", menu_font)
+        ui.menubar = tk.Menu(ui, font=menu_font)
+        ui.filemenu = tk.Menu(ui.menubar, tearoff=False, font=menu_font)
+        ui.editmenu = tk.Menu(ui.menubar, tearoff=False, font=menu_font)
+        ui.helpmenu = tk.Menu(ui.menubar, tearoff=False, font=menu_font)
 
         ui.menubar.add_cascade(label="File", menu=ui.filemenu)
         ui.menubar.add_cascade(label="Edit", menu=ui.editmenu)

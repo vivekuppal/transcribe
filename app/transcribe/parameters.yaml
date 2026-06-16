@@ -46,6 +46,15 @@ SenseVoice:
   device: 'auto'  # auto, cpu, or cuda:0
   use_itn: True
 
+Diarization:
+  # Optional speaker diarization. Run setup-diarization.bat first.
+  enabled: False
+  provider: 'pyannote'
+  model: 'pyannote/speaker-diarization-community-1'
+  device: 'auto'  # auto, cpu, or cuda
+  # Prefer setting HUGGINGFACE_TOKEN in the environment instead of storing it here.
+  huggingface_token: ''
+
 General:
   log_file: 'logs/Transcribe.log'
   # These two parameters are used together.

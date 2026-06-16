@@ -7,17 +7,20 @@ import threading
 import io
 import datetime
 from abc import abstractmethod
+from collections import defaultdict
 # import pprint
 import wave
 import tempfile
 import pyaudiowpatch as pyaudio
 # from db import AppDB as appdb
 from . import constants, conversation
+from .diarization import create_diarization_service
 from .live_transcription import (
     DEFAULT_AUDIO_CONTEXT_SECONDS,
     DEFAULT_WINDOW_SECONDS,
     LiveTranscriptManager,
 )
+from sdk.transcription_result import TranscriptionHypothesis
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
 from tsutils import duration
@@ -36,11 +39,13 @@ AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45
 
 
 class AudioTranscriber:   # pylint: disable=C0115, R0902
+    supports_diarization = False
 
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
                  config: dict,
-                 audio_chunk_preprocessor=None):
+                 audio_chunk_preprocessor=None,
+                 diarization_service=None):
         logger.info(self.__class__.__name__)
         # Transcript_data should be replaced with the conversation object.
         # We do not need to store transcription in 2 different places.
@@ -52,6 +57,8 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         self.mutex = threading.Lock()
         self.config = config
         self.audio_chunk_preprocessor = audio_chunk_preprocessor
+        self.diarization_service = diarization_service or create_diarization_service(config)
+        self._diarized_speaker_labels: dict[str, dict[str, str]] = defaultdict(dict)
         general_config = self.config.get("General", {})
         self.live_transcript_manager = LiveTranscriptManager(config=config)
         self.live_transcription_window_seconds = float(
@@ -135,6 +142,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
 
             text = ''
             update_previous = None
+            live_updates = []
             try:
                 file_descritor, path = tempfile.mkstemp(suffix=".wav")
                 os.close(file_descritor)
@@ -152,13 +160,15 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                                 audio_start_seconds=audio_start_seconds,
                                 audio_end_seconds=audio_end_seconds,
                             )
-                            live_update = self.live_transcript_manager.process_hypothesis(
-                                speaker=who_spoke,
+                            if self.supports_diarization:
+                                hypothesis = self.diarization_service.annotate_hypothesis(path, hypothesis)
+                            live_updates = self._get_live_updates(
+                                who_spoke=who_spoke,
                                 hypothesis=hypothesis,
                                 new_phrase=source_info["new_phrase"],
                             )
-                            text = live_update.text if live_update.changed else ''
-                            update_previous = live_update.update_previous
+                            if live_updates:
+                                text = " ".join(update["text"] for update in live_updates)
 
                         logger.info(f'{datetime.datetime.utcnow()} = Transcribed text: {text}')
                         logger.info(f'{datetime.datetime.utcnow()} - End transcription')
@@ -169,14 +179,81 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                 # print(f'transcribe_audio_queue: file: {path} filesize: {os.path.getsize(path)}')
                 os.unlink(path)
 
-            if text != '' and text.lower() != 'you':
+            for update in live_updates:
+                if update["text"] == '' or update["text"].lower() == 'you':
+                    continue
                 self.update_transcript(
-                    who_spoke,
-                    text,
+                    update["speaker"],
+                    update["text"],
                     time_spoken,
-                    update_previous=update_previous,
+                    update_previous=update["update_previous"],
                 )
                 self.transcript_changed_event.set()
+
+    def _get_live_updates(
+        self,
+        who_spoke: str,
+        hypothesis: TranscriptionHypothesis,
+        new_phrase: bool,
+    ) -> list[dict]:
+        """Return conversation updates from a normalized hypothesis."""
+        diarized_hypotheses = self._split_hypothesis_by_speaker(who_spoke, hypothesis)
+        updates = []
+        for speaker, speaker_hypothesis in diarized_hypotheses:
+            live_update = self.live_transcript_manager.process_hypothesis(
+                speaker=speaker,
+                hypothesis=speaker_hypothesis,
+                new_phrase=new_phrase,
+            )
+            if live_update.changed:
+                updates.append(
+                    {
+                        "speaker": speaker,
+                        "text": live_update.text,
+                        "update_previous": live_update.update_previous,
+                    }
+                )
+        return updates
+
+    def _split_hypothesis_by_speaker(
+        self,
+        who_spoke: str,
+        hypothesis: TranscriptionHypothesis,
+    ) -> list[tuple[str, TranscriptionHypothesis]]:
+        """Split diarized segments into per-speaker hypotheses."""
+        if not hypothesis.segments or not any(segment.speaker for segment in hypothesis.segments):
+            return [(who_spoke, hypothesis)]
+
+        grouped_segments = defaultdict(list)
+        for segment in hypothesis.segments:
+            speaker = self._display_speaker_label(who_spoke, segment.speaker)
+            grouped_segments[speaker].append(segment)
+
+        split_hypotheses = []
+        for speaker, segments in grouped_segments.items():
+            split_hypotheses.append(
+                (
+                    speaker,
+                    TranscriptionHypothesis(
+                        provider=hypothesis.provider,
+                        text=" ".join(segment.text for segment in segments).strip(),
+                        segments=segments,
+                        audio_start_seconds=hypothesis.audio_start_seconds,
+                        audio_end_seconds=hypothesis.audio_end_seconds,
+                    ),
+                )
+            )
+        return split_hypotheses
+
+    def _display_speaker_label(self, source: str, diarized_speaker: str | None) -> str:
+        """Map provider speaker labels to user-facing source-specific labels."""
+        if not diarized_speaker:
+            return source
+
+        source_labels = self._diarized_speaker_labels[source]
+        if diarized_speaker not in source_labels:
+            source_labels[diarized_speaker] = f"{source} {len(source_labels) + 1}"
+        return source_labels[diarized_speaker]
 
     def _prune_audio_file(self, results, who_spoke, time_spoken, path):
         """Checks if pruning of Audio Source is required based on transcriber
@@ -359,7 +436,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         text: Actual spoken words
         time_spoken: Time at which audio was taken, relative to start time
         """
-        source_info = self.audio_sources_properties[who_spoke]
+        source_info = self.audio_sources_properties[self._base_source(who_spoke)]
         if update_previous is None:
             update_previous = not source_info["new_phrase"]
 
@@ -374,6 +451,15 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
                                                   text=text,
                                                   update_previous=True)
 
+    @staticmethod
+    def _base_source(who_spoke: str) -> str:
+        """Return the audio source for a possibly diarized display speaker."""
+        if who_spoke.startswith(constants.PERSONA_YOU):
+            return constants.PERSONA_YOU
+        if who_spoke.startswith(constants.PERSONA_SPEAKER):
+            return constants.PERSONA_SPEAKER
+        return who_spoke
+
     def get_transcript(self, length: int = 0):
         """Get the audio transcript
         Args:
@@ -384,7 +470,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             constants.PERSONA_YOU,
             constants.PERSONA_SPEAKER
             ]
-        convo_object_return_value = self.conversation.get_conversation(
+        convo_object_return_value = self.conversation.get_display_conversation(
             sources=sources, length=length)
         return convo_object_return_value
 
@@ -423,6 +509,7 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
         self.audio_sources_properties["You"]["new_phrase"] = True
         self.audio_sources_properties["Speaker"]["new_phrase"] = True
         self.live_transcript_manager.clear()
+        self._diarized_speaker_labels.clear()
 
         self.conversation.clear_conversation_data()
 
@@ -432,6 +519,8 @@ class WhisperTranscriber(AudioTranscriber):
     Also processes the local application state as it relates to Whisper.
     Does not interact with the Whisper API or Local Whisper SDK.
     """
+    supports_diarization = True
+
     def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
         """Very long audio clips can result in latency of transcription.
         Prune long audio clips based on number of segments, audio duration.
@@ -594,6 +683,8 @@ class WhisperCPPTranscriber(AudioTranscriber):
     """Does local application specific processing related to WhisperCPPTranscriber.
     Also processes the local application state as it relates to WhisperCPP.
     """
+    supports_diarization = True
+
 
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation, config: dict,
