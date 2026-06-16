@@ -66,6 +66,7 @@ class TestDesktopCommandBinder(unittest.TestCase):
         self.assertEqual(ui.read_response_now_button.calls[-1], {"state": "disabled"})
         self.assertEqual(ui.summarize_button.calls[-1], {"state": "disabled"})
         self.assertEqual(len(tooltip_calls), 4)
+        self.assertEqual(tooltip_calls[0][1]["font"], ("Arial", 12))
 
 
 if __name__ == "__main__":

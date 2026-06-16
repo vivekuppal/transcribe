@@ -10,6 +10,8 @@ import customtkinter as ctk
 import pyperclip
 from PIL import Image, ImageTk
 
+from ..core.conversation import Conversation
+
 
 class DesktopDisplayManager:
     """Encapsulate widget-facing display updates for the desktop UI."""
@@ -136,12 +138,13 @@ class DesktopDisplayManager:
         """Open an editor for the current transcript line."""
         current_line = self.ui.transcript_text.text_widget.index("insert linestart")
         current_line_text = self.ui.transcript_text.text_widget.get(current_line, f"{current_line} lineend")
-        end_speaker = current_line_text.find(":")
+        conversation_line_text = Conversation._display_text_to_conversation_text(current_line_text)
+        end_speaker = conversation_line_text.find(":")
         if end_speaker == -1:
             return
 
-        speaker = current_line_text[:end_speaker].strip()
-        speaker_text = current_line_text[end_speaker + 1 :].strip().strip("[]")
+        speaker = conversation_line_text[:end_speaker].strip()
+        speaker_text = conversation_line_text[end_speaker + 1 :].strip().strip("[]")
 
         edit_window = tk.Toplevel(self.ui)
         edit_window.title("Edit Line")
@@ -164,7 +167,7 @@ class DesktopDisplayManager:
             text_widget = self.ui.transcript_text.text_widget
             text_widget.configure(state="normal")
             text_widget.delete(current_line, f"{current_line} lineend")
-            text_widget.insert(current_line, f"{speaker}: {new_text}")
+            text_widget.insert(current_line, self._replace_display_line_text(current_line_text, speaker, new_text))
             text_widget.configure(state="disabled")
 
             convo_id = runtime.convo.get_convo_id(persona=speaker, input_text=speaker_text)
@@ -177,6 +180,28 @@ class DesktopDisplayManager:
             padx=10,
             pady=10,
         )
+
+    @staticmethod
+    def _replace_display_line_text(current_line_text: str, speaker: str, new_text: str) -> str:
+        """Replace transcript text while preserving an existing display timestamp."""
+        stripped_text = current_line_text.strip()
+        speaker_end = stripped_text.find(":")
+        if speaker_end == -1:
+            return f"{speaker}: [{new_text}]"
+
+        remainder = stripped_text[speaker_end + 1 :].strip()
+        if remainder.startswith("["):
+            timestamp_end = remainder.find("]")
+            remaining_text = remainder[timestamp_end + 1 :].strip() if timestamp_end != -1 else ""
+            timestamp_text = remainder[1:timestamp_end] if timestamp_end != -1 else ""
+            if (
+                timestamp_end != -1
+                and remaining_text.startswith("[")
+                and Conversation._is_display_timestamp(timestamp_text)
+            ):
+                return f"{speaker}: [{timestamp_text}] [{new_text}]"
+
+        return f"{speaker}: [{new_text}]"
 
     def update_transcript_ui(self, transcriber, textbox, runtime):
         """Refresh the transcript textbox if conversation state changed."""

@@ -306,7 +306,8 @@ class WhisperSTTModel(STTModelInterface):
         result = self.audio_model.transcribe(wav_file_path,
                                              fp16=False,
                                              language=self.lang,
-                                             temperature=0)
+                                             temperature=0,
+                                             condition_on_previous_text=False)
         sentences = []
         for segment in result['segments']:
             start = str(datetime.timedelta(seconds=int(segment['start'])))
@@ -324,7 +325,8 @@ class WhisperSTTModel(STTModelInterface):
             result = self.audio_model.transcribe(wav_file_path,
                                                  fp16=False,
                                                  language=self.lang,
-                                                 temperature=0)
+                                                 temperature=0,
+                                                 condition_on_previous_text=False)
         except Exception as exception:
             print('WhisperSTTModel:get_transcription - Encountered error')
             print(exception)

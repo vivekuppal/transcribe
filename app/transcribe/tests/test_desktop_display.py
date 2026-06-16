@@ -90,6 +90,15 @@ class TestDesktopDisplayManager(unittest.TestCase):
             ],
         )
 
+    def test_replace_display_line_text_preserves_timestamp(self):
+        updated = self.manager._replace_display_line_text(
+            "Speaker: [14:05:06] [old text]",
+            "Speaker",
+            "new text",
+        )
+
+        self.assertEqual(updated, "Speaker: [14:05:06] [new text]")
+
     def test_write_response_text_updates_textbox_state(self):
         self.manager.write_response_text("response text")
 

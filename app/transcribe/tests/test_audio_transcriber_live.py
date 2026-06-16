@@ -4,6 +4,7 @@ import datetime
 import unittest
 
 from app.transcribe.audio_transcriber import WhisperTranscriber
+from sdk.transcription_result import TranscriptSegment, TranscriptionHypothesis
 
 
 class FakeSource:
@@ -70,6 +71,28 @@ class TestAudioTranscriberLiveBehavior(unittest.TestCase):
         self.assertFalse(self.conversation.updates[0]["update_previous"])
         self.assertTrue(self.conversation.updates[1]["update_previous"])
 
+    def test_diarized_hypothesis_creates_per_speaker_updates(self):
+        hypothesis = TranscriptionHypothesis(
+            provider="test",
+            text="first second",
+            segments=[
+                TranscriptSegment(0, 0.0, 1.0, "first", speaker="SPEAKER_00"),
+                TranscriptSegment(1, 1.0, 2.0, "second", speaker="SPEAKER_01"),
+            ],
+            audio_start_seconds=0.0,
+            audio_end_seconds=2.0,
+        )
+
+        updates = self.transcriber._get_live_updates("Speaker", hypothesis, new_phrase=True)
+
+        self.assertEqual(
+            updates,
+            [
+                {"speaker": "Speaker 1", "text": "first", "update_previous": False},
+                {"speaker": "Speaker 2", "text": "second", "update_previous": False},
+            ],
+        )
+
     def test_clear_transcript_data_resets_live_state_and_audio_window(self):
         self.transcriber.audio_sources_properties["You"]["last_sample"] = b"1234"
         self.transcriber.audio_sources_properties["You"]["buffer_start_seconds"] = 2.0
@@ -87,8 +110,6 @@ class TestAudioTranscriberLiveBehavior(unittest.TestCase):
 
 
 def _hypothesis(text):
-    from sdk.transcription_result import TranscriptionHypothesis
-
     return TranscriptionHypothesis(provider="test", text=text)
 
 

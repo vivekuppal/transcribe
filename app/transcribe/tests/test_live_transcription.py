@@ -90,6 +90,35 @@ class TestLiveTranscriptManager(unittest.TestCase):
         self.assertEqual(update.text.count("Which is a little bit annoying"), 1)
         self.assertEqual(update.text.count("So normally what you do against Zerg"), 1)
 
+    def test_repeated_sentence_hallucination_is_collapsed(self):
+        update = self.manager.process_hypothesis(
+            "Speaker",
+            hypothesis(
+                "I'm just a little bit more careful. "
+                "I'm just a little bit more careful. "
+                "I'm just a little bit more careful. "
+                "I'm not going to let you go. "
+                "I'm not going to let you go. "
+                "I'm not going to let you go."
+            ),
+            new_phrase=True,
+        )
+
+        self.assertEqual(update.text.count("I'm just a little bit more careful."), 1)
+        self.assertEqual(update.text.count("I'm not going to let you go."), 1)
+
+    def test_repeated_token_phrase_hallucination_is_collapsed(self):
+        update = self.manager.process_hypothesis(
+            "You",
+            hypothesis(
+                "I'm going to get a little bit of a little bit of a little bit of "
+                "a little bit of rest."
+            ),
+            new_phrase=True,
+        )
+
+        self.assertEqual(update.text, "I'm going to get a little bit of rest.")
+
     def test_mutable_tail_correction_updates_current_text(self):
         self.manager.process_hypothesis(
             "You",

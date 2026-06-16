@@ -1,0 +1,3 @@
+# Optional dependencies for speaker diarization.
+# Install the base requirements first, then install this file.
+pyannote.audio==4.0.4

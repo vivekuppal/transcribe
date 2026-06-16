@@ -4,7 +4,7 @@ openai-whisper==20250625
 Wave==0.0.2
 standard-aifc==3.13.0; python_version >= "3.13"
 audioop-lts==0.2.2; python_version >= "3.13"
-openai==1.66.3  # Latest release as of 2025-03-17
+openai==2.41.1
 customtkinter==5.2.2
 tkinter-tooltip  # Needed to show tooltips for ctk components
 PyAudioWPatch==0.2.12.8

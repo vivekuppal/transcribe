@@ -170,6 +170,10 @@ def create_transcriber(name: str, config: dict, api: bool, runtime):
             config=config,
         )
 
+    if transcriber.supports_diarization and transcriber.diarization_service.enabled:
+        print("[INFO] Loading diarization model. This may download model files on first use.")
+        transcriber.diarization_service.warm_up()
+
     runtime.set_transcriber(transcriber)
     return transcriber
 
