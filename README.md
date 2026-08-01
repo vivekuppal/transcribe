@@ -33,6 +33,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
     - Offline - FREE
     - Online - paid
       - OpenAI Whisper - **(Encouraged)**
+      - OpenAI Realtime (`gpt-live-transcribe`)
       - Deepgram
 - Chat Inference Engines
     - OpenAI
@@ -84,6 +85,7 @@ Connect on LinkedIn to discuss further.
 - [Save Content](./docs/SaveContent.md)
 - [Model Selection](./docs/ModelSelection.md)
 - [Experimental SenseVoiceSmall backend](./docs/SenseVoice.md)
+- [OpenAI Realtime transcription](./docs/OpenAIRealtime.md)
 - [Batch Operations](./docs/BatchOperations.md)
 - [Application Configuration](./docs/AppConfig.md)
 - [OpenAI API Compatible Provider Support](./docs/Providers.md)
@@ -217,6 +219,14 @@ Run the main script from `app\transcribe\` folder:
 ```
 python main.py
 ```
+
+To use native low-latency OpenAI streaming transcription instead of the default local Whisper backend:
+
+```powershell
+python main.py -stt openai-realtime
+```
+
+This mode requires an OpenAI API key and API billing, which is separate from a ChatGPT subscription. Microphone and Windows speaker loopback audio use independent sessions and remain labeled `You` and `Speaker`. See [OpenAI Realtime transcription](./docs/OpenAIRealtime.md) for configuration, costs, privacy, consent, and limitations.
 
 Upon initiation, Transcribe will begin transcribing microphone input and speaker output in real-time, optionally generating a suggested response based on the conversation. It is suggested to use continuous response feature after 1-2 minutes, once there is enough content in transcription window to provide enough context to the LLM.
 

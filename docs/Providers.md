@@ -17,6 +17,8 @@ OpenAI:
 Default `base_url` for OpenAI is `https://api.openai.com/v1`
 Default `ai_model` for OpenAI is `gpt-5.4-mini`
 
+This compatibility configuration applies to response generation. The optional `openai-realtime` STT backend connects specifically to OpenAI's Realtime WebSocket API and is configured separately under `OpenAIRealtime`; it should not be confused with the Whisper API selected by `-stt whisper --api`.
+
 Our users have found this to be very useful in countries like Australia and China, where they cannot access the default providers directly or it is cost prohibitive to access these providers.
 
 ## Deepgram Speech To Text

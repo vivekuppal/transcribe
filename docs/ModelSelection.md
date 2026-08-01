@@ -5,7 +5,7 @@ Transcribe architecture has two primary components that require model selection
 - LLM Responses
 
 ## Speech to Text
-Speech to text aspect can be done locally or online using the Whisper API. Online Speech to Text requires use of `-api` option on command line.
+Speech to text can run locally, through a recorded-window API, or through a persistent streaming API.
 
 ### Local Speech to Text
 Local Speech to Text requires model selection. By default the `base` model for English is used. This model is downloaded on the first invocation of the application. There are many more models available, though they vary by size and compute power required.
@@ -34,7 +34,19 @@ See the help of transcribe `python main.py -h` for further details on local tran
 ```
 
 ### Online Speech to Text
-Online Speech to Text option is enabled using `--api` option. This option does not require model selection as the appropriate model is selected by the API behind the scenes.
+The existing Whisper file API is enabled with `--api` while the `whisper` engine is selected:
+
+```powershell
+python main.py -stt whisper --api
+```
+
+OpenAI Realtime is a separate streaming backend and does not use `--api`:
+
+```powershell
+python main.py -stt openai-realtime
+```
+
+It uses `gpt-live-transcribe`, persistent WebSockets, and independent microphone and speaker-loopback sessions. See [OpenAI Realtime transcription](./OpenAIRealtime.md). Deepgram remains a recorded-window provider in the current application architecture.
 
 ## LLM Responses
 The quality, cost and speed of responses from LLM depends on the model chosen. Out of the box transcribe uses `gpt-3.5-turbo-0301` model as specified in parameters.yaml
