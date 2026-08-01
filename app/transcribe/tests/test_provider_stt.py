@@ -8,6 +8,34 @@ from app.transcribe.providers import stt
 
 
 class TestSTTProviders(unittest.TestCase):
+    @patch("app.transcribe.providers.stt.OpenAIRealtimeTranscriber")
+    def test_create_openai_realtime_transcriber_bypasses_file_model_factory(self, mock_transcriber):
+        runtime = SimpleNamespace(
+            user_audio_recorder=SimpleNamespace(source="mic"),
+            speaker_audio_recorder=SimpleNamespace(source="speaker"),
+            convo="conversation",
+            set_transcriber=MagicMock(),
+        )
+        transcriber_instance = MagicMock()
+        mock_transcriber.return_value = transcriber_instance
+        config = {"General": {}, "OpenAI": {}, "OpenAIRealtime": {}}
+
+        created = stt.create_transcriber(
+            name="openai-realtime",
+            config=config,
+            api=False,
+            runtime=runtime,
+        )
+
+        self.assertIs(created, transcriber_instance)
+        mock_transcriber.assert_called_once_with(
+            "mic",
+            "speaker",
+            convo="conversation",
+            config=config,
+        )
+        runtime.set_transcriber.assert_called_once_with(transcriber_instance)
+
     @patch("app.transcribe.providers.stt.tm.STTModelFactory")
     def test_create_deepgram_model_uses_configured_nova3_model(self, mock_factory_class):
         factory = mock_factory_class.return_value

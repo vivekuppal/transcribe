@@ -102,6 +102,7 @@ class Conversation:
         text: str,
         time_spoken,
         update_previous: bool = False,
+        replace_ui_partial: bool = False,
     ):
         """Insert or update a conversation fragment in memory and the database."""
         callback = None
@@ -144,7 +145,10 @@ class Conversation:
                     and convo_object is not None
                 ):
                     convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text)
-                    if self.insert_handler is not None:
+                    if replace_ui_partial and self.update_handler is not None:
+                        callback = self.update_handler
+                        callback_args = (persona, ui_text)
+                    elif self.insert_handler is not None:
                         callback = self.insert_handler
                         callback_args = (ui_text,)
 
@@ -153,6 +157,19 @@ class Conversation:
 
         if callback is not None:
             callback(*callback_args)
+
+    def publish_partial(self, persona: str, text: str, update_previous: bool = False):
+        """Render volatile provider text without adding it to memory or the database."""
+        with self._lock:
+            callback = self.update_handler if update_previous else self.insert_handler
+        if callback is None:
+            return False
+        ui_text = f"{persona}: [{text}]\n"
+        if update_previous:
+            callback(persona, ui_text)
+        else:
+            callback(ui_text)
+        return True
 
     def get_convo_id(self, persona: str, input_text: str):
         """Retrieve the persisted id for a conversation row."""

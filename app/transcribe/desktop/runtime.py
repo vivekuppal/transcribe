@@ -126,6 +126,11 @@ def initiate_db(runtime):
 
 def shutdown(runtime):
     """Activities to be performed right before application shutdown."""
+    if runtime.transcriber is not None and hasattr(runtime.transcriber, "stop"):
+        runtime.transcriber.stop()
+    for recorder in (runtime.user_audio_recorder, runtime.speaker_audio_recorder):
+        if recorder is not None and recorder.stop_record_func is not None:
+            recorder.stop_record_func(wait_for_stop=True)
     runtime.user_audio_recorder.write_wav_data_to_file()
     runtime.speaker_audio_recorder.write_wav_data_to_file()
     AppDB().shutdown_app()

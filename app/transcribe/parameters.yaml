@@ -30,6 +30,23 @@ Deepgram:
   # It is the default for this app's chunked/pre-recorded Deepgram path.
   model: 'nova-3'
 
+OpenAIRealtime:
+  # Streaming STT configuration; the API key is reused from OpenAI.api_key.
+  model: 'gpt-live-transcribe'
+  input_sample_rate: 24000
+  turn_detection: 'server_vad'
+  delay: 'low'
+  capture_chunk_duration_ms: 100
+  vad_threshold: 0.5
+  vad_prefix_padding_ms: 300
+  vad_silence_duration_ms: 500
+  reconnect_attempts: 3
+  reconnect_backoff_seconds: 2
+  # At the default 100 ms streaming cadence this buffers about 12 seconds.
+  # Overflow is reported rather than silently discarded.
+  max_buffered_chunks: 120
+  event_queue_size: 500
+
 Together:
   api_key: 'API_KEY'
   # Supported models are at https://docs.together.ai/docs/inference-models

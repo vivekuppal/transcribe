@@ -1,6 +1,7 @@
 import sys
 import os
 import queue
+import threading
 import time
 import wave
 from datetime import datetime
@@ -147,19 +148,60 @@ class BaseRecorder:
     def record_audio(self, audio_queue: queue.Queue):
         """Start recording audion from the stream and add data to queue
         """
+        if self.config["General"].get("stt", "").lower() == "openai-realtime":
+            return self._record_audio_continuously(audio_queue)
+
         def record_callback(_, audio: sr.AudioData) -> None:
             if self.enabled:
                 data = audio.get_raw_data()
-                audio_queue.put((self.source_name, data, datetime.utcnow()))
-                if self.audio_file_name:
-                    with open(file=self.audio_file_name+'.bak', mode='ab') as file_handle:
-                        file_handle.write(data)
+                self._enqueue_audio(audio_queue, data)
 
         stop_func = self.recorder.listen_in_background(source=self.source,
                                                        source_name=self.source_name,
                                                        callback=record_callback,
                                                        phrase_time_limit=self.config['General']['transcript_audio_duration_seconds'])
         return stop_func
+
+    def _record_audio_continuously(self, audio_queue: queue.Queue):
+        """Capture raw PCM blocks continuously for persistent streaming providers."""
+        stop_event = threading.Event()
+        chunk_duration_ms = int(
+            self.config.get("OpenAIRealtime", {}).get("capture_chunk_duration_ms", 100)
+        )
+        chunk_frames = max(1, int(self.source.SAMPLE_RATE * chunk_duration_ms / 1000))
+
+        def capture_loop():
+            try:
+                with self.source as active_source:
+                    while not stop_event.is_set():
+                        data = active_source.stream.read(chunk_frames)
+                        if not data:
+                            break
+                        if self.enabled:
+                            self._enqueue_audio(audio_queue, data)
+            except Exception as exception:
+                if not stop_event.is_set():
+                    logger.error("Continuous capture failed for %s: %s", self.source_name, exception)
+
+        capture_thread = threading.Thread(
+            target=capture_loop,
+            name=f"{self.source_name} Streaming Thread",
+            daemon=True,
+        )
+        capture_thread.start()
+
+        def stop_capture(wait_for_stop=True):
+            stop_event.set()
+            if wait_for_stop and capture_thread.is_alive():
+                capture_thread.join(timeout=2)
+
+        return stop_capture
+
+    def _enqueue_audio(self, audio_queue: queue.Queue, data: bytes):
+        audio_queue.put((self.source_name, data, datetime.utcnow()))
+        if self.audio_file_name:
+            with open(file=self.audio_file_name+'.bak', mode='ab') as file_handle:
+                file_handle.write(data)
 
     def write_wav_data_to_file(self) -> str:
         """Write the raw input data into a wave file
