@@ -196,6 +196,39 @@ class SelectableText(ctk.CTkFrame):
         self.text_widget.insert(END, input_text + "\n")
         self.text_widget.configure(state="disabled")
 
+    @staticmethod
+    def _row_tag(row_key: str) -> str:
+        return f"transcript-row-{row_key}"
+
+    def upsert_keyed_row(self, row_key: str, input_text: str):
+        """Insert or replace a transcript row without depending on its position."""
+        tag = self._row_tag(row_key)
+        self.text_widget.configure(state="normal")
+        ranges = self.text_widget.tag_ranges(tag)
+        if ranges:
+            start, end = ranges[0], ranges[1]
+            self.text_widget.delete(start, end)
+            self.text_widget.insert(start, input_text + "\n", tag)
+        else:
+            start = self.text_widget.index(END)
+            self.text_widget.insert(END, input_text + "\n", tag)
+        self.text_widget.configure(state="disabled")
+        self.scroll_to_bottom()
+
+    def finalize_keyed_row(self, row_key: str, input_text: str):
+        """Replace a transient row with final text and remove its provider tag."""
+        tag = self._row_tag(row_key)
+        self.text_widget.configure(state="normal")
+        ranges = self.text_widget.tag_ranges(tag)
+        if ranges:
+            start, end = ranges[0], ranges[1]
+            self.text_widget.delete(start, end)
+            self.text_widget.insert(start, input_text + "\n")
+        else:
+            self.text_widget.insert(END, input_text + "\n")
+        self.text_widget.configure(state="disabled")
+        self.scroll_to_bottom()
+
     def delete_row_starting_with(self, start_text: str):
         """Delete the row that starts with the given text."""
         self.text_widget.configure(state="normal")

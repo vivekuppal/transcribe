@@ -59,9 +59,9 @@ class SettingsService:
         config_obj.add_override_value({"General": {"llm_response_interval": interval}})
         return interval
 
-    def save_audio_language(self, lang: str, stt_model):
+    def save_audio_language(self, lang: str, transcriber):
         """Persist the STT language and update the live model."""
-        stt_model.set_lang(lang)
+        transcriber.set_language(lang)
         config_obj = self.config_factory()
         config_obj.add_override_value({"OpenAI": {"audio_lang": lang}})
 

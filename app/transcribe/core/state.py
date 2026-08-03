@@ -15,7 +15,7 @@ from sdk import audio_recorder as ar
 
 if TYPE_CHECKING:
     from ..audio_player import AudioPlayer
-    from ..audio_transcriber import AudioTranscriber
+    from ..transcriber import TranscriberInterface
 
 
 class AppRuntime:
@@ -25,7 +25,7 @@ class AppRuntime:
     user_audio_recorder: ar.MicRecorder = None
     speaker_audio_recorder: ar.SpeakerRecorder = None
     audio_player_var: "AudioPlayer" = None
-    transcriber: "AudioTranscriber" = None
+    transcriber: "TranscriberInterface" = None
     responder = None
     update_response_now: bool = False
     read_response: bool = False

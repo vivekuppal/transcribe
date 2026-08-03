@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import queue
 import threading
 import time
 
@@ -18,6 +19,9 @@ def initialize_desktop_runtime(runtime, config: dict):
     """Initialize the desktop runtime state without launching the UI."""
     ensure_ffmpeg_available()
     initiate_db(runtime)
+    if config["General"]["stt"].lower() == "openai-realtime":
+        max_chunks = max(2, int(config.get("OpenAIRealtime", {}).get("max_raw_audio_chunks", 240)))
+        runtime.audio_queue = queue.Queue(maxsize=max_chunks)
     runtime.initiate_audio_devices(config)
     create_transcriber(
         name=config["General"]["stt"],
@@ -126,7 +130,7 @@ def initiate_db(runtime):
 
 def shutdown(runtime):
     """Activities to be performed right before application shutdown."""
-    if runtime.transcriber is not None and hasattr(runtime.transcriber, "stop"):
+    if runtime.transcriber is not None:
         runtime.transcriber.stop()
     for recorder in (runtime.user_audio_recorder, runtime.speaker_audio_recorder):
         if recorder is not None and recorder.stop_record_func is not None:

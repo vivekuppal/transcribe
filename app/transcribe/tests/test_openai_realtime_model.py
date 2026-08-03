@@ -1,6 +1,7 @@
 """Unit tests for the persistent OpenAI Realtime streaming model."""
 
 import base64
+import datetime
 import json
 import math
 import os
@@ -9,7 +10,8 @@ import threading
 import time
 import unittest
 
-from sdk.streaming_transcriber_models import OpenAIRealtimeSTTModel, PCM16MonoResampler
+from app.transcribe.providers.openai_realtime import OpenAIRealtimeSTTModel
+from sdk.streaming_transcriber_models import PCM16MonoResampler, TranscriptEventKind
 
 
 class FakeWebSocketApp:
@@ -41,15 +43,16 @@ class FakeWebSocketApp:
 
 
 class FakeWebSocketFactory:
-    def __init__(self, close_first=False):
+    def __init__(self, close_first=False, close_always=False):
         self.close_first = close_first
+        self.close_always = close_always
         self.instances = []
 
     def __call__(self, *args, **kwargs):
         instance = FakeWebSocketApp(
             *args,
             **kwargs,
-            close_immediately=self.close_first and not self.instances,
+            close_immediately=self.close_always or (self.close_first and not self.instances),
         )
         self.instances.append(instance)
         return instance
@@ -89,8 +92,7 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
     def setUp(self):
         self.factory = FakeWebSocketFactory()
         self.errors = []
-        self.partials = []
-        self.completed = []
+        self.events = []
         self.model = OpenAIRealtimeSTTModel(
             source_name="You",
             source_format={"sample_rate": 16000, "sample_width": 2, "channels": 1},
@@ -106,8 +108,7 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
             sleep_func=lambda _seconds: None,
         )
         self.model.set_error_callback(lambda *args: self.errors.append(args))
-        self.model.set_partial_callback(lambda *args: self.partials.append(args))
-        self.model.set_completed_callback(lambda *args: self.completed.append(args))
+        self.model.set_transcript_callback(self.events.append)
 
     def tearDown(self):
         self.model.stop()
@@ -131,7 +132,7 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         self.assertEqual(append_event["type"], "input_audio_buffer.append")
         self.assertGreater(len(base64.b64decode(append_event["audio"])), 320)
 
-    def test_deltas_are_replaced_by_one_authoritative_completion(self):
+    def test_deltas_and_completions_are_emitted_as_typed_events(self):
         self.model.start()
         self.assertTrue(wait_for(lambda: self.model.connected))
         socket = self.factory.instances[0]
@@ -153,8 +154,35 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         socket.emit(completed)
         socket.emit(completed)
 
-        self.assertEqual(self.partials, [("You", "item-1", "Hello"), ("You", "item-1", "Hello world")])
-        self.assertEqual(self.completed, [("You", "item-1", "Hello world.")])
+        partials = [event for event in self.events if event.kind is TranscriptEventKind.PARTIAL]
+        completed_events = [event for event in self.events if event.kind is TranscriptEventKind.COMPLETED]
+        self.assertEqual([event.text for event in partials], ["Hello", "Hello world"])
+        self.assertEqual([event.text for event in completed_events], ["Hello world.", "Hello world."])
+
+    def test_completion_uses_capture_time_from_speech_start(self):
+        captured_at = datetime.datetime(2026, 1, 1, 12, 0, 1)
+        self.model.start()
+        self.assertTrue(wait_for(lambda: self.model.connected))
+        socket = self.factory.instances[0]
+        self.model.append_audio(b"\x01\x00" * 2400, captured_at=captured_at)
+        self.assertTrue(wait_for(lambda: len(socket.messages) >= 2))
+        socket.emit({
+            "type": "input_audio_buffer.speech_started",
+            "item_id": "item-timed",
+            "audio_start_ms": 25,
+        })
+        socket.emit({
+            "type": "conversation.item.input_audio_transcription.completed",
+            "item_id": "item-timed",
+            "transcript": "Timed speech",
+        })
+
+        expected = captured_at - datetime.timedelta(milliseconds=125)
+        self.assertAlmostEqual(
+            self.events[-1].time_spoken.timestamp(),
+            expected.timestamp(),
+            places=3,
+        )
 
     def test_manual_commit_and_clean_disconnect(self):
         self.model.start()
@@ -163,6 +191,25 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         self.assertEqual(self.factory.instances[0].messages[-1]["type"], "input_audio_buffer.commit")
         self.model.stop()
         self.assertFalse(self.model.connected)
+
+    def test_source_reconfiguration_is_safe_during_audio_append(self):
+        errors = []
+
+        def append_audio():
+            try:
+                for _ in range(100):
+                    self.model.append_audio(b"\x01\x00" * 160)
+            except Exception as exception:  # test captures any cross-thread failure
+                errors.append(exception)
+
+        worker = threading.Thread(target=append_audio)
+        worker.start()
+        for sample_rate in (24000, 16000, 48000, 16000):
+            self.model.configure_source({"sample_rate": sample_rate, "sample_width": 2, "channels": 1})
+        worker.join(timeout=2)
+
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(errors, [])
 
     def test_reconnects_independently_with_bounded_attempts(self):
         factory = FakeWebSocketFactory(close_first=True)
@@ -181,6 +228,32 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
             model.start()
             self.assertTrue(wait_for(lambda: len(factory.instances) == 2))
             self.assertTrue(wait_for(lambda: model.connected))
+        finally:
+            model.stop()
+
+    def test_restart_after_retry_exhaustion_replaces_sender_worker(self):
+        factory = FakeWebSocketFactory(close_always=True)
+        model = OpenAIRealtimeSTTModel(
+            source_name="Speaker",
+            source_format={"sample_rate": 48000, "sample_width": 2, "channels": 2},
+            config={"api_key": "test-key", "reconnect_attempts": 0},
+            websocket_app_factory=factory,
+            sleep_func=lambda _seconds: None,
+        )
+        try:
+            model.start()
+            first_sender = model._sender_thread
+            self.assertTrue(wait_for(lambda: not first_sender.is_alive()))
+
+            factory.close_always = False
+            model.start()
+            self.assertIsNot(model._sender_thread, first_sender)
+            self.assertTrue(wait_for(lambda: model.connected))
+            active_senders = [
+                thread for thread in threading.enumerate()
+                if thread.name == "OpenAIRealtimeSender-Speaker"
+            ]
+            self.assertEqual(len(active_senders), 1)
         finally:
             model.stop()
 

@@ -65,6 +65,10 @@ OpenAIRealtime:
   capture_chunk_duration_ms: 100
   reconnect_attempts: 3
   reconnect_backoff_seconds: 2
+  max_buffered_chunks: 120
+  max_raw_audio_chunks: 240
+  event_queue_size: 500
+  deduplication_cache_size: 2048
 ```
 
 Supported delay presets are `minimal`, `low`, `medium`, `high`, and `xhigh`. Lower delay produces earlier partials; higher delay gives the model more context. The OpenAI API may reject unsupported language codes or invalid keyword hints.
@@ -72,7 +76,9 @@ Supported delay presets are `minimal`, `low`, `medium`, `high`, and `xhigh`. Low
 ## Reliability, cost, and privacy
 
 - Microphone and speaker sessions reconnect independently with a bounded backoff.
-- Audio waiting for a temporarily disconnected socket is bounded. Buffer overflow is reported as an error rather than hidden.
+- Audio waiting for a temporarily disconnected socket is bounded. Per-session overflow is reported as an error.
+- The shared capture ingress is also bounded; if it fills, the oldest block is replaced so latency and memory remain bounded.
+- Provider item IDs are retained in a bounded cache to suppress duplicate completions without growing for the application lifetime.
 - Two enabled sources mean two independently processed live streams and corresponding API usage.
 - Audio is sent to OpenAI for transcription. Review OpenAI's current data controls and your organization's privacy requirements.
 - The application's existing shutdown flow may also save microphone and speaker WAV recordings in its local application-data directory; Realtime mode does not add audio to logs.

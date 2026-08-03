@@ -198,7 +198,15 @@ class BaseRecorder:
         return stop_capture
 
     def _enqueue_audio(self, audio_queue: queue.Queue, data: bytes):
-        audio_queue.put((self.source_name, data, datetime.utcnow()))
+        audio_item = (self.source_name, data, datetime.utcnow())
+        try:
+            audio_queue.put_nowait(audio_item)
+        except queue.Full:
+            try:
+                audio_queue.get_nowait()
+                audio_queue.put_nowait(audio_item)
+            except (queue.Empty, queue.Full):
+                logger.warning("Audio ingress buffer remained full for %s; newest block was dropped", self.source_name)
         if self.audio_file_name:
             with open(file=self.audio_file_name+'.bak', mode='ab') as file_handle:
                 file_handle.write(data)

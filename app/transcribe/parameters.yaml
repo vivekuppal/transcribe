@@ -45,7 +45,10 @@ OpenAIRealtime:
   # At the default 100 ms streaming cadence this buffers about 12 seconds.
   # Overflow is reported rather than silently discarded.
   max_buffered_chunks: 120
+  # Shared capture ingress; overflow replaces the oldest block to keep latency bounded.
+  max_raw_audio_chunks: 240
   event_queue_size: 500
+  deduplication_cache_size: 2048
 
 Together:
   api_key: 'API_KEY'

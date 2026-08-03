@@ -84,6 +84,17 @@ class TestStreamingAudioCapture(unittest.TestCase):
 
         self.assertTrue(audio_queue.empty())
 
+    def test_full_ingress_queue_replaces_oldest_audio(self):
+        recorder = self.recorder([])
+        audio_queue = queue.Queue(maxsize=2)
+
+        recorder._enqueue_audio(audio_queue, b"first")
+        recorder._enqueue_audio(audio_queue, b"second")
+        recorder._enqueue_audio(audio_queue, b"latest")
+
+        self.assertEqual(audio_queue.qsize(), 2)
+        self.assertEqual([audio_queue.get()[1], audio_queue.get()[1]], [b"second", b"latest"])
+
 
 if __name__ == "__main__":
     unittest.main()

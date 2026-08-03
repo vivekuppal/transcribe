@@ -79,14 +79,14 @@ class TestSettingsService(unittest.TestCase):
         self.assertEqual(interval, 7)
         self.assertEqual(fake_config.override_values, [{"General": {"llm_response_interval": 7}}])
 
-    def test_save_audio_language_updates_model_and_config(self):
+    def test_save_audio_language_updates_transcriber_and_config(self):
         fake_config = FakeConfig(data={"General": {}, "OpenAI": {}})
-        stt_model = MagicMock()
+        transcriber = MagicMock()
         service = SettingsService(config_factory=lambda: fake_config)
 
-        service.save_audio_language("french", stt_model)
+        service.save_audio_language("french", transcriber)
 
-        stt_model.set_lang.assert_called_once_with("french")
+        transcriber.set_language.assert_called_once_with("french")
         self.assertEqual(fake_config.override_values, [{"OpenAI": {"audio_lang": "french"}}])
 
     def test_save_response_language_updates_system_prompt(self):
