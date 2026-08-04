@@ -15,7 +15,17 @@ from sdk.streaming_transcriber_models import PCM16MonoResampler, TranscriptEvent
 
 
 class FakeWebSocketApp:
-    def __init__(self, url, header, on_open, on_message, on_error, on_close, close_immediately=False):
+    def __init__(
+        self,
+        url,
+        header,
+        on_open,
+        on_message,
+        on_error,
+        on_close,
+        close_immediately=False,
+        acknowledge_session=True,
+    ):
         self.url = url
         self.header = header
         self.on_open = on_open
@@ -23,6 +33,7 @@ class FakeWebSocketApp:
         self.on_error = on_error
         self.on_close = on_close
         self.close_immediately = close_immediately
+        self.acknowledge_session = acknowledge_session
         self.messages = []
         self.closed = threading.Event()
 
@@ -31,6 +42,8 @@ class FakeWebSocketApp:
 
     def run_forever(self):
         self.on_open(self)
+        if self.acknowledge_session and not self.close_immediately:
+            self.emit({"type": "session.updated", "session": {"type": "transcription"}})
         if not self.close_immediately:
             self.closed.wait(2)
         self.on_close(self, 1000, "closed")
@@ -43,9 +56,10 @@ class FakeWebSocketApp:
 
 
 class FakeWebSocketFactory:
-    def __init__(self, close_first=False, close_always=False):
+    def __init__(self, close_first=False, close_always=False, acknowledge_session=True):
         self.close_first = close_first
         self.close_always = close_always
+        self.acknowledge_session = acknowledge_session
         self.instances = []
 
     def __call__(self, *args, **kwargs):
@@ -53,6 +67,7 @@ class FakeWebSocketFactory:
             *args,
             **kwargs,
             close_immediately=self.close_always or (self.close_first and not self.instances),
+            acknowledge_session=self.acknowledge_session,
         )
         self.instances.append(instance)
         return instance
@@ -93,6 +108,12 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         self.factory = FakeWebSocketFactory()
         self.errors = []
         self.events = []
+        self.secret_requests = []
+
+        def create_secret(api_key, session):
+            self.secret_requests.append((api_key, session))
+            return "test-ephemeral-key"
+
         self.model = OpenAIRealtimeSTTModel(
             source_name="You",
             source_format={"sample_rate": 16000, "sample_width": 2, "channels": 1},
@@ -100,11 +121,13 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
                 "api_key": "test-key",
                 "model": "gpt-live-transcribe",
                 "languages": ["en"],
-                "turn_detection": "server_vad",
+                "turn_detection": None,
+                "manual_commit_interval_seconds": 3,
                 "reconnect_attempts": 1,
                 "reconnect_backoff_seconds": 0,
             },
             websocket_app_factory=self.factory,
+            client_secret_factory=create_secret,
             sleep_func=lambda _seconds: None,
         )
         self.model.set_error_callback(lambda *args: self.errors.append(args))
@@ -119,18 +142,49 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         socket = self.factory.instances[0]
         session_event = socket.messages[0]
 
+        self.assertEqual(
+            socket.url,
+            "wss://api.openai.com/v1/realtime",
+        )
+        self.assertEqual(socket.header, ["Authorization: Bearer test-ephemeral-key"])
+        self.assertEqual(self.secret_requests[0][0], "test-key")
+        self.assertEqual(self.secret_requests[0][1]["type"], "transcription")
         self.assertEqual(session_event["session"]["type"], "transcription")
         input_config = session_event["session"]["audio"]["input"]
         self.assertEqual(input_config["format"], {"type": "audio/pcm", "rate": 24000})
         self.assertEqual(input_config["transcription"]["model"], "gpt-live-transcribe")
         self.assertEqual(input_config["transcription"]["languages"], ["en"])
-        self.assertEqual(input_config["turn_detection"]["type"], "server_vad")
+        self.assertIsNone(input_config["turn_detection"])
 
         self.model.append_audio(b"\x01\x00" * 160)
         self.assertTrue(wait_for(lambda: len(socket.messages) >= 2))
         append_event = socket.messages[1]
         self.assertEqual(append_event["type"], "input_audio_buffer.append")
         self.assertGreater(len(base64.b64decode(append_event["audio"])), 320)
+
+    def test_connection_is_ready_only_after_session_is_accepted(self):
+        factory = FakeWebSocketFactory(acknowledge_session=False)
+        model = OpenAIRealtimeSTTModel(
+            source_name="Speaker",
+            source_format={"sample_rate": 48000, "sample_width": 2, "channels": 2},
+            config={"api_key": "test-key", "reconnect_attempts": 0},
+            websocket_app_factory=factory,
+            client_secret_factory=lambda *_args: "test-ephemeral-key",
+            sleep_func=lambda _seconds: None,
+        )
+        try:
+            model.start()
+            self.assertTrue(wait_for(lambda: len(factory.instances) == 1))
+            self.assertTrue(wait_for(lambda: len(factory.instances[0].messages) == 1))
+            self.assertFalse(model.connected)
+
+            factory.instances[0].emit({
+                "type": "session.updated",
+                "session": {"type": "transcription"},
+            })
+            self.assertTrue(wait_for(lambda: model.connected))
+        finally:
+            model.stop()
 
     def test_deltas_and_completions_are_emitted_as_typed_events(self):
         self.model.start()
@@ -192,6 +246,17 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         self.model.stop()
         self.assertFalse(self.model.connected)
 
+    def test_manual_turn_mode_commits_audio_periodically(self):
+        self.model.start()
+        self.assertTrue(wait_for(lambda: self.model.connected))
+        socket = self.factory.instances[0]
+
+        self.model.append_audio(b"\x01\x00" * 50000)
+        self.assertTrue(wait_for(lambda: len(socket.messages) >= 3))
+
+        self.assertEqual(socket.messages[-2]["type"], "input_audio_buffer.append")
+        self.assertEqual(socket.messages[-1]["type"], "input_audio_buffer.commit")
+
     def test_source_reconfiguration_is_safe_during_audio_append(self):
         errors = []
 
@@ -222,6 +287,7 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
                 "reconnect_backoff_seconds": 0,
             },
             websocket_app_factory=factory,
+            client_secret_factory=lambda *_args: "test-ephemeral-key",
             sleep_func=lambda _seconds: None,
         )
         try:
@@ -238,6 +304,7 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
             source_format={"sample_rate": 48000, "sample_width": 2, "channels": 2},
             config={"api_key": "test-key", "reconnect_attempts": 0},
             websocket_app_factory=factory,
+            client_secret_factory=lambda *_args: "test-ephemeral-key",
             sleep_func=lambda _seconds: None,
         )
         try:

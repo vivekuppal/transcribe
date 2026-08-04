@@ -31,10 +31,13 @@ Deepgram:
   model: 'nova-3'
 
 OpenAIRealtime:
-  # Streaming STT configuration; the API key is reused from OpenAI.api_key.
+  # Streaming STT model; the API key is reused from OpenAI.api_key.
   model: 'gpt-live-transcribe'
   input_sample_rate: 24000
-  turn_detection: 'server_vad'
+  # gpt-live-transcribe does not currently support server VAD. Audio is
+  # committed in bounded windows so finalized transcript rows keep arriving.
+  turn_detection: null
+  manual_commit_interval_seconds: 3
   delay: 'low'
   capture_chunk_duration_ms: 100
   vad_threshold: 0.5

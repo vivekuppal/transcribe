@@ -9,7 +9,8 @@ import queue
 import re
 import threading
 import time
-from urllib.parse import quote
+import urllib.error
+import urllib.request
 
 from sdk.streaming_transcriber_models import (
     PCM16MonoResampler,
@@ -17,10 +18,12 @@ from sdk.streaming_transcriber_models import (
     StreamingTranscriptEvent,
     TranscriptEventKind,
 )
+from tsutils import app_logging as al
 
 OPENAI_REALTIME_URL = "wss://api.openai.com/v1/realtime"
 TRANSCRIPT_DELTA_EVENT = "conversation.item.input_audio_transcription.delta"
 TRANSCRIPT_COMPLETED_EVENT = "conversation.item.input_audio_transcription.completed"
+logger = al.get_module_logger(al.TRANSCRIBER_LOGGER)
 
 
 class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
@@ -32,6 +35,7 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
         source_format: dict,
         config: dict,
         websocket_app_factory=None,
+        client_secret_factory=None,
         sleep_func=time.sleep,
     ):
         api_key = str(config.get("api_key") or "").strip()
@@ -53,6 +57,10 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
         self.vad_threshold = float(config.get("vad_threshold", 0.5))
         self.vad_prefix_padding_ms = int(config.get("vad_prefix_padding_ms", 300))
         self.vad_silence_duration_ms = int(config.get("vad_silence_duration_ms", 500))
+        self.manual_commit_interval_ms = max(
+            100,
+            int(float(config.get("manual_commit_interval_seconds", 3)) * 1000),
+        )
 
         self._converter = PCM16MonoResampler(
             sample_rate=int(source_format["sample_rate"]),
@@ -62,6 +70,9 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
         )
         self._converter_lock = threading.Lock()
         self._websocket_app_factory = websocket_app_factory or self._default_websocket_app_factory
+        self._client_secret_factory = (
+            client_secret_factory or self._default_client_secret_factory
+        )
         self._sleep = sleep_func
         self._audio_queue: queue.Queue = queue.Queue(maxsize=self.max_buffered_chunks)
         self._stop_event = threading.Event()
@@ -74,6 +85,7 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
         self._item_started_at: dict[str, datetime.datetime] = {}
         self._audio_timeline: list[tuple[float, float, datetime.datetime]] = []
         self._sent_audio_ms = 0.0
+        self._uncommitted_audio_ms = 0.0
         self._timeline_lock = threading.Lock()
         self._transcript_callback = None
         self._error_callback = None
@@ -82,6 +94,35 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
     def _default_websocket_app_factory(*args, **kwargs):
         import websocket  # pylint: disable=import-outside-toplevel
         return websocket.WebSocketApp(*args, **kwargs)
+
+    @staticmethod
+    def _default_client_secret_factory(api_key: str, session: dict) -> str:
+        """Mint a short-lived credential bound to a transcription session."""
+        request = urllib.request.Request(
+            "https://api.openai.com/v1/realtime/client_secrets",
+            data=json.dumps({"session": session}).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                payload = json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            try:
+                payload = json.loads(error.read())
+                message = (payload.get("error") or {}).get("message")
+            except (AttributeError, json.JSONDecodeError):
+                message = None
+            raise ConnectionError(message or f"Could not create transcription session ({error.code}).") from None
+
+        session_type = (payload.get("session") or {}).get("type")
+        secret = str(payload.get("value") or "").strip()
+        if session_type != "transcription" or not secret:
+            raise ConnectionError("OpenAI did not create a valid transcription session credential.")
+        return secret
 
     def start(self):
         """Start connection and sender workers once; safe to call repeatedly."""
@@ -126,12 +167,14 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
     def commit(self):
         """Commit the current input buffer for manual-turn configurations."""
         self._send_event({"type": "input_audio_buffer.commit"})
+        self._uncommitted_audio_ms = 0.0
 
     def clear_audio(self):
         """Clear queued and server-side uncommitted audio."""
         self._drain_queue(self._audio_queue)
         with self._converter_lock:
             self._converter.reset()
+        self._uncommitted_audio_ms = 0.0
         self._partial_by_item.clear()
         if self._connected_event.is_set():
             try:
@@ -163,6 +206,7 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
                 self._item_started_at.clear()
                 self._audio_timeline.clear()
                 self._sent_audio_ms = 0.0
+                self._uncommitted_audio_ms = 0.0
 
     def set_transcript_callback(self, callback):
         self._transcript_callback = callback
@@ -191,8 +235,7 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
         return self._connected_event.is_set() and not self._stop_event.is_set()
 
     def _connection_loop(self):
-        url = f"{OPENAI_REALTIME_URL}?model={quote(self.model)}"
-        headers = [f"Authorization: Bearer {self.api_key}"]
+        url = OPENAI_REALTIME_URL
         total_attempts = self.reconnect_attempts + 1
         for attempt in range(total_attempts):
             if self._stop_event.is_set():
@@ -203,9 +246,13 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
                 if self._stop_event.is_set():
                     return
             try:
+                ephemeral_key = self._client_secret_factory(
+                    self.api_key,
+                    self._session_config(),
+                )
                 websocket_app = self._websocket_app_factory(
                     url,
-                    header=headers,
+                    header=[f"Authorization: Bearer {ephemeral_key}"],
                     on_open=self._on_open,
                     on_message=self._on_message,
                     on_error=self._on_error,
@@ -244,6 +291,7 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
                     }
                 )
                 self._record_sent_audio(pending[0], pending[1])
+                self._commit_if_due(len(pending[0]))
                 pending = None
             except Exception as exception:
                 self._connected_event.clear()
@@ -261,8 +309,8 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
                 self._item_started_at.clear()
                 self._audio_timeline.clear()
                 self._sent_audio_ms = 0.0
+                self._uncommitted_audio_ms = 0.0
             websocket_app.send(json.dumps(self._session_update_event()))
-            self._connected_event.set()
         except Exception as exception:
             self._emit_error(exception)
             websocket_app.close()
@@ -275,7 +323,15 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
             return
 
         event_type = event.get("type")
-        if event_type == "input_audio_buffer.speech_started":
+        if event_type == "session.updated":
+            self._connected_event.set()
+            logger.info(
+                "OpenAI Realtime (%s): transcription session connected; "
+                "transcription model=%s",
+                self.source_name,
+                self.model,
+            )
+        elif event_type == "input_audio_buffer.speech_started":
             item_id = str(event.get("item_id") or "")
             if item_id:
                 self._item_started_at[item_id] = self._capture_time_for_audio_offset(
@@ -322,6 +378,9 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
         self._connected_event.clear()
 
     def _session_update_event(self) -> dict:
+        return {"type": "session.update", "session": self._session_config()}
+
+    def _session_config(self) -> dict:
         transcription = {"model": self.model, "delay": self.transcription_delay}
         if self.languages:
             transcription["languages"] = self.languages
@@ -340,18 +399,23 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
             }
 
         return {
-            "type": "session.update",
-            "session": {
-                "type": "transcription",
-                "audio": {
-                    "input": {
-                        "format": {"type": "audio/pcm", "rate": self.input_sample_rate},
-                        "transcription": transcription,
-                        "turn_detection": turn_detection,
-                    }
-                },
+            "type": "transcription",
+            "audio": {
+                "input": {
+                    "format": {"type": "audio/pcm", "rate": self.input_sample_rate},
+                    "transcription": transcription,
+                    "turn_detection": turn_detection,
+                }
             },
         }
+
+    def _commit_if_due(self, audio_bytes: int):
+        if self.turn_detection == "server_vad":
+            return
+        self._uncommitted_audio_ms += audio_bytes / 2 / self.input_sample_rate * 1000
+        if self._uncommitted_audio_ms >= self.manual_commit_interval_ms:
+            self._send_event({"type": "input_audio_buffer.commit"})
+            self._uncommitted_audio_ms = 0.0
 
     def _send_event(self, event: dict):
         websocket_app = self._websocket

@@ -40,17 +40,15 @@ OpenAI Realtime emits replaceable transcript deltas and a confirmed `completed` 
 
 ## Turn detection
 
-The default uses OpenAI server VAD. It sends audio continuously while OpenAI detects silence and commits each turn:
+`gpt-live-transcribe` currently requires automatic turn detection to be disabled.
+Transcribe sends audio continuously and commits it in short, bounded windows so
+confirmed transcript rows keep arriving:
 
 ```yaml
 OpenAIRealtime:
-  turn_detection: 'server_vad'
-  vad_threshold: 0.5
-  vad_prefix_padding_ms: 300
-  vad_silence_duration_ms: 500
+  turn_detection: null
+  manual_commit_interval_seconds: 3
 ```
-
-Set `turn_detection: null` only for development with an integration that calls the streaming client's manual `commit()` method. The desktop adapter currently uses server VAD.
 
 ## Configuration
 
@@ -60,7 +58,8 @@ All Realtime-specific values are separate from LLM response configuration and ma
 OpenAIRealtime:
   model: 'gpt-live-transcribe'
   input_sample_rate: 24000
-  turn_detection: 'server_vad'
+  turn_detection: null
+  manual_commit_interval_seconds: 3
   delay: 'low'
   capture_chunk_duration_ms: 100
   reconnect_attempts: 3
@@ -70,6 +69,11 @@ OpenAIRealtime:
   event_queue_size: 500
   deduplication_cache_size: 2048
 ```
+
+Before each WebSocket connection, Transcribe creates a short-lived OpenAI client
+secret bound to a `type: transcription` session. The standard API key is used
+only for that credential request; the socket authenticates with the ephemeral
+secret and `model` is sent as `audio.input.transcription.model`.
 
 Supported delay presets are `minimal`, `low`, `medium`, `high`, and `xhigh`. Lower delay produces earlier partials; higher delay gives the model more context. The OpenAI API may reject unsupported language codes or invalid keyword hints.
 
