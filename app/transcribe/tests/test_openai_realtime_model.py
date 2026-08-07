@@ -186,6 +186,32 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         finally:
             model.stop()
 
+    def test_unexpected_session_type_is_rejected(self):
+        factory = FakeWebSocketFactory(acknowledge_session=False)
+        model = OpenAIRealtimeSTTModel(
+            source_name="Speaker",
+            source_format={"sample_rate": 48000, "sample_width": 2, "channels": 2},
+            config={"api_key": "test-key", "reconnect_attempts": 0},
+            websocket_app_factory=factory,
+            client_secret_factory=lambda *_args: "test-ephemeral-key",
+            sleep_func=lambda _seconds: None,
+        )
+        errors = []
+        model.set_error_callback(lambda *args: errors.append(args))
+        try:
+            model.start()
+            self.assertTrue(wait_for(lambda: len(factory.instances) == 1))
+            factory.instances[0].emit({
+                "type": "session.updated",
+                "session": {"type": "realtime"},
+            })
+
+            self.assertFalse(model.connected)
+            self.assertTrue(factory.instances[0].closed.is_set())
+            self.assertIn("unexpected session type", errors[-1][1])
+        finally:
+            model.stop()
+
     def test_deltas_and_completions_are_emitted_as_typed_events(self):
         self.model.start()
         self.assertTrue(wait_for(lambda: self.model.connected))
@@ -215,6 +241,7 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
 
     def test_completion_uses_capture_time_from_speech_start(self):
         captured_at = datetime.datetime(2026, 1, 1, 12, 0, 1)
+        self.model.turn_detection = "server_vad"
         self.model.start()
         self.assertTrue(wait_for(lambda: self.model.connected))
         socket = self.factory.instances[0]
@@ -238,6 +265,72 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
             places=3,
         )
 
+    def test_manual_commit_uses_capture_time_without_speech_started_event(self):
+        captured_at = datetime.datetime(2026, 1, 1, 12, 0, 5)
+        self.model.start()
+        self.assertTrue(wait_for(lambda: self.model.connected))
+        socket = self.factory.instances[0]
+        self.model.append_audio(b"\x01\x00" * 4800, captured_at=captured_at)
+        self.assertTrue(wait_for(lambda: len(socket.messages) >= 2))
+        self.model.commit()
+        socket.emit({
+            "type": "input_audio_buffer.committed",
+            "item_id": "item-manual",
+        })
+        socket.emit({
+            "type": "conversation.item.input_audio_transcription.completed",
+            "item_id": "item-manual",
+            "transcript": "Manually committed speech",
+        })
+
+        expected = captured_at - datetime.timedelta(milliseconds=300)
+        self.assertAlmostEqual(
+            self.events[-1].time_spoken.timestamp(),
+            expected.timestamp(),
+            places=3,
+        )
+
+    def test_manual_commit_timestamps_follow_server_item_assignment_order(self):
+        first_captured_at = datetime.datetime(2026, 1, 1, 12, 0, 1)
+        second_captured_at = datetime.datetime(2026, 1, 1, 12, 0, 2)
+        self.model.start()
+        self.assertTrue(wait_for(lambda: self.model.connected))
+        socket = self.factory.instances[0]
+
+        for index, captured_at in enumerate((first_captured_at, second_captured_at), start=1):
+            self.model.append_audio(b"\x01\x00" * 2400, captured_at=captured_at)
+            self.assertTrue(wait_for(
+                lambda: sum(
+                    message["type"] == "input_audio_buffer.append"
+                    for message in socket.messages
+                ) >= index
+            ))
+            self.model.commit()
+
+        socket.emit({"type": "input_audio_buffer.committed", "item_id": "first"})
+        socket.emit({"type": "input_audio_buffer.committed", "item_id": "second"})
+        socket.emit({
+            "type": "conversation.item.input_audio_transcription.completed",
+            "item_id": "second",
+            "transcript": "Second",
+        })
+        socket.emit({
+            "type": "conversation.item.input_audio_transcription.completed",
+            "item_id": "first",
+            "transcript": "First",
+        })
+
+        expected = {
+            "first": first_captured_at - datetime.timedelta(milliseconds=150),
+            "second": second_captured_at - datetime.timedelta(milliseconds=150),
+        }
+        for event in self.events:
+            self.assertAlmostEqual(
+                event.time_spoken.timestamp(),
+                expected[event.item_id].timestamp(),
+                places=3,
+            )
+
     def test_manual_commit_and_clean_disconnect(self):
         self.model.start()
         self.assertTrue(wait_for(lambda: self.model.connected))
@@ -247,15 +340,28 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
         self.assertFalse(self.model.connected)
 
     def test_manual_turn_mode_commits_audio_periodically(self):
+        captured_at = datetime.datetime(2026, 1, 1, 12, 0, 5)
         self.model.start()
         self.assertTrue(wait_for(lambda: self.model.connected))
         socket = self.factory.instances[0]
 
-        self.model.append_audio(b"\x01\x00" * 50000)
+        self.model.append_audio(b"\x01\x00" * 50000, captured_at=captured_at)
         self.assertTrue(wait_for(lambda: len(socket.messages) >= 3))
 
         self.assertEqual(socket.messages[-2]["type"], "input_audio_buffer.append")
         self.assertEqual(socket.messages[-1]["type"], "input_audio_buffer.commit")
+        socket.emit({"type": "input_audio_buffer.committed", "item_id": "periodic"})
+        socket.emit({
+            "type": "conversation.item.input_audio_transcription.completed",
+            "item_id": "periodic",
+            "transcript": "Periodic commit",
+        })
+        expected = captured_at - datetime.timedelta(milliseconds=3125)
+        self.assertAlmostEqual(
+            self.events[-1].time_spoken.timestamp(),
+            expected.timestamp(),
+            places=3,
+        )
 
     def test_source_reconfiguration_is_safe_during_audio_append(self):
         errors = []
@@ -296,6 +402,35 @@ class TestOpenAIRealtimeSTTModel(unittest.TestCase):
             self.assertTrue(wait_for(lambda: model.connected))
         finally:
             model.stop()
+
+    def test_stop_during_secret_creation_does_not_open_websocket(self):
+        secret_requested = threading.Event()
+        release_secret = threading.Event()
+        factory = FakeWebSocketFactory()
+
+        def create_secret(*_args):
+            secret_requested.set()
+            release_secret.wait(2)
+            return "test-ephemeral-key"
+
+        model = OpenAIRealtimeSTTModel(
+            source_name="Speaker",
+            source_format={"sample_rate": 48000, "sample_width": 2, "channels": 2},
+            config={"api_key": "test-key", "reconnect_attempts": 0},
+            websocket_app_factory=factory,
+            client_secret_factory=create_secret,
+            sleep_func=lambda _seconds: None,
+        )
+        model.start()
+        self.assertTrue(secret_requested.wait(1))
+        stopper = threading.Thread(target=model.stop)
+        stopper.start()
+        self.assertTrue(wait_for(model._stop_event.is_set))
+        release_secret.set()
+        stopper.join(timeout=2)
+
+        self.assertFalse(stopper.is_alive())
+        self.assertEqual(factory.instances, [])
 
     def test_restart_after_retry_exhaustion_replaces_sender_worker(self):
         factory = FakeWebSocketFactory(close_always=True)

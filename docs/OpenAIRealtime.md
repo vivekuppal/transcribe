@@ -40,15 +40,21 @@ OpenAI Realtime emits replaceable transcript deltas and a confirmed `completed` 
 
 ## Turn detection
 
-`gpt-live-transcribe` currently requires automatic turn detection to be disabled.
-Transcribe sends audio continuously and commits it in short, bounded windows so
-confirmed transcript rows keep arriving:
+Transcribe defaults to manual turn detection: it sends audio continuously and
+commits it in short, bounded windows so confirmed transcript rows keep arriving
+predictably:
 
 ```yaml
 OpenAIRealtime:
   turn_detection: null
   manual_commit_interval_seconds: 3
 ```
+
+OpenAI Realtime also supports server voice activity detection. Set
+`turn_detection: server_vad` to create turns at detected silence boundaries;
+the `vad_threshold`, `vad_prefix_padding_ms`, and `vad_silence_duration_ms`
+settings then control that behavior. `manual_commit_interval_seconds` applies
+only when server VAD is disabled.
 
 ## Configuration
 

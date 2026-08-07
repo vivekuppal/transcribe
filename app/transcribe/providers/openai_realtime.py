@@ -11,6 +11,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 
 from sdk.streaming_transcriber_models import (
     PCM16MonoResampler,
@@ -84,9 +85,12 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
         self._partial_by_item: dict[str, str] = {}
         self._item_started_at: dict[str, datetime.datetime] = {}
         self._audio_timeline: list[tuple[float, float, datetime.datetime]] = []
+        self._pending_manual_commit_times: deque[datetime.datetime] = deque()
+        self._manual_buffer_started_at = None
         self._sent_audio_ms = 0.0
         self._uncommitted_audio_ms = 0.0
         self._timeline_lock = threading.Lock()
+        self._commit_lock = threading.RLock()
         self._transcript_callback = None
         self._error_callback = None
 
@@ -166,16 +170,17 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
 
     def commit(self):
         """Commit the current input buffer for manual-turn configurations."""
-        self._send_event({"type": "input_audio_buffer.commit"})
-        self._uncommitted_audio_ms = 0.0
+        self._commit_input_audio()
 
     def clear_audio(self):
         """Clear queued and server-side uncommitted audio."""
         self._drain_queue(self._audio_queue)
         with self._converter_lock:
             self._converter.reset()
-        self._uncommitted_audio_ms = 0.0
         self._partial_by_item.clear()
+        with self._timeline_lock:
+            self._manual_buffer_started_at = None
+            self._uncommitted_audio_ms = 0.0
         if self._connected_event.is_set():
             try:
                 self._send_event({"type": "input_audio_buffer.clear"})
@@ -205,6 +210,8 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
             with self._timeline_lock:
                 self._item_started_at.clear()
                 self._audio_timeline.clear()
+                self._pending_manual_commit_times.clear()
+                self._manual_buffer_started_at = None
                 self._sent_audio_ms = 0.0
                 self._uncommitted_audio_ms = 0.0
 
@@ -250,6 +257,8 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
                     self.api_key,
                     self._session_config(),
                 )
+                if self._stop_event.is_set():
+                    return
                 websocket_app = self._websocket_app_factory(
                     url,
                     header=[f"Authorization: Bearer {ephemeral_key}"],
@@ -258,6 +267,9 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
                     on_error=self._on_error,
                     on_close=self._on_close,
                 )
+                if self._stop_event.is_set():
+                    websocket_app.close()
+                    return
                 self._websocket = websocket_app
                 websocket_app.run_forever()
             except Exception as exception:
@@ -284,14 +296,17 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
             if self._stop_event.is_set():
                 return
             try:
-                self._send_event(
-                    {
-                        "type": "input_audio_buffer.append",
-                        "audio": base64.b64encode(pending[0]).decode("ascii"),
-                    }
-                )
-                self._record_sent_audio(pending[0], pending[1])
-                self._commit_if_due(len(pending[0]))
+                # Keep an explicit commit from overtaking audio that has reached
+                # the socket but has not yet been added to the local timeline.
+                with self._commit_lock:
+                    self._send_event(
+                        {
+                            "type": "input_audio_buffer.append",
+                            "audio": base64.b64encode(pending[0]).decode("ascii"),
+                        }
+                    )
+                    self._record_sent_audio(pending[0], pending[1])
+                    self._commit_if_due()
                 pending = None
             except Exception as exception:
                 self._connected_event.clear()
@@ -308,6 +323,8 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
             with self._timeline_lock:
                 self._item_started_at.clear()
                 self._audio_timeline.clear()
+                self._pending_manual_commit_times.clear()
+                self._manual_buffer_started_at = None
                 self._sent_audio_ms = 0.0
                 self._uncommitted_audio_ms = 0.0
             websocket_app.send(json.dumps(self._session_update_event()))
@@ -324,6 +341,13 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
 
         event_type = event.get("type")
         if event_type == "session.updated":
+            session_type = (event.get("session") or {}).get("type")
+            if session_type != "transcription":
+                self._emit_error("OpenAI Realtime accepted an unexpected session type.")
+                websocket_app = self._websocket
+                if websocket_app is not None:
+                    websocket_app.close()
+                return
             self._connected_event.set()
             logger.info(
                 "OpenAI Realtime (%s): transcription session connected; "
@@ -337,6 +361,14 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
                 self._item_started_at[item_id] = self._capture_time_for_audio_offset(
                     float(event.get("audio_start_ms") or 0)
                 )
+        elif event_type == "input_audio_buffer.committed":
+            item_id = str(event.get("item_id") or "")
+            if item_id:
+                with self._timeline_lock:
+                    if self._pending_manual_commit_times:
+                        self._item_started_at[item_id] = (
+                            self._pending_manual_commit_times.popleft()
+                        )
         elif event_type == TRANSCRIPT_DELTA_EVENT:
             item_id = str(event.get("item_id") or "")
             if not item_id:
@@ -409,13 +441,23 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
             },
         }
 
-    def _commit_if_due(self, audio_bytes: int):
+    def _commit_if_due(self):
         if self.turn_detection == "server_vad":
             return
-        self._uncommitted_audio_ms += audio_bytes / 2 / self.input_sample_rate * 1000
-        if self._uncommitted_audio_ms >= self.manual_commit_interval_ms:
-            self._send_event({"type": "input_audio_buffer.commit"})
-            self._uncommitted_audio_ms = 0.0
+        with self._timeline_lock:
+            commit_due = self._uncommitted_audio_ms >= self.manual_commit_interval_ms
+        if commit_due:
+            self._commit_input_audio()
+
+    def _commit_input_audio(self):
+        """Commit buffered audio and retain its capture time until OpenAI assigns an item ID."""
+        with self._commit_lock:
+            with self._timeline_lock:
+                self._send_event({"type": "input_audio_buffer.commit"})
+                if self._manual_buffer_started_at is not None:
+                    self._pending_manual_commit_times.append(self._manual_buffer_started_at)
+                self._manual_buffer_started_at = None
+                self._uncommitted_audio_ms = 0.0
 
     def _send_event(self, event: dict):
         websocket_app = self._websocket
@@ -431,6 +473,10 @@ class OpenAIRealtimeSTTModel(StreamingSTTModelInterface):
             start_ms = self._sent_audio_ms
             self._sent_audio_ms += duration_ms
             self._audio_timeline.append((start_ms, self._sent_audio_ms, chunk_started_at))
+            if self.turn_detection != "server_vad":
+                if self._manual_buffer_started_at is None:
+                    self._manual_buffer_started_at = chunk_started_at
+                self._uncommitted_audio_ms += duration_ms
 
     def _capture_time_for_audio_offset(self, audio_offset_ms: float) -> datetime.datetime:
         with self._timeline_lock:

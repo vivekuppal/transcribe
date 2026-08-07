@@ -34,8 +34,8 @@ OpenAIRealtime:
   # Streaming STT model; the API key is reused from OpenAI.api_key.
   model: 'gpt-live-transcribe'
   input_sample_rate: 24000
-  # gpt-live-transcribe does not currently support server VAD. Audio is
-  # committed in bounded windows so finalized transcript rows keep arriving.
+  # Manual turn detection commits audio in bounded windows so finalized
+  # transcript rows arrive predictably. Set to server_vad for silence-based turns.
   turn_detection: null
   manual_commit_interval_seconds: 3
   delay: 'low'
