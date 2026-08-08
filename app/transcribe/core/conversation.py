@@ -31,16 +31,20 @@ class Conversation:
         self.last_update: datetime.datetime | None = None
         self.update_handler = None
         self.insert_handler = None
+        self.partial_handler = None
+        self.finalize_partial_handler = None
         self.context = context
         self._initialized = False
         self._lock = threading.RLock()
         self.initialize_conversation()
 
-    def set_handlers(self, update, insert):
+    def set_handlers(self, update, insert, partial=None, finalize_partial=None):
         """Set callback handlers for update and insert events."""
         with self._lock:
             self.update_handler = update
             self.insert_handler = insert
+            self.partial_handler = partial
+            self.finalize_partial_handler = finalize_partial
 
     def initialize_conversation(self):
         """Populate the initial system prompt and seed conversation."""
@@ -102,6 +106,8 @@ class Conversation:
         text: str,
         time_spoken,
         update_previous: bool = False,
+        replace_ui_partial: bool = False,
+        partial_id: str | None = None,
     ):
         """Insert or update a conversation fragment in memory and the database."""
         callback = None
@@ -144,7 +150,13 @@ class Conversation:
                     and convo_object is not None
                 ):
                     convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text)
-                    if self.insert_handler is not None:
+                    if replace_ui_partial and partial_id and self.finalize_partial_handler is not None:
+                        callback = self.finalize_partial_handler
+                        callback_args = (partial_id, ui_text)
+                    elif replace_ui_partial and self.update_handler is not None:
+                        callback = self.update_handler
+                        callback_args = (persona, ui_text)
+                    elif self.insert_handler is not None:
                         callback = self.insert_handler
                         callback_args = (ui_text,)
 
@@ -153,6 +165,29 @@ class Conversation:
 
         if callback is not None:
             callback(*callback_args)
+
+    def publish_partial(
+        self,
+        persona: str,
+        text: str,
+        update_previous: bool = False,
+        partial_id: str | None = None,
+    ):
+        """Render volatile provider text without adding it to memory or the database."""
+        with self._lock:
+            callback = self.partial_handler if partial_id else (
+                self.update_handler if update_previous else self.insert_handler
+            )
+        if callback is None:
+            return False
+        ui_text = f"{persona}: [{text}]\n"
+        if partial_id:
+            callback(partial_id, ui_text)
+        elif update_previous:
+            callback(persona, ui_text)
+        else:
+            callback(ui_text)
+        return True
 
     def get_convo_id(self, persona: str, input_text: str):
         """Retrieve the persisted id for a conversation row."""

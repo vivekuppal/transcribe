@@ -11,6 +11,7 @@ import custom_speech_recognition as sr
 from sdk import transcriber_models as tm
 
 from ..audio_transcriber import DeepgramTranscriber, WhisperCPPTranscriber, WhisperTranscriber
+from ..openai_realtime_transcriber import OpenAIRealtimeTranscriber
 
 from tsutils import language, utilities
 
@@ -141,6 +142,16 @@ def create_stt_model(name: str, config: dict, api: bool):
 
 def create_transcriber(name: str, config: dict, api: bool, runtime):
     """Create the application transcriber for the selected STT provider."""
+    if name.lower() == "openai-realtime":
+        transcriber = OpenAIRealtimeTranscriber(
+            runtime.user_audio_recorder.source,
+            runtime.speaker_audio_recorder.source,
+            convo=runtime.convo,
+            config=config,
+        )
+        runtime.set_transcriber(transcriber)
+        return transcriber
+
     model = create_stt_model(name=name, config=config, api=api)
     audio_chunk_preprocessor = WhisperCppAudioPreprocessor() if name.lower() == "whisper.cpp" else None
 

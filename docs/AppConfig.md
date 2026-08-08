@@ -31,5 +31,16 @@ General:
 
 Details of specific elements are available in `parameters.yaml` file itself.
 
+Realtime transcription has its own `OpenAIRealtime` section so response-LLM settings and streaming STT settings remain independent. It reuses only `OpenAI.api_key`:
+
+```yaml
+OpenAIRealtime:
+  model: 'gpt-live-transcribe'
+  delay: 'low'
+  reconnect_attempts: 3
+```
+
+See [OpenAI Realtime transcription](./OpenAIRealtime.md) for all supported values and operational behavior.
+
 ## Revert to Default Config
 Remove all contents of `override.yaml` file to rever the applicationn to Default config.

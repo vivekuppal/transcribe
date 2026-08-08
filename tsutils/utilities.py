@@ -230,8 +230,8 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
         # Ideally models list is the best way to determine if api key is valid
         # Some of the OpenAI compatible vendors do not support all the methods though
         # client.models.list()
-        chat_completion = client.chat.completions.create(
-            messages=[
+        completion_args = {
+            'messages': [
                 {
                     'role': 'system',
                     'content': 'You are an AI assistant',
@@ -241,13 +241,18 @@ def is_api_key_valid(api_key: str, base_url: str, model: str) -> bool:
                     'content': 'Are you online',
                 }
             ],
-            model=model,
-            # Openai model 03-mini does not support max_tokens parameter.
-            # We do not support this model out of the box.
-            # Comment this line to use 03-mini model
-            max_tokens=1024
-            # max_completion_tokens=1024
-            )
+            'model': model,
+        }
+
+        normalized_model = model.lower()
+        modern_token_limit_prefixes = ('gpt-5', 'o1', 'o3', 'o4')
+        if normalized_model.startswith(modern_token_limit_prefixes):
+            completion_args['max_completion_tokens'] = 1024
+        else:
+            # Preserve compatibility with older OpenAI-compatible providers.
+            completion_args['max_tokens'] = 1024
+
+        chat_completion = client.chat.completions.create(**completion_args)
         assert len(chat_completion.choices[0].message.content) > 0
         client.close()
     except openai.AuthenticationError as e:

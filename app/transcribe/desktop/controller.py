@@ -115,6 +115,10 @@ class DesktopController:
         """Toggle speaker capture state."""
         try:
             self.global_vars.speaker_audio_recorder.enabled = not self.global_vars.speaker_audio_recorder.enabled
+            self.global_vars.transcriber.set_source_enabled(
+                constants.PERSONA_SPEAKER,
+                self.global_vars.speaker_audio_recorder.enabled,
+            )
             self.presenter.set_speaker_enabled(self.global_vars.speaker_audio_recorder.enabled)
             self.capture_action(
                 f'{"Enabled " if self.global_vars.speaker_audio_recorder.enabled else "Disabled "} speaker input'
@@ -126,6 +130,10 @@ class DesktopController:
         """Toggle microphone capture state."""
         try:
             self.global_vars.user_audio_recorder.enabled = not self.global_vars.user_audio_recorder.enabled
+            self.global_vars.transcriber.set_source_enabled(
+                constants.PERSONA_YOU,
+                self.global_vars.user_audio_recorder.enabled,
+            )
             self.presenter.set_microphone_enabled(self.global_vars.user_audio_recorder.enabled)
             self.capture_action(
                 f'{"Enabled " if self.global_vars.user_audio_recorder.enabled else "Disabled "} microphone input'
@@ -230,7 +238,8 @@ class DesktopController:
         """Toggle transcription capture state."""
         logger.info(f"{self.__class__.__name__}.set_transcript_state")
         try:
-            self.global_vars.transcriber.transcribe = not self.global_vars.transcriber.transcribe
+            enabled = not self.global_vars.transcriber.transcribe
+            self.global_vars.transcriber.set_transcription_enabled(enabled)
             self.capture_action(
                 f'{"Enabled " if self.global_vars.transcriber.transcribe else "Disabled "} transcription.'
             )
@@ -268,7 +277,7 @@ class DesktopController:
         try:
             self.settings_service.save_audio_language(
                 lang=lang,
-                stt_model=self.global_vars.transcriber.stt_model,
+                transcriber=self.global_vars.transcriber,
             )
         except Exception as exception:
             logger.error(f"Error setting audio language: {exception}")

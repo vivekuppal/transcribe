@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 import openai
 from tsutils.utilities import (
@@ -58,6 +59,42 @@ class TestFunctions(unittest.TestCase):
             base_url='https://api.example.com',
             model='unavailable-model',
         ))
+
+    @patch('tsutils.utilities.openai.OpenAI')
+    def test_is_api_key_valid_uses_modern_token_limit_for_gpt_5(self, mock_openai):
+        utilities.valid_api_key = False
+        client = mock_openai.return_value
+        client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content='online'))]
+        )
+
+        self.assertTrue(is_api_key_valid(
+            api_key='key',
+            base_url='https://api.openai.com/v1',
+            model='gpt-5.4-mini',
+        ))
+
+        request_args = client.chat.completions.create.call_args.kwargs
+        self.assertEqual(request_args['max_completion_tokens'], 1024)
+        self.assertNotIn('max_tokens', request_args)
+
+    @patch('tsutils.utilities.openai.OpenAI')
+    def test_is_api_key_valid_preserves_legacy_provider_token_limit(self, mock_openai):
+        utilities.valid_api_key = False
+        client = mock_openai.return_value
+        client.chat.completions.create.return_value = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content='online'))]
+        )
+
+        self.assertTrue(is_api_key_valid(
+            api_key='key',
+            base_url='https://api.example.com',
+            model='legacy-chat-model',
+        ))
+
+        request_args = client.chat.completions.create.call_args.kwargs
+        self.assertEqual(request_args['max_tokens'], 1024)
+        self.assertNotIn('max_completion_tokens', request_args)
 
 
 if __name__ == '__main__':

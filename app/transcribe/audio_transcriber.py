@@ -18,6 +18,7 @@ from .live_transcription import (
     DEFAULT_WINDOW_SECONDS,
     LiveTranscriptManager,
 )
+from .transcriber import TranscriberInterface
 import custom_speech_recognition as sr
 from tsutils import app_logging as al
 from tsutils import duration
@@ -35,7 +36,7 @@ WHISPER_SEGMENT_PRUNE_THRESHOLD = 6
 AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45
 
 
-class AudioTranscriber:   # pylint: disable=C0115, R0902
+class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
 
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
@@ -118,6 +119,21 @@ class AudioTranscriber:   # pylint: disable=C0115, R0902
             self.audio_sources_properties['Speaker']['sample_rate'] = speaker_source.SAMPLE_RATE
             self.audio_sources_properties['Speaker']['sample_width'] = speaker_source.SAMPLE_WIDTH
             self.audio_sources_properties['Speaker']['channels'] = speaker_source.channels
+
+    def set_source_enabled(self, source_name: str, enabled: bool):
+        """File/window providers do not own source capture resources."""
+        del source_name, enabled
+
+    def set_transcription_enabled(self, enabled: bool):
+        """Pause or resume transcription without changing capture resources."""
+        self.transcribe = bool(enabled)
+
+    def set_language(self, lang: str):
+        """Update the language on the configured file/window STT model."""
+        self.stt_model.set_lang(lang)
+
+    def stop(self):
+        """File/window transcribers own no persistent provider resources."""
 
     def transcribe_audio_queue(self, audio_queue: queue.Queue):
         """Transcribe data from audio sources. In this case we have 2 sources, microphone, speaker.

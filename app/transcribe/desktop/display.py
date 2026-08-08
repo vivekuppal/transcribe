@@ -34,7 +34,12 @@ class DesktopDisplayManager:
             self.ui.update_interval_slider,
             runtime,
         )
-        runtime.convo.set_handlers(self.queue_update_last_row, self.queue_add_transcript_line)
+        runtime.convo.set_handlers(
+            self.queue_update_last_row,
+            self.queue_add_transcript_line,
+            partial=self.queue_upsert_partial_row,
+            finalize_partial=self.queue_finalize_partial_row,
+        )
 
     def update_last_row(self, speaker: str, input_text: str):
         """Replace the latest transcript row for a speaker."""
@@ -51,6 +56,14 @@ class DesktopDisplayManager:
     def queue_add_transcript_line(self, input_text: str):
         """Queue transcript insertion on the Tk thread."""
         self.ui.enqueue_ui_action(self.ui.transcript_text.add_text_to_bottom, input_text)
+
+    def queue_upsert_partial_row(self, item_id: str, input_text: str):
+        """Queue insertion or replacement of one provider-addressed partial row."""
+        self.ui.enqueue_ui_action(self.ui.transcript_text.upsert_keyed_row, item_id, input_text)
+
+    def queue_finalize_partial_row(self, item_id: str, input_text: str):
+        """Queue replacement of a provider partial with its durable final text."""
+        self.ui.enqueue_ui_action(self.ui.transcript_text.finalize_keyed_row, item_id, input_text)
 
     def write_response_text(self, response_string: str):
         """Render a response string into the response textbox."""
