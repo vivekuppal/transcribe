@@ -1,9 +1,13 @@
 <img src="assets/Transcribe-2.png" width="100">
 
+## Save on your Google Workspace subscriptions
+Create your Google Workspace subscription using this [link](https://referworkspace.app.goo.gl/kAZz) to save 10%. 
+
+
 ## Source Code Install Video
 
 Thanks to [Fahd Mirza](https://www.fahdmirza.com/) for the [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
-Subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
+
 
 <a href="https://www.youtube.com/watch?feature=player_embedded&v=RX86zKdCpMc" target="_blank">
  <img src="https://img.youtube.com/vi/RX86zKdCpMc/0.jpg" alt="Watch the video" width="240" height="180"/>
