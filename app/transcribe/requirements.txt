@@ -4,7 +4,7 @@ openai-whisper==20250625
 Wave==0.0.2
 standard-aifc==3.13.0; python_version >= "3.13"
 audioop-lts==0.2.2; python_version >= "3.13"
-openai==1.66.3  # Latest release as of 2025-03-17
+openai==1.109.1  # Latest 1.x release; retains the current client API
 websocket-client>=1.8,<2  # OpenAI Realtime WebSocket transport
 customtkinter==5.2.2
 tkinter-tooltip  # Needed to show tooltips for ctk components

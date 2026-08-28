@@ -1,9 +1,13 @@
 <img src="assets/Transcribe-2.png" width="100">
 
+## Save on your Google Workspace subscriptions
+Create your Google Workspace subscription using this [link](https://referworkspace.app.goo.gl/kAZz) to save 10%. 
+
+
 ## Source Code Install Video
 
 Thanks to [Fahd Mirza](https://www.fahdmirza.com/) for the [installation video](https://www.youtube.com/watch?v=RX86zKdCpMc) for Transcribe.
-Subscribe to his [Youtube channel](https://www.youtube.com/@fahdmirza) and read his [blog](https://www.fahdmirza.com/).
+
 
 <a href="https://www.youtube.com/watch?feature=player_embedded&v=RX86zKdCpMc" target="_blank">
  <img src="https://img.youtube.com/vi/RX86zKdCpMc/0.jpg" alt="Watch the video" width="240" height="180"/>
@@ -22,7 +26,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
 ## Why Transcribe over other Speech to Text apps ##
 - Use Most of the functionality for **FREE**
 - Multi Lingual support
-- Choose between GPT 4o, 4, 3.5 or other inference models from OpenAI, or a plethora of inference models from [Together](https://docs.together.ai/docs/inference-models)
+- Use current OpenAI models, including GPT-5.6 Luna, or other inference models from OpenAI-compatible providers such as [Together](https://docs.together.ai/docs/inference-models)
 - Streaming LLM responses instead of waiting for a complete response
 - Upto date with the latest OpenAI libraries
 - Get LLM responses for selected text
@@ -52,7 +56,7 @@ or Deepgram ($200 free credits)
 or Together ($25 free Credits)
 or Azure
 
-Based on feedback from users, OpenAI gpt-4o model provides the best response generation capabilities. Earlier models work ok, but can sometimes provide inaccurate answers if there is not enough conversation content at the beginning.
+Transcribe defaults to OpenAI `gpt-5.6-luna` for cost-efficient response generation. The model can be changed in `parameters.yaml` or `override.yaml`; use `gpt-5.6-terra` for a balance of intelligence and cost, or `gpt-5.6` for flagship capability.
 Together provides a large selection of [Inference models](https://docs.together.ai/docs/inference-models). Any of these can be used by making changes to `override.yaml` file.
 
 When using OpenAI, without the OpenAI key, using continuous response or any action that requires interaction with the online LLM gives an error similar to below

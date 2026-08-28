@@ -1,10 +1,11 @@
 OpenAI:
   api_key: 'API_KEY'
   base_url: 'https://api.openai.com/v1'
-# gpt-5.4-mini is the default price/performance option for general responses.
-# Use gpt-5.4-nano for simpler, lower-cost workloads, or gpt-5.4 for higher quality.
+# gpt-5.6-luna is the cost-efficient GPT-5.6 option for general responses.
+# Use gpt-5.6-terra for a balance of intelligence and cost, or gpt-5.6 for
+# flagship capability. Arbitrary model IDs remain supported for compatible APIs.
 # See https://developers.openai.com/api/docs/models
-  ai_model: gpt-5.4-mini
+  ai_model: gpt-5.6-luna
 # Local model file to use for transcription.
 # Can also be specified using the -m parameter on command line of the application
   local_transcripton_model_file: 'base'
@@ -21,8 +22,10 @@ OpenAI:
 # Summarize request timeout for any response requests made to openAI API
   summarize_request_timeout_seconds: 30
 
-# Temperature parameter for OpenAI chat completion API
-  temperature: 0.0
+# Optional Chat Completions parameters. Leave null when a model or compatible
+# provider does not support the parameter.
+  temperature: null
+  reasoning_effort: null  # none, minimal, low, medium, high, xhigh, or max
 
 Deepgram:
   api_key: 'API_KEY'

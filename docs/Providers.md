@@ -15,7 +15,18 @@ OpenAI:
 ```
 
 Default `base_url` for OpenAI is `https://api.openai.com/v1`
-Default `ai_model` for OpenAI is `gpt-5.4-mini`
+Default `ai_model` for OpenAI is `gpt-5.6-luna`. Model IDs are passed through
+unchanged, so another OpenAI model or a model exposed by a compatible provider
+can be selected without a code change.
+
+Optional request parameters can be configured independently. Leave either value
+as `null` when the selected model does not support it:
+
+```yaml
+OpenAI:
+  temperature: null
+  reasoning_effort: low
+```
 
 This compatibility configuration applies to response generation. The optional `openai-realtime` STT backend connects specifically to OpenAI's Realtime WebSocket API and is configured separately under `OpenAIRealtime`; it should not be confused with the Whisper API selected by `-stt whisper --api`.
 
