@@ -49,12 +49,18 @@ python main.py -stt openai-realtime
 It uses `gpt-live-transcribe`, persistent WebSockets, and independent microphone and speaker-loopback sessions. See [OpenAI Realtime transcription](./OpenAIRealtime.md). Deepgram remains a recorded-window provider in the current application architecture.
 
 ## LLM Responses
-The quality, cost and speed of responses from LLM depends on the model chosen. Out of the box transcribe uses `gpt-3.5-turbo-0301` model as specified in parameters.yaml
+The quality, cost and speed of responses from the LLM depend on the model chosen.
+Out of the box Transcribe uses `gpt-5.6-luna`, the cost-efficient GPT-5.6 model,
+as specified in `parameters.yaml`.
 
 ```python
-    ai_model: gpt-3.5-turbo-0301
+    ai_model: gpt-5.6-luna
 ```
 
-The model can be changed by altering the config in `parameters.yaml` or `override.yaml` file. 
+The model ID is not restricted by Transcribe and can be changed in
+`parameters.yaml` or `override.yaml`. Optional `temperature` and
+`reasoning_effort` values should be left `null` unless supported by the selected
+model and provider.
 
-Details of all models for OpenAI are available at `https://platform.openai.com/docs/models/continuous-model-upgrades`
+Current OpenAI models are documented at
+`https://developers.openai.com/api/docs/models`.

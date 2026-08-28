@@ -13,6 +13,10 @@ from tsutils import duration, utilities
 
 logger = al.get_module_logger(al.GPT_RESPONDER_LOGGER)
 
+SUPPORTED_REASONING_EFFORTS = {
+    'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'
+}
+
 
 class InferenceEnum(Enum):
     """Supported Chat Inference Providers
@@ -65,18 +69,17 @@ class GPTResponder:
 
         with duration.Duration(name='OpenAI Summarize', screen=False):
             timeout: int = self.config['OpenAI']['summarize_request_timeout_seconds']
-            temperature: float = self.config['OpenAI']['temperature']
+            _, temperature, reasoning_effort = self._get_openai_settings(
+                settings_section
+            )
             prompt_content = self.conversation.get_merged_conversation_summary()
             prompt_api_message = prompts.create_multiturn_prompt(prompt_content)
             last_convo_id = int(prompt_content[-1][2])
             # self._pretty_print_openai_request(prompt_api_message)
-            summary_response = self.llm_client.chat.completions.create(
-                    model=self.model,
-                    messages=prompt_api_message,
-                    temperature=temperature,
-                    timeout=timeout,
-                    stream=True
-                )
+            request = self._build_chat_completion_request(
+                prompt_api_message, timeout, temperature, reasoning_effort
+            )
+            summary_response = self.llm_client.chat.completions.create(**request)
             collected_messages = ""
             for chunk in summary_response:
                 chunk_message = chunk.choices[0].delta  # extract the message
@@ -107,22 +110,49 @@ class GPTResponder:
         model = self.config[settings_section]['ai_model']
         return api_key, base_url, model
 
-    def _get_openai_settings(self) -> (int, float):
-        """Retrieve OpenAI-specific settings from the configuration."""
+    def _get_openai_settings(self, settings_section: str = 'OpenAI'):
+        """Retrieve request settings without inventing unsupported parameters."""
         timeout = self.config['OpenAI']['response_request_timeout_seconds']
-        temperature = self.config['OpenAI']['temperature']
-        return timeout, temperature
+        provider_config = self.config[settings_section]
+        temperature = provider_config.get(
+            'temperature', self.config['OpenAI'].get('temperature')
+        )
+        reasoning_effort = provider_config.get('reasoning_effort')
+        if reasoning_effort not in (None, ''):
+            if not isinstance(reasoning_effort, str):
+                raise ValueError('reasoning_effort must be a string or null')
+            reasoning_effort = reasoning_effort.lower()
+            if reasoning_effort not in SUPPORTED_REASONING_EFFORTS:
+                allowed = ', '.join(sorted(SUPPORTED_REASONING_EFFORTS))
+                raise ValueError(f'Unsupported reasoning_effort. Expected one of: {allowed}')
+        else:
+            reasoning_effort = None
+        return timeout, temperature, reasoning_effort
 
-    def _get_llm_response(self, messages, temperature, timeout) -> str:
+    def _build_chat_completion_request(self, messages, timeout,
+                                       temperature=None,
+                                       reasoning_effort=None) -> dict:
+        """Build a streaming request, omitting optional unset parameters."""
+        request = {
+            'model': self.model,
+            'messages': messages,
+            'timeout': timeout,
+            'stream': True,
+        }
+        if temperature is not None:
+            request['temperature'] = temperature
+        if reasoning_effort is not None:
+            request['reasoning_effort'] = reasoning_effort
+        return request
+
+    def _get_llm_response(self, messages, temperature, timeout,
+                          reasoning_effort=None) -> str:
         """Send a request to the LLM and process the streaming response."""
         with duration.Duration(name='OpenAI Chat Completion', screen=False):
-            multi_turn_response = self.llm_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                timeout=timeout,
-                stream=True
+            request = self._build_chat_completion_request(
+                messages, timeout, temperature, reasoning_effort
             )
+            multi_turn_response = self.llm_client.chat.completions.create(**request)
 
             collected_messages = ""
             for chunk in multi_turn_response:
@@ -161,12 +191,17 @@ class GPTResponder:
             if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
-            timeout, temperature = self._get_openai_settings()
+            timeout, temperature, reasoning_effort = self._get_openai_settings(
+                settings_section
+            )
             multiturn_prompt_content = self.conversation.get_merged_conversation_response(
                 length=constants.MAX_TRANSCRIPTION_PHRASES_FOR_LLM)
             last_convo_id = int(multiturn_prompt_content[-1][2])
             multiturn_prompt_api_message = prompts.create_multiturn_prompt(multiturn_prompt_content)
-            collected_messages = self._get_llm_response(multiturn_prompt_api_message, temperature, timeout)
+            collected_messages = self._get_llm_response(
+                multiturn_prompt_api_message, temperature, timeout,
+                reasoning_effort
+            )
             self._insert_response_in_db(last_convo_id, collected_messages)
 
         except Exception as e:
@@ -262,20 +297,19 @@ class GPTResponder:
             settings_section = self._get_settings_section(chat_inference_provider)
             api_key, base_url, model = self._get_api_settings(settings_section)
 
-            timeout, temperature = self._get_openai_settings()
+            timeout, temperature, reasoning_effort = self._get_openai_settings(
+                settings_section
+            )
 
             if not utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model):
                 return None
 
             with duration.Duration(name='OpenAI Chat Completion Selected', screen=False):
                 prompt = prompts.create_prompt_for_text(text=text, config=self.config)
-                llm_response = self.llm_client.chat.completions.create(
-                    model=self.model,
-                    messages=prompt,
-                    temperature=temperature,
-                    timeout=timeout,
-                    stream=True
+                request = self._build_chat_completion_request(
+                    prompt, timeout, temperature, reasoning_effort
                 )
+                llm_response = self.llm_client.chat.completions.create(**request)
 
                 # Update conversation with an empty response. This response will be updated
                 # by subsequent updates from the streaming response
