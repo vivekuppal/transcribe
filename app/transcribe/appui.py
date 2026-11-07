@@ -107,14 +107,8 @@ class AppUI(ctk.CTk):
         """Clear transcript from all places where it exists.
         """
         self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
-        # Row updates queued before the clear belong to the old transcript.
-        try:
-            while True:
-                self._ui_action_queue.get_nowait()
-        except queue.Empty:
-            pass
         self.transcript_text.clear_all_text()
-        self.display_manager.reset_rows()
+        self.display_manager.reset_rows()     # (row updates still queued from before are skipped)
 
     def create_ui_components(self, config: dict):
         """Create all UI components."""

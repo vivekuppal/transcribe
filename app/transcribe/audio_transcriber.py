@@ -167,9 +167,8 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
                 if self._is_new_phrase(source_info, time_spoken) and source_info["dirty"]:
                     # Finish the previous phrase before its audio is replaced by the next one.
                     self._run_safely(who_spoke)
-                if generation != self._generation:
+                if not self._update_last_sample_and_phrase_status(who_spoke, data, time_spoken, generation):
                     break           # the transcript was cleared: audio taken before it is dropped
-                self._update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
             if source_info["dirty"]:
                 self._run_safely(who_spoke)
 
@@ -190,12 +189,15 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
         return last_spoken is None or \
             time_spoken - last_spoken > datetime.timedelta(seconds=PHRASE_TIMEOUT)
 
-    def _update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken):
-        if not self.transcribe:
-            return
+    def _update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken, generation=None) -> bool:
+        """Add captured audio to the source's buffer. False when a clear happened since `generation`."""
         source_info = self.audio_sources_properties[who_spoke]
 
         with source_info["mutex"]:
+            if generation is not None and generation != self._generation:
+                return False
+            if not self.transcribe:
+                return True
             if self._is_new_phrase(source_info, time_spoken):
                 source_info["last_sample"] = bytes()
                 source_info["buffer_start_seconds"] = 0.0
@@ -206,6 +208,7 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
             source_info["dirty"] = True
             self._trim_audio_buffer_locked(source_info)
             source_info["last_spoken"] = time_spoken
+        return True
 
     def _trim_audio_buffer_locked(self, source_info: dict):
         """Hard cap for providers without timestamps: keep only the rolling window."""

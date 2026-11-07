@@ -488,6 +488,16 @@ class TestLiveTranscriptCommit(unittest.TestCase):
         self.assertIsNone(manager.commit("You", "four"))
         self.assertEqual(manager.commit("You", "Three."), "one two")   # punctuation and case ignored
 
+    def test_languages_without_spaces_can_be_committed(self):
+        manager = self.manager()
+        manager.process_hypothesis("You", TranscriptionHypothesis("t", "你好世界。今天天气很好"), new_phrase=True)
+        self.assertIsNone(manager.commit("You", "明天"))
+        self.assertEqual(manager.commit("You", "今天天气很好"), "你好世界。")
+
+    def test_vowel_signs_and_joiners_stay_inside_words(self):
+        self.assertEqual(LiveTranscriptManager._normalize_for_match("किताब"), "किताब")
+        self.assertEqual(LiveTranscriptManager._normalize_for_match("می\u200cخواهم!"), "می\u200cخواهم")
+
     def test_words_of_other_scripts_are_compared_by_their_letters(self):
         manager = self.manager()
         manager.process_hypothesis("You", TranscriptionHypothesis("t", "سلام دنیا خوبی"), new_phrase=True)
@@ -613,6 +623,20 @@ class TestModelsTakeAudioFromMemory(unittest.TestCase):
             self.assertTrue(model.use_gpu)
             self.assertEqual(model.transcribe_pcm(pcm(1))["text"], "ok")
         self.assertFalse(model.use_gpu)
+        self.assertEqual([m["device"] for m in made], ["cuda", "cpu"])
+
+    def test_both_workers_failing_on_the_gpu_load_the_cpu_model_once(self):
+        fake, gpu, made = self._fake_faster(fail_gpu_run=True)
+        with patch.dict(sys.modules, {"faster_whisper": fake, "ctranslate2": gpu}):
+            model = tm.WhisperSTTModel({"local_transcripton_model_file": "base", "audio_lang": "en"})
+            results = []
+            workers = [threading.Thread(target=lambda: results.append(model.transcribe_pcm(pcm(1))))
+                       for _ in range(2)]
+            for worker in workers:
+                worker.start()
+            for worker in workers:
+                worker.join(5)
+        self.assertEqual([r["text"] for r in results], ["ok", "ok"])
         self.assertEqual([m["device"] for m in made], ["cuda", "cpu"])
 
     def test_faster_whisper_load_failure_uses_openai_whisper(self):
@@ -847,6 +871,16 @@ class TestDisplayRows(unittest.TestCase):
         self.assertIn(("delete", "You"), self.widget.calls)
         self.manager.add_transcript_line("plain line\n")
         self.assertEqual(self.widget.calls[-1], ("add", "plain line\n"))
+
+    def test_row_updates_queued_before_a_clear_are_skipped(self):
+        queued = []
+        self.manager.ui.enqueue_ui_action = lambda fn, *args: queued.append((fn, args))
+        self.manager.queue_add_transcript_line("You: [old]\n", "You")
+        self.manager.reset_rows()
+        self.manager.queue_add_transcript_line("You: [new]\n", "You")
+        for fn, args in queued:
+            fn(*args)
+        self.assertEqual([row[1] for row in self.widget.rows], ["You: [new]\n"])
 
     def test_response_box_is_rewritten_only_when_the_text_changes(self):
         textbox = MagicMock()

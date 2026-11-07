@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import tempfile
+import threading
 import wave
 from enum import Enum
 from abc import abstractmethod
@@ -299,6 +300,7 @@ class WhisperSTTModel(STTModelInterface):
         self.engine = pick_local_whisper_engine(stt_model_config.get('local_engine', 'auto'))
         self.use_gpu = False
         self.audio_model = None
+        self._switch_lock = threading.Lock()
         if self.engine == FASTER_WHISPER:
             try:
                 self.audio_model = self._load_faster_whisper()
@@ -329,12 +331,14 @@ class WhisperSTTModel(STTModelInterface):
                     model = WhisperModel(self.model, device="cuda", compute_type="float16",
                                          download_root=download_root, num_workers=2)
                     self.use_gpu = True
+                    self._gpu_model = model
                     return model
             except Exception as exception:  # pylint: disable=broad-except
                 print(f'[WARN] faster-whisper could not use the GPU ({exception}); using the CPU.')
+        model = WhisperModel(self.model, device="cpu", compute_type="int8",
+                             download_root=download_root, num_workers=2)
         self.use_gpu = False
-        return WhisperModel(self.model, device="cpu", compute_type="int8",
-                            download_root=download_root, num_workers=2)
+        return model
 
     def download_model(self):
         """Download the appropriate OpenAI model if needed"""
@@ -375,16 +379,20 @@ class WhisperSTTModel(STTModelInterface):
         """Transcribe a file path or a 16 kHz float32 array into openai-whisper's result shape."""
         language = self.lang or None
         if self.engine == FASTER_WHISPER:
+            model = self.audio_model
             try:
-                return self._faster_whisper_transcribe(audio, language)
+                return self._faster_whisper_transcribe(model, audio, language)
             except Exception:  # pylint: disable=broad-except
-                if not self.use_gpu:
+                if model is not getattr(self, "_gpu_model", None):
                     raise
                 # The GPU was found but its CUDA libraries (cuBLAS / cuDNN) are missing: this
-                # shows up only on the first transcription. Continue on the CPU for good.
-                print('[WARN] faster-whisper failed on the GPU; switching to the CPU.')
-                self.audio_model = self._load_faster_whisper(allow_gpu=False)
-                return self._faster_whisper_transcribe(audio, language)
+                # shows up only on the first transcription. Continue on the CPU for good. The
+                # other source's worker may fail on the GPU at the same moment: one load only.
+                with self._switch_lock:
+                    if self.audio_model is model:
+                        print('[WARN] faster-whisper failed on the GPU; switching to the CPU.')
+                        self.audio_model = self._load_faster_whisper(allow_gpu=False)
+                return self._faster_whisper_transcribe(self.audio_model, audio, language)
         # condition_on_previous_text=False: short live windows do not benefit from it and it
         # can make Whisper loop on repeated text.
         return self.audio_model.transcribe(audio, fp16=self.use_gpu, language=language,
@@ -411,8 +419,9 @@ class WhisperSTTModel(STTModelInterface):
             print(exception)
             return ''
 
-    def _faster_whisper_transcribe(self, audio, language) -> dict:
-        segments, info = self.audio_model.transcribe(
+    @staticmethod
+    def _faster_whisper_transcribe(model, audio, language) -> dict:
+        segments, info = model.transcribe(
             audio, language=language, beam_size=1, temperature=0,
             condition_on_previous_text=False)
         items = [{"id": index, "start": float(segment.start), "end": float(segment.end),

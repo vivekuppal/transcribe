@@ -24,6 +24,8 @@ class DesktopDisplayManager:
         # that row in place instead of searching and reflowing the whole transcript.
         self._open_rows: dict[str, str] = {}
         self._row_numbers = itertools.count()
+        # Bumped when the transcript is cleared: row updates queued before that are skipped.
+        self._epoch = 0
         self._last_response_text: str | None = None
 
     def bind_ui(self, ui):
@@ -76,14 +78,19 @@ class DesktopDisplayManager:
     def reset_rows(self):
         """Forget open rows (the transcript widget was cleared)."""
         self._open_rows.clear()
+        self._epoch += 1
+
+    def _if_current(self, epoch: int, action, *args):
+        if epoch == self._epoch:
+            action(*args)
 
     def queue_update_last_row(self, speaker: str, input_text: str):
         """Queue transcript row replacement on the Tk thread."""
-        self.ui.enqueue_ui_action(self.update_last_row, speaker, input_text)
+        self.ui.enqueue_ui_action(self._if_current, self._epoch, self.update_last_row, speaker, input_text)
 
     def queue_add_transcript_line(self, input_text: str, persona: str | None = None):
         """Queue transcript insertion on the Tk thread."""
-        self.ui.enqueue_ui_action(self.add_transcript_line, input_text, persona)
+        self.ui.enqueue_ui_action(self._if_current, self._epoch, self.add_transcript_line, input_text, persona)
 
     def queue_upsert_partial_row(self, item_id: str, input_text: str):
         """Queue insertion or replacement of one provider-addressed partial row."""
