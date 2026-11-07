@@ -74,9 +74,9 @@ class AppUI(ctk.CTk):
         """Schedule transcript row replacement on the UI thread."""
         return self.display_manager.queue_update_last_row(speaker, input_text)
 
-    def queue_add_transcript_line(self, input_text: str):
+    def queue_add_transcript_line(self, input_text: str, persona: str = None):
         """Schedule transcript insertion on the UI thread."""
-        return self.display_manager.queue_add_transcript_line(input_text)
+        return self.display_manager.queue_add_transcript_line(input_text, persona)
 
     def write_response_text(self, response_string: str):
         """Render a response string into the response textbox."""
@@ -106,8 +106,15 @@ class AppUI(ctk.CTk):
     def clear_transcript(self):
         """Clear transcript from all places where it exists.
         """
-        self.transcript_text.clear_all_text()
         self.global_vars.transcriber.clear_transcriber_context(self.global_vars.audio_queue)
+        # Row updates queued before the clear belong to the old transcript.
+        try:
+            while True:
+                self._ui_action_queue.get_nowait()
+        except queue.Empty:
+            pass
+        self.transcript_text.clear_all_text()
+        self.display_manager.reset_rows()
 
     def create_ui_components(self, config: dict):
         """Create all UI components."""

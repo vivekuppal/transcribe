@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import itertools
 import tkinter as tk
 from io import BytesIO
 
@@ -19,6 +20,11 @@ class DesktopDisplayManager:
         self.ui_font_size = ui_font_size
         self.popup_window = None
         self.last_transcript_ui_update_time: datetime.datetime | None = None
+        # Each speaker's newest transcript row is a tagged range, so a live update replaces
+        # that row in place instead of searching and reflowing the whole transcript.
+        self._open_rows: dict[str, str] = {}
+        self._row_numbers = itertools.count()
+        self._last_response_text: str | None = None
 
     def bind_ui(self, ui):
         """Attach the active UI instance."""
@@ -43,19 +49,41 @@ class DesktopDisplayManager:
 
     def update_last_row(self, speaker: str, input_text: str):
         """Replace the latest transcript row for a speaker."""
+        row_key = self._open_rows.get(speaker)
+        if row_key is not None:
+            self.ui.transcript_text.upsert_keyed_row(row_key, input_text)
+            return
+        # A row that was not added through add_transcript_line (e.g. text loaded at start).
         self.ui.transcript_text.delete_row_starting_with(start_text=speaker)
         self.ui.transcript_text.replace_multiple_newlines()
         self.ui.transcript_text.add_text_to_bottom("\n")
         self.ui.transcript_text.add_text_to_bottom(input_text)
         self.ui.transcript_text.scroll_to_bottom()
 
+    def add_transcript_line(self, input_text: str, persona: str | None = None):
+        """Append a transcript row; a speaker's row stays addressable until their next one."""
+        transcript_text = self.ui.transcript_text
+        if persona is None:
+            transcript_text.add_text_to_bottom(input_text)
+            return
+        previous = self._open_rows.get(persona)
+        if previous is not None:
+            transcript_text.release_keyed_row(previous)
+        row_key = f"{persona}-{next(self._row_numbers)}"
+        self._open_rows[persona] = row_key
+        transcript_text.upsert_keyed_row(row_key, input_text)
+
+    def reset_rows(self):
+        """Forget open rows (the transcript widget was cleared)."""
+        self._open_rows.clear()
+
     def queue_update_last_row(self, speaker: str, input_text: str):
         """Queue transcript row replacement on the Tk thread."""
         self.ui.enqueue_ui_action(self.update_last_row, speaker, input_text)
 
-    def queue_add_transcript_line(self, input_text: str):
+    def queue_add_transcript_line(self, input_text: str, persona: str | None = None):
         """Queue transcript insertion on the Tk thread."""
-        self.ui.enqueue_ui_action(self.ui.transcript_text.add_text_to_bottom, input_text)
+        self.ui.enqueue_ui_action(self.add_transcript_line, input_text, persona)
 
     def queue_upsert_partial_row(self, item_id: str, input_text: str):
         """Queue insertion or replacement of one provider-addressed partial row."""
@@ -70,6 +98,7 @@ class DesktopDisplayManager:
         self.ui.response_textbox.configure(state="normal")
         if response_string:
             self.write_in_textbox(self.ui.response_textbox, response_string)
+            self._last_response_text = response_string
         self.ui.response_textbox.configure(state="disabled")
         self.ui.response_textbox.see("end")
 
@@ -176,8 +205,11 @@ class DesktopDisplayManager:
             new_text = edit_text.get("1.0", tk.END).strip()
             text_widget = self.ui.transcript_text.text_widget
             text_widget.configure(state="normal")
+            # Keep the row's tag, so the speaker's next live update replaces this row and does
+            # not add a second copy below the edited one.
+            tags = text_widget.tag_names(current_line)
             text_widget.delete(current_line, f"{current_line} lineend")
-            text_widget.insert(current_line, f"{speaker}: {new_text}")
+            text_widget.insert(current_line, f"{speaker}: {new_text}", tags)
             text_widget.configure(state="disabled")
 
             convo_id = runtime.convo.get_convo_id(persona=speaker, input_text=speaker_text)
@@ -216,11 +248,14 @@ class DesktopDisplayManager:
         if runtime.previous_response is not None:
             response = runtime.previous_response
 
-        if response:
+        # Rewrite the box only when the text changed: a full rewrite every 300 ms made the
+        # window sluggish and kept resetting any scroll position.
+        if response and response != self._last_response_text:
             textbox.configure(state="normal")
             self.write_in_textbox(textbox, response)
             textbox.configure(state="disabled")
             textbox.see("end")
+            self._last_response_text = response
 
         update_interval = int(update_interval_slider.get())
         responder.update_response_interval(update_interval)

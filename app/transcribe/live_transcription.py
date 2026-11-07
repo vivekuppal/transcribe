@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 import re
+import threading
 
 from sdk.transcription_result import TranscriptSegment, TranscriptionHypothesis
 
@@ -44,10 +45,43 @@ class LiveTranscriptManager:
             general.get("live_transcription_stability_passes", DEFAULT_STABILITY_PASSES)
         )
         self._states: dict[str, _SpeakerTranscriptState] = {}
+        # The microphone and the speaker are transcribed on separate threads.
+        self._lock = threading.RLock()
 
     def clear(self):
         """Clear all live transcript reconciliation state."""
-        self._states.clear()
+        with self._lock:
+            self._states.clear()
+
+    def reset(self, speaker: str):
+        """Forget one speaker's current row (a new phrase starts)."""
+        with self._lock:
+            self._states.pop(speaker, None)
+
+    def commit(self, speaker: str, tail_text: str) -> str | None:
+        """Close the speaker's current row without its still-open tail.
+
+        Returns the row text to keep (the tail removed), or None when the row does not end
+        with that tail, in which case nothing changes. The speaker's next hypothesis starts
+        a new row.
+        """
+        with self._lock:
+            state = self._states.get(speaker)
+            if state is None:
+                return None
+            current_tokens = self._clean_text(state.current_text).split()
+            tail_tokens = self._clean_text(tail_text).split()
+            if tail_tokens:
+                if len(tail_tokens) > len(current_tokens):
+                    return None
+                current_end = " ".join(current_tokens[-len(tail_tokens):])
+                if self._normalize_for_match(current_end) != self._normalize_for_match(" ".join(tail_tokens)):
+                    return None
+                current_tokens = current_tokens[:-len(tail_tokens)]
+            if not current_tokens:
+                return None         # the whole row is still open: nothing to commit yet
+            self._states.pop(speaker, None)
+            return " ".join(current_tokens)
 
     def process_hypothesis(
         self,
@@ -56,6 +90,15 @@ class LiveTranscriptManager:
         new_phrase: bool,
     ) -> LiveTranscriptUpdate:
         """Merge a provider hypothesis into the speaker's current transcript."""
+        with self._lock:
+            return self._process_hypothesis(speaker, hypothesis, new_phrase)
+
+    def _process_hypothesis(
+        self,
+        speaker: str,
+        hypothesis: TranscriptionHypothesis,
+        new_phrase: bool,
+    ) -> LiveTranscriptUpdate:
         state = self._states.setdefault(speaker, _SpeakerTranscriptState())
         hypothesis_text = self._clean_text(hypothesis.text)
         if not hypothesis_text:
@@ -178,4 +221,6 @@ class LiveTranscriptManager:
 
     @staticmethod
     def _normalize_for_match(text: str) -> str:
-        return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+        # Letters and digits of every script (not only a-z), so that Persian, German or Chinese
+        # text is compared by its words instead of being reduced to an empty string.
+        return re.sub(r"[\W_]+", " ", text.lower()).strip()

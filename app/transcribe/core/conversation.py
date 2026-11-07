@@ -36,6 +36,8 @@ class Conversation:
         self.context = context
         self._initialized = False
         self._lock = threading.RLock()
+        # Database id of each persona's newest row, so an update does not need a SELECT first.
+        self._last_convo_id: dict[str, int | None] = {}
         self.initialize_conversation()
 
     def set_handlers(self, update, insert, partial=None, finalize_partial=None):
@@ -78,6 +80,7 @@ class Conversation:
         with self._lock:
             for persona in self.transcript_data:
                 self.transcript_data[persona].clear()
+            self._last_convo_id.clear()
             self._initialized = False
         self.initialize_conversation()
 
@@ -117,11 +120,14 @@ class Conversation:
             transcript = self.transcript_data[persona]
             convo_id = None
             convo_object = None
+            # Assistant text streams in token by token and is stored once, complete, in the
+            # LLM responses table; system rows are never stored. Neither touches the
+            # conversation table here (it used to cost a SELECT, an UPDATE and a commit per token).
+            persists = persona not in (constants.PERSONA_SYSTEM, constants.PERSONA_ASSISTANT)
 
-            if self._initialized:
+            if self._initialized and persists:
                 inv_id = appdb().get_invocation_id()
                 convo_object = appdb().get_object(convodb.TABLE_NAME)
-                convo_id = convo_object.get_max_convo_id(speaker=persona, inv_id=inv_id)
 
             convo_text = f"{persona}: [{text}]\n\n"
             ui_text = f"{persona}: [{text}]\n"
@@ -137,19 +143,20 @@ class Conversation:
             if should_update_previous:
                 prev_element = transcript.pop()
                 time_spoken = prev_element[1]
-                if self._initialized and convo_object is not None:
-                    convo_object.update_conversation(convo_id, text)
-                    if persona.lower() != "assistant" and self.update_handler is not None:
+                if convo_object is not None:
+                    convo_id = self._last_convo_id.get(persona)
+                    if convo_id is None:
+                        convo_id = convo_object.get_max_convo_id(speaker=persona, inv_id=inv_id)
+                        self._last_convo_id[persona] = convo_id
+                    if convo_id is not None:
+                        convo_object.update_conversation(convo_id, text)
+                    if self.update_handler is not None:
                         callback = self.update_handler
                         callback_args = (persona, ui_text)
             else:
-                if (
-                    self._initialized
-                    and persona != constants.PERSONA_SYSTEM
-                    and persona != constants.PERSONA_ASSISTANT
-                    and convo_object is not None
-                ):
+                if self._initialized and persists and convo_object is not None:
                     convo_id = convo_object.insert_conversation(inv_id, time_spoken, persona, text)
+                    self._last_convo_id[persona] = convo_id
                     if replace_ui_partial and partial_id and self.finalize_partial_handler is not None:
                         callback = self.finalize_partial_handler
                         callback_args = (partial_id, ui_text)
@@ -158,7 +165,7 @@ class Conversation:
                         callback_args = (persona, ui_text)
                     elif self.insert_handler is not None:
                         callback = self.insert_handler
-                        callback_args = (ui_text,)
+                        callback_args = (ui_text, persona)
 
             transcript.append((convo_text, time_spoken, convo_id))
             self.last_update = datetime.datetime.utcnow()

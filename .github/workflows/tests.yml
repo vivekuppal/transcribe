@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        # Everything the unit tests import. The heavy local engines (torch, openai-whisper,
+        # faster-whisper) are imported lazily and replaced by fakes in the tests.
+        run: >
+          python -m pip install
+          "numpy==1.26.4" "openai==1.109.1" "websocket-client>=1.8,<2" "customtkinter==5.2.2"
+          tkinter-tooltip "PyAudioWPatch==0.2.12.8" pyperclip PyYAML soundfile gtts "playsound==1.2.2"
+          "deepgram-sdk==3.2.5" "SqlAlchemy==2.0.31" appdirs "pillow==12.2.0" "wordcloud==1.9.4" requests pytest
+      - name: Run unit tests
+        working-directory: app/transcribe
+        env:
+          PYTHONPATH: ${{ github.workspace }};${{ github.workspace }}\app\transcribe
+        run: python -m pytest tests -q

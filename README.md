@@ -17,6 +17,42 @@ Thanks to [Lappu AI](https://www.lappuai.com/) for their support and multitude o
 
 # 👂🏻️ Transcribe ✍🏼️
 
+## ⚡ Faster live pipeline (this fork)
+
+This fork rebuilds the live audio path so transcripts and suggestions keep up with the conversation:
+
+- **Audio is converted once, in memory.** Each captured phrase becomes 16 kHz mono when it is recorded
+  (about 6 times less data than 48 kHz stereo). No temporary WAV file and no ffmpeg run per phrase;
+  ffmpeg is now only needed for transcribing files from the command line.
+- **Microphone and speaker are transcribed in parallel**, each on its own worker, so one slow request
+  never holds back the other side.
+- **No growing backlog.** When transcription is slower than speech, the audio that is waiting is merged
+  into one request instead of one request per phrase.
+- **Short requests during long speech.** Text the model has finished with is committed and its audio leaves
+  the buffer (`live_transcription_commit_seconds`, default 10). Requests stay around 10–15 s of audio
+  instead of growing to the 30 s window, and the OpenAI API path now asks for segment timestamps
+  (`verbose_json`) so this also works there.
+- **Faster local speech to text.** `faster-whisper` (CTranslate2, int8 on CPU) is used when installed,
+  with `openai-whisper` as the fallback when it is missing or its model cannot be loaded (for example no
+  internet for the first download), and the CPU when the GPU's CUDA libraries are missing
+  (`local_engine: auto | faster-whisper | openai-whisper`). Audio goes
+  to the model as an array, and `torch` / `whisper` are only imported when the local engine is used, which
+  makes start-up with an API noticeably quicker.
+- **Suggestions start when the transcript changes**, instead of on a fixed timer. `llm_response_interval`
+  (default now 5 s) is the minimum gap between two automatic requests; a very low value means more requests
+  (and cost) while someone talks. The API key is checked in the background at start-up instead of before the
+  first answer.
+- **Lighter UI and database work.** A speaker's newest row is updated in place (no search and reflow of the
+  whole transcript per update), the answer box is redrawn only when its text changes, and streamed answer
+  tokens no longer cause a database query, update and commit each.
+
+In a simulation (`tools/latency_simulation.py`) with 90 s of non-stop speech and the same speech to text cost for both versions
+(0.4 s + 0.05 s per second of audio, typical of a cloud API) the average delay before words appear went from
+1.7 s to 0.9 s and the audio sent went from 765 s to 309 s. With a slow local engine (0.5 s + 0.35 s per second
+of audio) the old pipeline fell behind and still had half of the words missing 40 s after the speaker
+stopped; the new one kept a delay of about 6 s with no words missing.
+
+
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
 
 Write an [email](waveblueseawave@gmail.com) to receive invite to the community channel or share your email in an issue.
