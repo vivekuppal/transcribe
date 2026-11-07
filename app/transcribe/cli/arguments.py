@@ -77,7 +77,7 @@ def create_args() -> argparse.Namespace:
         "-m",
         "--model",
         action="store",
-        choices=["tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3", "large"],
+        choices=["tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3", "large", "turbo"],
         default="base",
         help="Specify the OpenAI Local Transcription model file to use.\nThe necessary model files will be downloaded once at run time.",
     )

@@ -11,6 +11,7 @@ from sdk import audio_recorder as ar
 
 from .. import interactions
 from ..providers.stt import convert_audio_to_16khz, create_stt_model, ensure_ffmpeg_available
+from sdk.transcriber_models import OPENAI_WHISPER, pick_local_whisper_engine
 
 from tsutils import configuration, duration, utilities
 
@@ -74,14 +75,18 @@ def transcribe_audio_file(args, config: dict):
 
         file_path = args.transcribe
         temp_file_path = None
-        if stt_name in ("whisper", "whisper.cpp") and not use_api:
-            ensure_ffmpeg_available()       # reading audio files (mp3, m4a ...) needs ffmpeg
+        # faster-whisper reads audio and video files itself; openai-whisper and whisper.cpp need
+        # ffmpeg for that (checked before a model is loaded or downloaded).
+        if stt_name == "whisper.cpp" or (
+                stt_name == "whisper" and not use_api and
+                pick_local_whisper_engine(config["General"].get("local_engine", "auto")) == OPENAI_WHISPER):
+            ensure_ffmpeg_available()
         try:
+            model = create_stt_model(name=stt_name, config=config, api=use_api)
             if stt_name == "whisper.cpp":
                 temp_file_path = convert_audio_to_16khz(args.transcribe)
                 file_path = temp_file_path
 
-            model = create_stt_model(name=stt_name, config=config, api=use_api)
             results = model.get_sentences(file_path)
         finally:
             if temp_file_path is not None and os.path.exists(temp_file_path):

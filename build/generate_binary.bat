@@ -23,17 +23,15 @@ SET PYINSTALLER_DIST_PATH=%OUTPUT_DIR%\dist
 SET PYINSTALLER_TEMP_PATH=%OUTPUT_DIR%\temp
 ECHO %PYINSTALLER_DIST_PATH%
 
-pyinstaller --clean --noconfirm --workpath %PYINSTALLER_TEMP_PATH% --specpath %OUTPUT_DIR% --distpath %PYINSTALLER_DIST_PATH% -n %EXECUTABLE_NAME% --log-level DEBUG main.py
+REM faster-whisper ships a voice-activity model as data and CTranslate2 ships DLLs: collect both.
+REM PyTorch / openai-whisper are optional and left out, even if the build venv has them.
+REM This package runs local speech to text on the CPU; for an NVIDIA GPU run from source with setup-gpu.bat.
+pyinstaller --clean --noconfirm --workpath %PYINSTALLER_TEMP_PATH% --specpath %OUTPUT_DIR% --distpath %PYINSTALLER_DIST_PATH% -n %EXECUTABLE_NAME% --log-level DEBUG --collect-data faster_whisper --collect-binaries ctranslate2 --exclude-module torch --exclude-module whisper --exclude-module funasr main.py
 
 REM generate version.txt file
 git rev-parse --short HEAD > version.txt
 
-SET ASSETS_DIR_SRC=%LIBSITE_PACAGES_DIR%\whisper\assets\
-SET ASSETS_DIR_DEST=%PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper\assets
-
 REM ensure the appropriate directories exist
-if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\whisper
-if not exist %ASSETS_DIR_DEST% mkdir %ASSETS_DIR_DEST%
 if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\models mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\models
 if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\logs mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\logs
 if not exist %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin mkdir %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin
@@ -42,10 +40,7 @@ REM Copy appropriate files to the dir
 copy %SOURCE_DIR%\parameters.yaml %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\parameters.yaml
 copy %SOURCE_DIR%\override.yaml %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\override.yaml
 copy %SOURCE_DIR%\version.txt %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\version.txt
-copy %ASSETS_DIR_SRC%\mel_filters.npz %ASSETS_DIR_DEST%
-copy %ASSETS_DIR_SRC%\gpt2.tiktoken %ASSETS_DIR_DEST%
-copy %SOURCE_DIR%\bin\main.exe %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin\main.exe
-copy %SOURCE_DIR%\bin\whisper.dll %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin\whisper.dll
+copy %SOURCE_DIR%\bin\README.md %PYINSTALLER_DIST_PATH%\%EXECUTABLE_NAME%\bin\README.md
 
 REM Code for zipping the final package
 ECHO Zipping output files...

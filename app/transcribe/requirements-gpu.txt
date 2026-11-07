@@ -1,0 +1,5 @@
+# Optional: run faster-whisper on an NVIDIA GPU (CUDA 12, cuDNN 9).
+# Installed by setup-gpu.bat. Without these the CPU is used.
+ctranslate2>=4.5,<5
+nvidia-cublas-cu12
+nvidia-cudnn-cu12>=9,<10

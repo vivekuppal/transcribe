@@ -27,3 +27,23 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }};${{ github.workspace }}\app\transcribe
         run: python -m pytest tests -q
+
+  install-size:
+    # Installs exactly what setup.bat installs and reports how big it is (no PyTorch any more).
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install like setup.bat
+        run: |
+          python -m venv venv
+          venv\Scripts\python -m pip install --upgrade pip
+          venv\Scripts\python -m pip install -r app\transcribe\requirements.txt
+      - name: Check the local engine and report the size
+        run: |
+          venv\Scripts\python -c "import faster_whisper, ctranslate2; print('faster-whisper', faster_whisper.__version__, '| ctranslate2', ctranslate2.__version__)"
+          venv\Scripts\python -c "import importlib.util, sys; sys.exit(1 if importlib.util.find_spec('torch') else 0)"
+          venv\Scripts\python -c "import os; total = sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk('venv') for f in fs); print('Installed size: %.0f MB' % (total / 1e6))"

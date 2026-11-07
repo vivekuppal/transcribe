@@ -97,7 +97,8 @@ General:
 # 0 turns committing off (the buffer then grows up to live_transcription_window_seconds).
   live_transcription_commit_seconds: 10
 # Local speech to text engine for stt: whisper without the API.
-# auto = faster-whisper when installed (much faster on CPU), otherwise openai-whisper.
+# auto = faster-whisper (installed by setup.bat; fast on CPU, no PyTorch needed).
+# openai-whisper is optional (needs PyTorch, several GB): run app\transcribe\setup-openai-whisper.bat.
 # Possible values: auto, faster-whisper, openai-whisper
   local_engine: auto
 # These two parameters are used together.
