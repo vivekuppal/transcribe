@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 import re
+import threading
+import unicodedata
 
 from sdk.transcription_result import TranscriptSegment, TranscriptionHypothesis
 
@@ -44,10 +46,46 @@ class LiveTranscriptManager:
             general.get("live_transcription_stability_passes", DEFAULT_STABILITY_PASSES)
         )
         self._states: dict[str, _SpeakerTranscriptState] = {}
+        # The microphone and the speaker are transcribed on separate threads.
+        self._lock = threading.RLock()
 
     def clear(self):
         """Clear all live transcript reconciliation state."""
-        self._states.clear()
+        with self._lock:
+            self._states.clear()
+
+    def reset(self, speaker: str):
+        """Forget one speaker's current row (a new phrase starts)."""
+        with self._lock:
+            self._states.pop(speaker, None)
+
+    def commit(self, speaker: str, tail_text: str) -> str | None:
+        """Close the speaker's current row without its still-open tail.
+
+        Returns the row text to keep (the tail removed), or None when the row does not end
+        with that tail, in which case nothing changes. The speaker's next hypothesis starts
+        a new row. Compared letter by letter (ignoring spaces, case and punctuation), so it
+        also works for languages written without spaces between words.
+        """
+        with self._lock:
+            state = self._states.get(speaker)
+            if state is None:
+                return None
+            current = self._clean_text(state.current_text)
+            tail = self._compact(tail_text)
+            if not self._compact(current).endswith(tail):
+                return None
+            # Walk back over the row until all letters of the tail are behind us.
+            remaining, cut = len(tail), len(current)
+            while remaining > 0 and cut > 0:
+                cut -= 1
+                if self._is_word_char(current[cut]):
+                    remaining -= 1
+            kept = current[:cut].rstrip()
+            if not self._compact(kept):
+                return None         # the whole row is still open: nothing to commit yet
+            self._states.pop(speaker, None)
+            return kept
 
     def process_hypothesis(
         self,
@@ -56,6 +94,15 @@ class LiveTranscriptManager:
         new_phrase: bool,
     ) -> LiveTranscriptUpdate:
         """Merge a provider hypothesis into the speaker's current transcript."""
+        with self._lock:
+            return self._process_hypothesis(speaker, hypothesis, new_phrase)
+
+    def _process_hypothesis(
+        self,
+        speaker: str,
+        hypothesis: TranscriptionHypothesis,
+        new_phrase: bool,
+    ) -> LiveTranscriptUpdate:
         state = self._states.setdefault(speaker, _SpeakerTranscriptState())
         hypothesis_text = self._clean_text(hypothesis.text)
         if not hypothesis_text:
@@ -177,5 +224,17 @@ class LiveTranscriptManager:
         return re.sub(r"\s+", " ", str(text or "")).strip()
 
     @staticmethod
-    def _normalize_for_match(text: str) -> str:
-        return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+    def _is_word_char(char: str) -> bool:
+        # Letters and digits of every script, their combining marks (Hindi vowel signs) and the
+        # zero-width non-joiner used inside Persian words.
+        return char.isalnum() or char == "\u200c" or unicodedata.category(char).startswith("M")
+
+    @classmethod
+    def _compact(cls, text: str) -> str:
+        return "".join(char for char in str(text or "").lower() if cls._is_word_char(char))
+
+    @classmethod
+    def _normalize_for_match(cls, text: str) -> str:
+        # Words of every script are kept (the old a-z-only rule turned Persian text into "").
+        return " ".join("".join(char if cls._is_word_char(char) else " "
+                                for char in text.lower()).split())

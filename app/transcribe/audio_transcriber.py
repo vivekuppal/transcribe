@@ -1,17 +1,30 @@
-"""Encapsulates all Speech to Text functionality
+"""Chunked speech to text for the microphone and the speaker.
+
+How audio moves (each step was a cause of lag before):
+
+* The recorders deliver phrases of up to ``transcript_audio_duration_seconds`` that are
+  already 16 kHz mono 16-bit PCM (see ``sdk.audio_format``).
+* One dispatcher hands every phrase to its own source worker, so a slow transcription of
+  the speaker never holds back the microphone (or the other way round).
+* A worker takes everything that is waiting for its source in one go and transcribes it in
+  one request. When transcription is slower than speech, audio is merged instead of queueing
+  up one request per phrase, so the delay cannot keep growing.
+* Audio is passed to the model in memory (``transcribe_pcm``); no temporary WAV per phrase.
+* While someone speaks without a pause, the rolling buffer is re-transcribed so earlier words
+  can still be corrected. Once the buffer passes ``live_transcription_commit_seconds``, text
+  that the model has finished with (segments ending before the mutable tail) is committed:
+  that audio leaves the buffer and later passes start a new row. Each request therefore
+  stays around ``commit + phrase`` seconds long instead of growing to the 30 second window.
 """
-import os
-import queue
-import time
-import threading
-import io
+
+from __future__ import annotations
+
 import datetime
-from abc import abstractmethod
-# import pprint
-import wave
-import tempfile
-import pyaudiowpatch as pyaudio
-# from db import AppDB as appdb
+import queue
+import threading
+import time
+
+from sdk import audio_format
 from . import constants, conversation
 from .live_transcription import (
     DEFAULT_AUDIO_CONTEXT_SECONDS,
@@ -19,40 +32,31 @@ from .live_transcription import (
     LiveTranscriptManager,
 )
 from .transcriber import TranscriberInterface
-import custom_speech_recognition as sr
 from tsutils import app_logging as al
-from tsutils import duration
+from tsutils import duration, language
 
-
-# There can be prompts for speech to text aspects as well, that have not been considered as yet.
-# See the prompting section here https://platform.openai.com/docs/guides/speech-to-text/prompting
 
 # pylint: disable=logging-fstring-interpolation
+# A gap longer than this between two captured phrases of one source starts a new row.
 PHRASE_TIMEOUT = 3.05
+DEFAULT_COMMIT_SECONDS = 10.0
+# Never cut off less audio than this when committing; tiny cuts are not worth a new row.
+MIN_COMMIT_CUT_SECONDS = 1.0
+SOURCES = (constants.PERSONA_YOU, constants.PERSONA_SPEAKER)
 logger = al.get_module_logger(al.TRANSCRIBER_LOGGER)
-# Attempt to prune after these number of segments in transcription
-WHISPER_SEGMENT_PRUNE_THRESHOLD = 6
-# Duration of audio (seconds) after which force pruning
-AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS = 45
 
 
 class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
 
     def __init__(self, mic_source, speaker_source, model,
                  convo: conversation.Conversation,
-                 config: dict,
-                 audio_chunk_preprocessor=None):
+                 config: dict):
         logger.info(self.__class__.__name__)
-        # Transcript_data should be replaced with the conversation object.
-        # We do not need to store transcription in 2 different places.
-        # self.transcript_data = {"You": [], "Speaker": []}
+        del mic_source, speaker_source     # capture formats no longer matter: audio arrives as 16 kHz mono
         self.transcript_changed_event = threading.Event()
         self.stt_model = model
-        # Same mutex is used for all audio sources. In case locking becomes an issue, can consider
-        # using separate mutex for each audio source
         self.mutex = threading.Lock()
         self.config = config
-        self.audio_chunk_preprocessor = audio_chunk_preprocessor
         general_config = self.config.get("General", {})
         self.live_transcript_manager = LiveTranscriptManager(config=config)
         self.live_transcription_window_seconds = float(
@@ -61,64 +65,43 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
         self.live_transcription_audio_context_seconds = float(
             general_config.get("live_transcription_audio_context_seconds", DEFAULT_AUDIO_CONTEXT_SECONDS)
         )
-        self.clear_transcript_periodically: bool = \
-            self.config['General']['clear_transcript_periodically']
-        self.clear_transcript_interval_seconds: int = \
-            self.config['General']['clear_transcript_interval_seconds']
+        self.commit_seconds = float(
+            general_config.get("live_transcription_commit_seconds", DEFAULT_COMMIT_SECONDS)
+        )
+        self.clear_transcript_periodically: bool = general_config['clear_transcript_periodically']
+        self.clear_transcript_interval_seconds: int = general_config['clear_transcript_interval_seconds']
         # Determines if transcription is enabled for the application. By default it is enabled.
         self.transcribe = True
-        self.audio_sources_properties = {
-            "You": {
-                # int
-                "sample_rate": mic_source.SAMPLE_RATE,
-                # int
-                "sample_width": mic_source.SAMPLE_WIDTH,
-                # int
-                "channels": mic_source.channels,
-                "last_sample": bytes(),  # Raw bytes for wav format data
-                "buffer_start_seconds": 0.0,
-                # Timestamp (UTC) for when the last transcribed audio record was put in queue
-                "last_spoken": None,
-                # bool
-                "new_phrase": True,
-                # function pointer
-                "process_data_func": self.process_mic_data,
-                # mutex
-                "mutex": self.mutex
-            },
-            "Speaker": {
-                # int
-                "sample_rate": speaker_source.SAMPLE_RATE,
-                # int
-                "sample_width": speaker_source.SAMPLE_WIDTH,
-                # int
-                "channels": speaker_source.channels,
-                "last_sample": bytes(),  # Raw bytes for wav format data
-                "buffer_start_seconds": 0.0,
-                # Timestamp (UTC) for when the last transcribed audio record was put in queue
-                "last_spoken": None,
-                # bool
-                "new_phrase": True,
-                # function pointer
-                "process_data_func": self.process_speaker_data,
-                # mutex
-                "mutex": self.mutex
-            }
-        }
+        # Bumped by clear_transcript_data so a request that was running during a clear
+        # cannot write old text into the new, empty transcript.
+        self._generation = 0
+        self.audio_sources_properties = {name: self._new_source_state() for name in SOURCES}
+        self._source_queues: dict[str, queue.Queue] = {name: queue.Queue() for name in SOURCES}
+        self._workers: dict[str, threading.Thread] = {}
+        # Local engines (openai-whisper, SenseVoice, whisper.cpp) must not run two transcriptions at
+        # once; network engines and faster-whisper (two workers) can.
+        self._model_lock = None if getattr(model, "thread_safe", False) else threading.Lock()
         self.conversation = convo
 
-    def set_source_properties(self, mic_source=None, speaker_source=None):
-        """Resets the audio source properties stored in internal data structures.
-        """
-        if mic_source is not None:
-            self.audio_sources_properties['You']['sample_rate'] = mic_source.SAMPLE_RATE
-            self.audio_sources_properties['You']['sample_width'] = mic_source.SAMPLE_WIDTH
-            self.audio_sources_properties['You']['channels'] = mic_source.channels
+    def _new_source_state(self) -> dict:
+        return {
+            "sample_rate": audio_format.TARGET_SAMPLE_RATE,
+            "sample_width": audio_format.TARGET_SAMPLE_WIDTH,
+            "channels": audio_format.TARGET_CHANNELS,
+            "last_sample": bytes(),      # 16 kHz mono PCM of the current row (plus context)
+            "buffer_start_seconds": 0.0,
+            # UTC time the last captured phrase of this source was queued
+            "last_spoken": None,
+            # True until the current phrase has produced its own transcript row
+            "new_phrase": True,
+            # True when audio was added that has not been transcribed yet
+            "dirty": False,
+            "mutex": self.mutex,
+        }
 
-        if speaker_source is not None:
-            self.audio_sources_properties['Speaker']['sample_rate'] = speaker_source.SAMPLE_RATE
-            self.audio_sources_properties['Speaker']['sample_width'] = speaker_source.SAMPLE_WIDTH
-            self.audio_sources_properties['Speaker']['channels'] = speaker_source.channels
+    def set_source_properties(self, mic_source=None, speaker_source=None):
+        """Capture formats are normalised by the recorders; nothing to update here."""
+        del mic_source, speaker_source
 
     def set_source_enabled(self, source_name: str, enabled: bool):
         """File/window providers do not own source capture resources."""
@@ -129,166 +112,106 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
         self.transcribe = bool(enabled)
 
     def set_language(self, lang: str):
-        """Update the language on the configured file/window STT model."""
-        self.stt_model.set_lang(lang)
+        """Update the language on the configured file/window STT model.
+
+        The UI and parameters.yaml use names ("English"); every engine wants the code ("en").
+        """
+        self.stt_model.set_lang(language_code(lang))
 
     def stop(self):
         """File/window transcribers own no persistent provider resources."""
 
+    # ----------------------------------------------------------------------------------------
+    # Threads
+    # ----------------------------------------------------------------------------------------
     def transcribe_audio_queue(self, audio_queue: queue.Queue):
-        """Transcribe data from audio sources. In this case we have 2 sources, microphone, speaker.
-        Args:
-          audio_queue: queue object with reference to audio files
-        """
+        """Dispatch captured phrases to one worker per source (runs forever on its own thread)."""
         logger.info(self.__class__.__name__)
+        self._start_workers()
         while True:
             who_spoke, data, time_spoken = audio_queue.get()
-            logger.info(f'Transcribe Audio Queue. Current time: {datetime.datetime.utcnow()} '
-                        f'- Time Spoken: {time_spoken} by : {who_spoke}, queue_backlog - '
-                        f'{audio_queue.qsize()}')
-            self._update_last_sample_and_phrase_status(who_spoke, data, time_spoken)
-            source_info = self.audio_sources_properties[who_spoke]
+            source_queue = self._source_queues.get(who_spoke)
+            if source_queue is None:
+                logger.warning(f'Audio from unknown source {who_spoke} was ignored')
+                continue
+            source_queue.put((data, time_spoken))
 
-            text = ''
-            update_previous = None
+    def _start_workers(self):
+        for name in SOURCES:
+            worker = self._workers.get(name)
+            if worker is None or not worker.is_alive():
+                worker = threading.Thread(target=self._source_worker, args=(name,),
+                                          name=f'Transcribe {name}', daemon=True)
+                self._workers[name] = worker
+                worker.start()
+
+    def _source_worker(self, who_spoke: str):
+        source_queue = self._source_queues[who_spoke]
+        source_info = self.audio_sources_properties[who_spoke]
+        while True:
             try:
-                file_descritor, path = tempfile.mkstemp(suffix=".wav")
-                os.close(file_descritor)
-                source_info["process_data_func"](source_info["last_sample"], path)
-                if self.transcribe:
-                    with duration.Duration('Transcription (Speech to Text)', screen=False):
-                        logger.info(f'{datetime.datetime.now()} - Begin transcription')
-                        response = self.stt_model.get_transcription(path)
-                        raw_text = self.stt_model.process_response(response)
-                        if raw_text != '':
-                            audio_start_seconds, audio_end_seconds = \
-                                self._get_audio_window_seconds(source_info)
-                            hypothesis = self.stt_model.normalize_response(
-                                response,
-                                audio_start_seconds=audio_start_seconds,
-                                audio_end_seconds=audio_end_seconds,
-                            )
-                            live_update = self.live_transcript_manager.process_hypothesis(
-                                speaker=who_spoke,
-                                hypothesis=hypothesis,
-                                new_phrase=source_info["new_phrase"],
-                            )
-                            text = live_update.text if live_update.changed else ''
-                            update_previous = live_update.update_previous
+                # With audio still untranscribed (the tail after a commit), wait only as long
+                # as a phrase may pause; if nothing more comes, finish the phrase now.
+                timeout = PHRASE_TIMEOUT if source_info["dirty"] else None
+                items = [source_queue.get(timeout=timeout)]
+            except queue.Empty:
+                self._run_safely(who_spoke)
+                continue
+            while True:
+                try:
+                    items.append(source_queue.get_nowait())
+                except queue.Empty:
+                    break
+            generation = self._generation
+            for data, time_spoken in items:
+                if self._is_new_phrase(source_info, time_spoken) and source_info["dirty"]:
+                    # Finish the previous phrase before its audio is replaced by the next one.
+                    self._run_safely(who_spoke)
+                if not self._update_last_sample_and_phrase_status(who_spoke, data, time_spoken, generation):
+                    break           # the transcript was cleared: audio taken before it is dropped
+            if source_info["dirty"]:
+                self._run_safely(who_spoke)
 
-                        logger.info(f'{datetime.datetime.utcnow()} = Transcribed text: {text}')
-                        logger.info(f'{datetime.datetime.utcnow()} - End transcription')
+    def _run_safely(self, who_spoke: str):
+        try:
+            self._transcribe_source(who_spoke)
+        except Exception as exception:  # a worker must never die: the source would go silent
+            logger.exception(f'Transcription failed for {who_spoke}: {exception}')
+            with self.mutex:
+                self.audio_sources_properties[who_spoke]["dirty"] = False
 
-            except Exception as exception:
-                print(exception)
-            finally:
-                # print(f'transcribe_audio_queue: file: {path} filesize: {os.path.getsize(path)}')
-                os.unlink(path)
+    # ----------------------------------------------------------------------------------------
+    # Buffer handling
+    # ----------------------------------------------------------------------------------------
+    @staticmethod
+    def _is_new_phrase(source_info: dict, time_spoken) -> bool:
+        last_spoken = source_info["last_spoken"]
+        return last_spoken is None or \
+            time_spoken - last_spoken > datetime.timedelta(seconds=PHRASE_TIMEOUT)
 
-            if text != '' and text.lower() != 'you':
-                self.update_transcript(
-                    who_spoke,
-                    text,
-                    time_spoken,
-                    update_previous=update_previous,
-                )
-                self.transcript_changed_event.set()
-
-    def _prune_audio_file(self, results, who_spoke, time_spoken, path):
-        """Checks if pruning of Audio Source is required based on transcriber
-        parameters, and prunes appropriately."""
-        source_info = self.audio_sources_properties[who_spoke]
-        with source_info["mutex"]:
-            original_data_size = len(source_info["last_sample"])
-
-        prune, prune_id, prune_percent = self.check_for_latency(results)
-        # print(f'Prune: {prune}. prune_id: {prune_id}. prune_percent: {prune_percent}')
-        if prune:
-            logger.info(f'{datetime.datetime.utcnow()} - Attempted to prune.')
-            first, second = self.prune_for_latency(who_spoke=who_spoke,
-                                                   original_data_size=original_data_size,
-                                                   prune_percent=prune_percent,
-                                                   results=results,
-                                                   prune_id=prune_id,
-                                                   file_path=path)
-            self.conversation.update_conversation(persona=who_spoke,
-                                                  time_spoken=time_spoken,
-                                                  text=first,
-                                                  update_previous=True)
-            self.conversation.update_conversation(persona=who_spoke,
-                                                  time_spoken=time_spoken,
-                                                  text=second,
-                                                  update_previous=False)
-
-    @abstractmethod
-    def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
-        """Very long audio clips can result in latency of transcription.
-        Prune long audio clips based on number of segments, audio duration.
-        Latency check is specific to each transcriber because of the difference
-        in format of results. It is implemented in each transcriber specific class.
-        Return values are
-          prune: bool: Whether to prune or not
-          prune_segment_id: int: Prune everything before this segment / paragraph
-          prune_percent: float: % of audio clip (by size) to be pruned
-        """
-
-    @abstractmethod
-    def prune_for_latency(self, who_spoke: str, original_data_size: int,
-                          results: dict, prune_id: int,
-                          file_path: str, prune_percent: int) -> tuple[str, str]:
-        """Very long audio clips can result in latency of transcription.
-        Prune long audio clips based on number of segments, audio duration.
-        Latency check is specific to each transcriber because of the difference
-        in format of results. It is implemented in each transcriber specific class.
-        """
-
-    def write_wav_data_to_file(self, data, channels,
-                               sample_width, frame_rate, file_path='', ) -> str:
-        """Write the data as a wave file
-        """
-        if file_path == '':
-            file_descritor, file_path = tempfile.mkstemp(suffix=".wav")
-            os.close(file_descritor)
-
-        with wave.open(file_path, 'wb') as wf:
-            # print(f'{datetime.datetime.now()} - Writing speaker data into file: {file_path}')
-            wf.setnchannels(channels)    # pylint: disable=E1101
-            wf.setsampwidth(sample_width)    # pylint: disable=E1101
-            wf.setframerate(frame_rate)    # pylint: disable=E1101
-            wf.writeframes(data)    # pylint: disable=E1101
-            # print(f'datasize: {len(data)}')
-        # print(f'filesize: {os.path.getsize(file_path)}')
-        return file_path
-
-    def _update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken):
-        logger.info(AudioTranscriber._update_last_sample_and_phrase_status.__name__)
-        if not self.transcribe:
-            return
+    def _update_last_sample_and_phrase_status(self, who_spoke, data, time_spoken, generation=None) -> bool:
+        """Add captured audio to the source's buffer. False when a clear happened since `generation`."""
         source_info = self.audio_sources_properties[who_spoke]
 
         with source_info["mutex"]:
-            # time_spoken - when current audio record was put into the queue (utc)
-            if source_info["last_spoken"] and time_spoken - source_info["last_spoken"] \
-                    > datetime.timedelta(seconds=PHRASE_TIMEOUT):
+            if generation is not None and generation != self._generation:
+                return False
+            if not self.transcribe:
+                return True
+            if self._is_new_phrase(source_info, time_spoken):
                 source_info["last_sample"] = bytes()
                 source_info["buffer_start_seconds"] = 0.0
                 source_info["new_phrase"] = True
-            else:
-                source_info["new_phrase"] = False
-
-            if self.audio_chunk_preprocessor is not None:
-                data = self.audio_chunk_preprocessor(
-                    who_spoke=who_spoke,
-                    data=data,
-                    source_info=source_info,
-                )
+                self.live_transcript_manager.reset(who_spoke)
 
             source_info["last_sample"] += data
+            source_info["dirty"] = True
             self._trim_audio_buffer_locked(source_info)
             source_info["last_spoken"] = time_spoken
+        return True
 
     def _trim_audio_buffer_locked(self, source_info: dict):
-        """Trim retained audio to the configured rolling live transcription window."""
+        """Hard cap for providers without timestamps: keep only the rolling window."""
         bytes_per_second = self._bytes_per_second(source_info)
         if bytes_per_second <= 0:
             return
@@ -322,51 +245,97 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
 
     @staticmethod
     def _frame_size(source_info: dict) -> int:
-        sample_width = int(source_info.get("sample_width", 2))
-        channels = int(source_info.get("target_channels", source_info.get("channels", 1)))
-        return max(sample_width * channels, 1)
+        return max(int(source_info.get("sample_width", 2)) * int(source_info.get("channels", 1)), 1)
 
     @classmethod
     def _bytes_per_second(cls, source_info: dict) -> int:
-        sample_width = int(source_info.get("sample_width", 2))
-        channels = int(source_info.get("target_channels", source_info.get("channels", 1)))
-        sample_rate = int(source_info.get("target_sample_rate", source_info.get("sample_rate", 0)))
-        return max(sample_width * channels * sample_rate, 0)
+        return max(cls._frame_size(source_info) * int(source_info.get("sample_rate", 0)), 0)
 
-    def process_mic_data(self, data, temp_file_name):
-        """Processes audio data received from the microphone
-        Args:
-            temp_file_name: Name of .wav file to store the data
-        """
-        logger.info(AudioTranscriber.process_mic_data.__name__)
-        if not self.transcribe:
+    # ----------------------------------------------------------------------------------------
+    # Transcription
+    # ----------------------------------------------------------------------------------------
+    def _transcribe_source(self, who_spoke: str):
+        source_info = self.audio_sources_properties[who_spoke]
+        with source_info["mutex"]:
+            source_info["dirty"] = False
+            pcm = source_info["last_sample"]
+            audio_start_seconds = float(source_info["buffer_start_seconds"])
+            audio_end_seconds = audio_start_seconds + self._audio_duration_seconds(source_info)
+            new_phrase = source_info["new_phrase"]
+            time_spoken = source_info["last_spoken"]
+            generation = self._generation
+        if not self.transcribe or not pcm:
             return
 
-        p = pyaudio.PyAudio()
-        sample_width = p.get_sample_size(pyaudio.paInt16)
-        frame_rate = int(self.audio_sources_properties["You"]["sample_rate"])
-        audio_data = sr.AudioData(data, frame_rate, sample_width)
-        with open(temp_file_name, 'w+b') as file_handle:
-            file_handle.write(audio_data.get_wav_data())
-        # print(f'filesize: {os.path.getsize(temp_file_name)}')
-
-    def process_speaker_data(self, data, temp_file_name):
-        """Processes audio data received from the speaker
-        Args:
-            temp_file_name: Name of .wav file to store the data
-        """
-        logger.info(AudioTranscriber.process_speaker_data.__name__)
-        if not self.transcribe:
+        with duration.Duration(f'Transcription (Speech to Text) {who_spoke}', screen=False):
+            if self._model_lock is None:
+                response = self.stt_model.transcribe_pcm(pcm, audio_format.TARGET_SAMPLE_RATE)
+            else:
+                with self._model_lock:
+                    response = self.stt_model.transcribe_pcm(pcm, audio_format.TARGET_SAMPLE_RATE)
+            raw_text = self.stt_model.process_response(response) if response else ''
+        if not raw_text:
             return
-        channels = int(self.audio_sources_properties["Speaker"]["channels"])
-        p = pyaudio.PyAudio()
-        sample_width = p.get_sample_size(pyaudio.paInt16)
-        frame_rate = self.audio_sources_properties["Speaker"]["sample_rate"]
-        self.write_wav_data_to_file(data,
-                                    channels=channels,
-                                    sample_width=sample_width,
-                                    frame_rate=frame_rate,
-                                    file_path=temp_file_name)
+
+        hypothesis = self.stt_model.normalize_response(
+            response,
+            audio_start_seconds=audio_start_seconds,
+            audio_end_seconds=audio_end_seconds,
+        )
+        with self.mutex:
+            if generation != self._generation:
+                return              # the transcript was cleared while this request ran
+            live_update = self.live_transcript_manager.process_hypothesis(
+                speaker=who_spoke,
+                hypothesis=hypothesis,
+                new_phrase=new_phrase,
+            )
+            text = live_update.text if live_update.changed else ''
+            if text and text.lower() != 'you':
+                # Written while holding the lock, so a clear cannot slip in between the check above
+                # and the write (the conversation never waits for this lock: no deadlock).
+                self.update_transcript(who_spoke, text, time_spoken,
+                                       update_previous=live_update.update_previous)
+                source_info["new_phrase"] = False
+                self.transcript_changed_event.set()
+        logger.info(f'{who_spoke}: transcribed {audio_end_seconds - audio_start_seconds:.1f}s -> {text}')
+
+        self._maybe_commit(who_spoke, hypothesis, audio_start_seconds,
+                           audio_end_seconds - audio_start_seconds, time_spoken, generation)
+
+    def _maybe_commit(self, who_spoke: str, hypothesis, audio_start_seconds: float,
+                      audio_seconds: float, time_spoken, generation: int):
+        """Move finished text out of the rolling buffer once it is long enough."""
+        if self.commit_seconds <= 0 or audio_seconds < self.commit_seconds:
+            return
+        source_info = self.audio_sources_properties[who_spoke]
+        cutoff = hypothesis.audio_end_seconds - self.live_transcript_manager.mutable_tail_seconds
+        segments = [segment for segment in hypothesis.segments if segment.text]
+        final = [segment for segment in segments if segment.end_seconds <= cutoff]
+        if not final:
+            return                  # no timestamps, or nothing settled yet: the window cap applies
+        cut_seconds = final[-1].end_seconds - audio_start_seconds
+        if cut_seconds < MIN_COMMIT_CUT_SECONDS:
+            return
+        tail_text = " ".join(segment.text for segment in segments[len(final):])
+
+        with self.mutex:
+            if generation != self._generation or source_info["new_phrase"]:
+                return              # cleared, or the hypothesis never reached the transcript
+            committed_text = self.live_transcript_manager.commit(who_spoke, tail_text)
+            if committed_text is None:
+                return              # the row does not end with the open tail; try next pass
+            cut_bytes = int(cut_seconds * self._bytes_per_second(source_info))
+            cut_bytes -= cut_bytes % self._frame_size(source_info)
+            cut_bytes = min(cut_bytes, len(source_info["last_sample"]))
+            source_info["last_sample"] = source_info["last_sample"][cut_bytes:]
+            source_info["buffer_start_seconds"] += cut_bytes / self._bytes_per_second(source_info)
+            source_info["new_phrase"] = True
+            # The open tail is no longer in any row: transcribe it with the next audio, or
+            # on its own if the speaker stops here.
+            source_info["dirty"] = bool(source_info["last_sample"])
+            self.update_transcript(who_spoke, committed_text, time_spoken, update_previous=True)
+        logger.info(f'{who_spoke}: committed {cut_seconds:.1f}s of audio')
 
     def update_transcript(self, who_spoke, text, time_spoken, update_previous=None):
         """Update transcript with new data
@@ -378,17 +347,10 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
         source_info = self.audio_sources_properties[who_spoke]
         if update_previous is None:
             update_previous = not source_info["new_phrase"]
-
-        # if source_info["new_phrase"] or len(transcript) == 0:
-        if not update_previous:
-            self.conversation.update_conversation(persona=who_spoke,
-                                                  time_spoken=time_spoken,
-                                                  text=text)
-        else:
-            self.conversation.update_conversation(persona=who_spoke,
-                                                  time_spoken=time_spoken,
-                                                  text=text,
-                                                  update_previous=True)
+        self.conversation.update_conversation(persona=who_spoke,
+                                              time_spoken=time_spoken or datetime.datetime.utcnow(),
+                                              text=text,
+                                              update_previous=bool(update_previous))
 
     def get_transcript(self, length: int = 0):
         """Get the audio transcript
@@ -396,13 +358,7 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
         length: Get the last length elements from the audio transcript.
                 Default value = 0, gives the complete transcript
         """
-        sources = [
-            constants.PERSONA_YOU,
-            constants.PERSONA_SPEAKER
-            ]
-        convo_object_return_value = self.conversation.get_conversation(
-            sources=sources, length=length)
-        return convo_object_return_value
+        return self.conversation.get_conversation(sources=list(SOURCES), length=length)
 
     def clear_transcript_data_loop(self, audio_queue: queue.Queue):
         """Clear transcript data at a specified interval if needed.
@@ -415,509 +371,48 @@ class AudioTranscriber(TranscriberInterface):   # pylint: disable=C0115, R0902
             time.sleep(self.clear_transcript_interval_seconds)
 
     def clear_transcriber_context(self, audio_queue: queue.Queue):
-        """Reset the transcriber
-        Args:
-          textbox: textbox to be updated
-          text: updated text
-    """
-        with self.mutex:
-            # This method can be invoked from 2 different contexts.
-            # Mutex ensures integrity of data for race conditions.
-            logger.info(AudioTranscriber.clear_transcriber_context.__name__)
-            self.clear_transcript_data()
-            with audio_queue.mutex:
-                audio_queue.queue.clear()
+        """Reset the transcriber and drop audio that has not been transcribed yet."""
+        logger.info(AudioTranscriber.clear_transcriber_context.__name__)
+        for pending in [audio_queue, *self._source_queues.values()]:
+            with pending.mutex:
+                pending.queue.clear()
+        self.clear_transcript_data()
 
     def clear_transcript_data(self):
         """Clears all internal data associated with the transcript
         """
-        self.audio_sources_properties["You"]["last_sample"] = bytes()
-        self.audio_sources_properties["Speaker"]["last_sample"] = bytes()
-        self.audio_sources_properties["You"]["buffer_start_seconds"] = 0.0
-        self.audio_sources_properties["Speaker"]["buffer_start_seconds"] = 0.0
-
-        self.audio_sources_properties["You"]["new_phrase"] = True
-        self.audio_sources_properties["Speaker"]["new_phrase"] = True
-        self.live_transcript_manager.clear()
+        with self.mutex:
+            self._generation += 1
+            for source_info in self.audio_sources_properties.values():
+                source_info["last_sample"] = bytes()
+                source_info["buffer_start_seconds"] = 0.0
+                source_info["new_phrase"] = True
+                source_info["dirty"] = False
+            self.live_transcript_manager.clear()
 
         self.conversation.clear_conversation_data()
 
 
+def language_code(lang: str) -> str:
+    """'English' / 'english' / 'en' -> 'en' (unknown names are passed on unchanged)."""
+    value = str(lang or "").strip()
+    lowered = value.lower()
+    if lowered in language.LANGUAGES_DICT:
+        return lowered
+    for code, name in language.LANGUAGES_DICT.items():
+        if name == lowered:
+            return code
+    return value
+
+
 class WhisperTranscriber(AudioTranscriber):
-    """Does local application specific processing related to WhisperTranscriber.
-    Also processes the local application state as it relates to Whisper.
-    Does not interact with the Whisper API or Local Whisper SDK.
-    """
-    def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
-        """Very long audio clips can result in latency of transcription.
-        Prune long audio clips based on number of segments, audio duration.
-        Return values are
-          prune: bool: Whether to prune or not
-          prune_segment_id: int: Prune everything before this segment
-          prune_percent: float: % of audio clip (by size) to be pruned
-        """
-
-        # We get a few different type of response objects. We will have to adjust how we prune
-        # based on the type of response object. See the file
-        # venv\Lib\site-packages\openai\util.py
-        # def convert_to_openai_object(
-        # For types of responses
-        # Look into this a little bit further.
-
-        logger.info(WhisperTranscriber.check_for_latency)
-        logger.info('Check for latency')
-        try:
-            len_segments = len(results["segments"])
-        except KeyError:
-            # print(f'Key error in check for latency. {ke}')
-            # print(f'Type of results: {type(results)}')
-            # pprint.pprint(results)
-            return (False, 0, 0)
-        except TypeError:
-            # For the case of API Whisper we run into this exception
-            # Transcription' object is not subscriptable
-            return (False, 0, 0)
-
-        if len_segments == 0:
-            # print('0 segments in the response.')
-            # pprint.pprint(results)
-            return (False, 0, 0)
-
-        len_speech = float(results['segments'][len_segments-1]['end'])
-        logger.info(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
-        # print(f'Segments: {len_segments}. Speech length: {len_speech} seconds.')
-
-        if len_segments > WHISPER_SEGMENT_PRUNE_THRESHOLD:
-            log_msg = f'Attempt Prune segments: {len_segments - WHISPER_SEGMENT_PRUNE_THRESHOLD}.'
-            # print(log_msg)
-            logger.info(log_msg)
-        else:
-            # print(f'Segments: {len_segments}. Skip pruning.')
-            return (False, 0, 0)
-
-        prune_percent = 0
-        original_duration = results['segments'][len_segments-1]['end']
-
-        # Determine how many segments to keep based on sentence ending.
-        # Start with len - max segments and determine which one is the last one that
-        # can be kept based on end of sentence.
-        for rev_segment in reversed(results['segments']):
-            if int(rev_segment['id']) > len_segments - 3:
-                continue
-            text = rev_segment['text'].strip()
-            if text.endswith('.') or text.endswith('!') or text.endswith('?'):
-                prune_segment_id = int(rev_segment['id'])
-                prune_seconds = float(rev_segment['end'])
-                prune_percent = prune_seconds / original_duration
-                logger.info(f'Prune till segment id : {prune_segment_id}.'
-                                 f' Prune duration: {prune_seconds}.')
-                logger.info(f'Prune {prune_percent}% of data.')
-                break
-
-        # for segment in results['segments']:
-        #     print(f'id: {segment['id']} start: {segment['start']} end: {segment['end']} ' +
-        #           f'text: {segment['text'].strip()}')
-
-        if prune_percent == 0:
-            logger.info(f'Total segments ({len_segments}) is more than prune threshold'
-                             f' ({WHISPER_SEGMENT_PRUNE_THRESHOLD}), but could not find'
-                             f' segment endings.')
-
-            # Attempt to determine prune percent based on audio duration
-            if original_duration > AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS:
-                # Prune the first prunes_seconds of audio.
-                prune_seconds = original_duration - AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS + 5
-                # Find the segment that corresponds to prune_seconds
-                for segment in results['segments']:
-                    if float(segment['end']) > prune_seconds:
-                        prune_segment_id = int(segment['id'])
-                        prune_percent = prune_seconds / original_duration
-                        logger.info(f'Prune till segment id : {prune_segment_id}.'
-                                         f' Prune duration: {prune_seconds}.')
-                        logger.info(f'Prune {prune_percent}% of data.')
-                        break
-
-        if prune_percent == 0:
-            return (False, 0, 0)
-
-        return True, prune_segment_id, prune_percent
-
-    def prune_for_latency(self, who_spoke: str, original_data_size: int,
-                          results: dict, prune_id: int,
-                          file_path: str, prune_percent: int):
-        """Prune Audio clip to a smaller size based on size.
-        Adjusts the application context based on pruning to reflect pruning.
-        """
-        # If original_data_size and current size of data do not match, do nothing
-        # print('Prune for latency')
-        logger.info(WhisperTranscriber.prune_for_latency.__name__)
-        segments = results['segments']
-        logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
-        source_info = self.audio_sources_properties[who_spoke]
-
-        with source_info["mutex"]:
-            # Concurrency check
-            if len(source_info["last_sample"]) != original_data_size:
-                logger.info(f'Aborting pruning. Data Size has changed from '
-                                 f'{original_data_size} to '
-                                 f'{len(source_info["last_sample"])}')
-                return
-
-            # Open the wav file
-            with wave.open(file_path, 'rb') as wavfile:
-
-                # Get the number of frames
-                num_frames = wavfile.getnframes()
-                save_frames = int(num_frames * prune_percent)
-                logger.info(f'File {file_path} has {num_frames} frames.'
-                                 f' We will save the last {save_frames} frames.')
-                new_data = b""
-
-                with io.BytesIO() as temp_wav_file:
-                    with wave.open(temp_wav_file, "wb") as wav_writer:
-                        wav_writer.setnchannels(wavfile.getnchannels())  # pylint: disable=E1101
-                        wav_writer.setsampwidth(wavfile.getsampwidth())  # pylint: disable=E1101
-                        wav_writer.setframerate(wavfile.getframerate())  # pylint: disable=E1101
-                        wavfile.setpos(save_frames)
-                        data = wavfile.readframes(num_frames - int(save_frames))
-                        new_data = new_data + data
-                        wav_writer.writeframes(data)  # pylint: disable=E1101
-
-            source_info["last_sample"] = new_data
-
-        logger.info(f'Prune convo object until prune id: {prune_id}')
-        try:
-            first_string = ''
-            second_string = ''
-            for segment in segments:
-                if int(segment["id"]) <= prune_id:
-                    first_string += segment["text"]
-                else:
-                    second_string += segment["text"]
-        except Exception as ex:
-            print(f'Exception while pruning: {ex}')
-
-        logger.info(f'First string: {first_string}')
-        logger.info(f'Second string: {second_string}')
-
-        return first_string, second_string
-
-
-WHISPERCPP_SEGMENT_PRUNE_THRESHOLD = 6
+    """Transcriber for local Whisper and the OpenAI-compatible Whisper API."""
 
 
 class WhisperCPPTranscriber(AudioTranscriber):
-    """Does local application specific processing related to WhisperCPPTranscriber.
-    Also processes the local application state as it relates to WhisperCPP.
-    """
-
-    def __init__(self, mic_source, speaker_source, model,
-                 convo: conversation.Conversation, config: dict,
-                 audio_chunk_preprocessor=None):
-        super().__init__(
-            mic_source,
-            speaker_source,
-            model,
-            convo,
-            config,
-            audio_chunk_preprocessor=audio_chunk_preprocessor,
-        )
-        # Whisper CPP transcriber requires all files to be mono and have a
-        # sample rate of 16khz
-        self.audio_sources_properties["You"]["target_sample_rate"] = 16000
-        self.audio_sources_properties["You"]["target_channels"] = 1
-        self.audio_sources_properties["Speaker"]["target_sample_rate"] = 16000
-        self.audio_sources_properties["Speaker"]["target_channels"] = 1
-
-    def process_speaker_data(self, data, temp_file_name):
-        """Processes audio data received from the speaker.
-        Args:
-            temp_file_name: Name of .wav file to store the data
-        """
-        logger.info(AudioTranscriber.process_speaker_data.__name__)
-        if not self.transcribe:
-            return
-        # print(f'filesize: {os.path.getsize(temp_file_name)}')
-        with wave.open(temp_file_name, 'wb') as wf:
-            # print(f'{datetime.datetime.now()} - Writing speaker data into file: {temp_file_name}')
-            wf.setnchannels(self.audio_sources_properties["Speaker"]["target_channels"])    # pylint: disable=E1101
-            p = pyaudio.PyAudio()
-            wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))    # pylint: disable=E1101
-            wf.setframerate(self.audio_sources_properties["Speaker"]["target_sample_rate"])    # pylint: disable=E1101
-            wf.writeframes(data)    # pylint: disable=E1101
-            # print(f'datasize: {len(data)}')
-        # print(f'filesize: {os.path.getsize(temp_file_name)}')
-
-    def process_mic_data(self, data, temp_file_name):
-        """Processes audio data received from the microphone
-        Args:
-            temp_file_name: Name of .wav file to store the data
-        """
-        logger.info(AudioTranscriber.process_mic_data.__name__)
-        if not self.transcribe:
-            return
-
-        audio_data = sr.AudioData(data, self.audio_sources_properties["You"]["target_sample_rate"],
-                                  self.audio_sources_properties["You"]["sample_width"])
-        with open(temp_file_name, 'w+b') as file_handle:
-            file_handle.write(audio_data.get_wav_data())
-        # print(f'filesize: {os.path.getsize(temp_file_name)}')
-
-    def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
-        """Very long audio clips can result in latency of transcription.
-        Prune long audio clips based on number of segments, audio duration.
-        Return values are
-          prune: bool: Whether to prune or not
-          prune_segment_id: int: Prune everything before this segment
-          prune_percent: float: % of audio clip (by size) to be pruned
-        """
-        logger.info(WhisperCPPTranscriber.check_for_latency)
-        logger.info('Check for latency')
-        try:
-            len_segments = len(results["transcription"])
-        except KeyError:
-            # print(f'Key error in check for latency. {ke}')
-            # print(f'Type of results: {type(results)}')
-            # pprint.pprint(results)
-            return (False, 0, 0)
-
-        len_speech_ms = int(results['transcription'][-1]['offsets']['to'])
-        logger.info(f'Segments: {len_segments}. Speech length: {len_speech_ms} milliseconds.')
-        # print(f'Segments: {len_segments}. Speech length: {len_speech_ms} milliseconds.')
-
-        if len_segments > WHISPERCPP_SEGMENT_PRUNE_THRESHOLD:
-            log_msg = f'Attempt Prune segments: {len_segments-WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}.'
-            # print(log_msg)
-            logger.info(log_msg)
-        else:
-            # print(f'Segments: {len_segments}. Skip pruning.')
-            return (False, 0, 0)
-
-        prune_percent = 0
-        original_duration = float(len_speech_ms / 1000)
-
-        # Determine how many segments to keep based on sentence ending.
-        # Start with len - max segments and determine which one is the last one that
-        # can be kept based on end of sentence.
-        # Keep at least the last 3 segments
-        segment_id = len_segments - 3
-        for rev_segment in reversed(results['transcription'][:-3]):
-            segment_id -= 1
-            text = rev_segment['text'].strip()
-            if text.endswith('.') or text.endswith('!') or text.endswith('?'):
-                prune_segment_id = segment_id
-                prune_seconds = float(rev_segment['offsets']['to']/1000)
-                prune_percent = prune_seconds / original_duration
-                logger.info(f'Prune till segment id : {prune_segment_id}.'
-                                 f' Prune duration: {prune_seconds}.')
-                logger.info(f'Prune {prune_percent}% of data.')
-                break
-
-        if prune_percent == 0:
-            logger.info(f'Total segments ({len_segments}) is more than prune threshold'
-                             f' ({WHISPERCPP_SEGMENT_PRUNE_THRESHOLD}), but could not find'
-                             f' segment endings.')
-
-            segment_id = 0
-            # Attempt to determine prune percent based on audio duration
-            if original_duration > AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS:
-                # Prune the first prune_seconds of audio.
-                prune_seconds = original_duration - AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS + 5
-                # Find the segment that corresponds to prune_seconds
-                for segment in results['transcription']:
-                    if float(segment['offsets']['to']/1000) > prune_seconds:
-                        prune_segment_id = segment_id
-                        prune_percent = prune_seconds / original_duration
-                        logger.info(f'Prune till segment id : {prune_segment_id}.'
-                                         f' Prune duration: {prune_seconds}.')
-                        # print(f'Prune till segment id : {prune_segment_id}.'
-                        #       f' Prune duration: {prune_seconds}.')
-                        logger.info(f'Prune {prune_percent}% of data.')
-                        # print(f'Prune {prune_percent}% of data.')
-                        break
-                    segment_id += 1
-
-        if prune_percent == 0:
-            return (False, 0, 0)
-
-        return True, prune_segment_id, prune_percent
-
-    def prune_for_latency(self, who_spoke: str, original_data_size: int,
-                          results: dict, prune_id: int,
-                          file_path: str, prune_percent: int) -> tuple[str, str]:
-        """Prune Audio clip to a smaller size based on size.
-        Adjusts the application context based on pruning to reflect pruning.
-        """
-
-        # If original_data_size and current size of data do not match, do nothing
-        # print('Prune for latency')
-        logger.info(WhisperCPPTranscriber.prune_for_latency.__name__)
-        segments = results['transcription']
-        logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
-        source_info = self.audio_sources_properties[who_spoke]
-
-        with source_info['mutex']:
-            # Concurrency check
-            if len(source_info['last_sample']) != original_data_size:
-                logger.info(f'Aborting pruning. Data Size has changed from '
-                                 f'{original_data_size} to '
-                                 f'{len(source_info["last_sample"])}')
-                return
-
-            # Open the wav file
-            with wave.open(file_path, 'rb') as wavfile:
-                # Get the number of frames
-                num_frames = wavfile.getnframes()
-                save_frames = int(num_frames * prune_percent)
-                logger.info(f'File {file_path} has {num_frames} frames.'
-                                 f' We will save the last {save_frames} frames.')
-                new_data = b""
-
-                with io.BytesIO() as temp_wav_file:
-                    with wave.open(temp_wav_file, "wb") as wav_writer:
-                        wav_writer.setnchannels(wavfile.getnchannels())  # pylint: disable=E1101
-                        wav_writer.setsampwidth(wavfile.getsampwidth())  # pylint: disable=E1101
-                        wav_writer.setframerate(wavfile.getframerate())  # pylint: disable=E1101
-                        wavfile.setpos(save_frames)
-                        data = wavfile.readframes(num_frames - int(save_frames))
-                        new_data = new_data + data
-                        wav_writer.writeframes(data)  # pylint: disable=E1101
-
-            source_info['last_sample'] = new_data
-
-        logger.info(f'Prune convo object until prune id: {prune_id}')
-        try:
-            first_string = ''
-            second_string = ''
-            current_id = 0
-            for segment in segments:
-                if current_id <= prune_id:
-                    first_string += segment['text']
-                else:
-                    second_string += segment['text']
-                current_id += 1
-        except Exception as ex:
-            print(f'Exception while pruning: {ex}')
-
-        logger.info(f'First string: {first_string}')
-        logger.info(f'Second string: {second_string}')
-
-        return first_string, second_string
-
-
-DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD = 2  # Prune anything more than 2 paragraphs
+    """Transcriber for whisper.cpp (audio already arrives in its 16 kHz mono format)."""
 
 
 class DeepgramTranscriber(AudioTranscriber):
-    """Does local application specific processing related to Deepgram.
-    Also processes the local application state as it relates to Deepgram.
-    Does not interact with the Deepgram API.
-    """
+    """Transcriber for Deepgram pre-recorded transcription."""
 
-    def check_for_latency(self, results: dict) -> tuple[bool, int, float]:
-        """Determine if the response can be pruned to optimize STT processing
-        Prune when
-            - More than 2 paragraphs
-            - Keep atleast 4 sentences
-        Return values are
-            prune: bool: Whether or not to prune
-            num_paragraphs_to_keep: Prune everything up to this paragraph
-            prune_percent: float: % of audio clip (by size) to be pruned
-        """
-        # check for existence of paragraphs
-        logger.info(DeepgramTranscriber.check_for_latency)
-        try:
-            outer_paragraphs = results.results.channels[0].alternatives[0].paragraphs
-        except KeyError as ke:
-            print('Error when attempting to get paragraphs from Deepgram response.')
-            print(f'Key Error: {ke}')
-            return [False, 0, 0]
-
-        speech_duration = float(results.metadata.duration)
-        # print(f'Total speech length: {speech_duration}')
-
-        para_list = outer_paragraphs.paragraphs
-        num_paragraphs = len(para_list)
-        # print(f'There are {num_paragraphs} paragraphs')
-        # i = 1
-        # for para in para_list:
-        #    len_sentences = len(para["sentences"])
-        #    # print(f'Paragraph: {i}, {len_sentences} sentences.')
-        #    i += 1
-
-        if num_paragraphs > DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD:
-            # Keep the last 2 paragraphs. Prune everything else
-            num_paragraphs_to_keep = DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD
-        else:
-            # print(f'Number of paras {num_paragraphs} less than or equal to threshold '\
-            # '{DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD}. Skip pruning.')
-            return [False, 0, 0]
-
-        # determine prune percent based on how much speech we need to keep
-        # First paragraph we will keep is
-        beginning_para = para_list[-DEEPGRAM_PARAGRAPH_PRUNE_THRESHOLD]
-        start_time = float(beginning_para.sentences[0].start)
-        # print(f"First para to keep, start time: {start_time}.")
-        # print(f"Para text: {beginning_para['sentences'][0]['text']}.")
-        prune_percent = start_time / speech_duration
-
-        # Incorporate AUDIO_LENGTH_PRUNE_THRESHOLD_SECONDS into pruning calculations
-
-        return [True, num_paragraphs_to_keep, prune_percent]
-
-    def prune_for_latency(self, who_spoke: str, original_data_size: int,
-                          results: dict, prune_id: int,
-                          file_path: str, prune_percent: int):
-        """Prune Audio clip to a smaller size based on size.
-        Adjusts the application context based on pruning to reflect pruning.
-        """
-        # If original_data_size and current size of data do not match, do nothing
-        logger.info(DeepgramTranscriber.prune_for_latency)
-        logger.info(f'prune_for_latency: Prune source data by {prune_percent}%. ')
-        source_info = self.audio_sources_properties[who_spoke]
-
-        with source_info['mutex']:
-            # Concurrency check
-            if len(source_info['last_sample']) != original_data_size:
-                logger.info(f'Aborting pruning. Data Size has changed from '
-                                 f'{original_data_size} to '
-                                 f'{len(source_info["last_sample"])}')
-                return
-
-            # Open the wav file
-            with wave.open(file_path, 'rb') as wavfile:
-
-                # Get the number of frames
-                num_frames = wavfile.getnframes()
-                save_frames = int(num_frames * prune_percent)
-                logger.info(f'File {file_path} has {num_frames} frames.'
-                                 f' We will save the last {save_frames} frames.')
-                new_data = b""
-
-                with io.BytesIO() as temp_wav_file:
-                    with wave.open(temp_wav_file, "wb") as wav_writer:
-                        wav_writer.setnchannels(wavfile.getnchannels())  # pylint: disable=E1101
-                        wav_writer.setsampwidth(wavfile.getsampwidth())  # pylint: disable=E1101
-                        wav_writer.setframerate(wavfile.getframerate())  # pylint: disable=E1101
-                        wavfile.setpos(save_frames)
-                        data = wavfile.readframes(num_frames - int(save_frames))
-                        new_data = new_data + data
-                        wav_writer.writeframes(data)  # pylint: disable=E1101
-
-            source_info['last_sample'] = new_data
-
-        try:
-            logger.info(f'Prune convo object until prune id: {prune_id}')
-            first_string = ''
-            second_string = ''
-            para_list = results.results.channels[0].alternatives[0].paragraphs.paragraphs
-            for para in para_list[0:-prune_id]:
-                for sentence in para.sentences:
-                    first_string += sentence.text
-            for para in para_list[-prune_id:]:
-                for sentence in para.sentences:
-                    second_string += sentence.text
-        except Exception as ex:
-            print(f'Exception while pruning: {ex}')
-
-        return first_string, second_string

@@ -9,6 +9,7 @@ from abc import abstractmethod
 
 import pyaudiowpatch as pyaudio
 import custom_speech_recognition as sr
+from sdk import audio_format
 from tsutils import app_logging as al
 from tsutils import configuration  # noqa: E402 pylint: disable=C0413
 
@@ -112,6 +113,8 @@ class BaseRecorder:
         self.config = configuration.Config().data
         self.stop_record_func = None
         self.audio_file_name = audio_file_name
+        # (sample_rate, sample_width, channels) of the data written to audio_file_name.
+        self._saved_format = None
         self._remove_existing_audio_files()
 
     def _remove_existing_audio_files(self):
@@ -151,9 +154,20 @@ class BaseRecorder:
         if self.config["General"].get("stt", "").lower() == "openai-realtime":
             return self._record_audio_continuously(audio_queue)
 
+        # Phrases are converted to 16 kHz mono once, here, so the transcriber keeps small
+        # buffers and no provider needs ffmpeg or temporary files to read them.
+        self._saved_format = (audio_format.TARGET_SAMPLE_RATE, audio_format.TARGET_SAMPLE_WIDTH,
+                              audio_format.TARGET_CHANNELS)
+        channels = int(getattr(self.source, "channels", 1) or 1)
+
         def record_callback(_, audio: sr.AudioData) -> None:
             if self.enabled:
-                data = audio.get_raw_data()
+                try:
+                    data = audio_format.to_pcm16_mono_16k(audio.get_raw_data(), audio.sample_rate,
+                                                          audio.sample_width, channels)
+                except ValueError as exception:
+                    logger.error("Could not convert audio from %s: %s", self.source_name, exception)
+                    return
                 self._enqueue_audio(audio_queue, data)
 
         stop_func = self.recorder.listen_in_background(source=self.source,
@@ -162,6 +176,15 @@ class BaseRecorder:
                                                        phrase_time_limit=self.config['General']['transcript_audio_duration_seconds'])
         return stop_func
 
+    def wait_until_capturing(self, timeout: float = 3.0) -> bool:
+        """Block until the capture thread has opened its audio stream (or the timeout passes)."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if getattr(self.source, "stream", None) is not None:
+                return True
+            time.sleep(0.02)
+        return False
+
     def _record_audio_continuously(self, audio_queue: queue.Queue):
         """Capture raw PCM blocks continuously for persistent streaming providers."""
         stop_event = threading.Event()
@@ -169,6 +192,8 @@ class BaseRecorder:
             self.config.get("OpenAIRealtime", {}).get("capture_chunk_duration_ms", 100)
         )
         chunk_frames = max(1, int(self.source.SAMPLE_RATE * chunk_duration_ms / 1000))
+        self._saved_format = (self.source.SAMPLE_RATE, getattr(self.source, "SAMPLE_WIDTH", 2),
+                              getattr(self.source, "channels", 1))
 
         def capture_loop():
             try:
@@ -220,9 +245,8 @@ class BaseRecorder:
         if not os.path.exists(self.audio_file_name+'.bak'):
             return
 
-        frame_rate = self.source.SAMPLE_RATE
-        sample_width = self.source.SAMPLE_WIDTH
-        channels = self.source.channels
+        frame_rate, sample_width, channels = self._saved_format or (
+            self.source.SAMPLE_RATE, self.source.SAMPLE_WIDTH, self.source.channels)
 
         with open(file=self.audio_file_name+'.bak', mode='rb') as input_file_handle:
             data = input_file_handle.read()
@@ -282,8 +306,8 @@ class MicRecorder(BaseRecorder):
 
         # Stop the current stream
         if self.stop_record_func is not None:
-            self.stop_record_func(wait_for_stop=False)
-            time.sleep(2)
+            self.stop_record_func(wait_for_stop=True)
+            self.stop_record_func = None
         self.device_info = mic
         self.source = sr.Microphone(device_index=mic["index"],
                                     sample_rate=int(mic["defaultSampleRate"]),
@@ -348,8 +372,8 @@ class SpeakerRecorder(BaseRecorder):
 
         # Stop the current stream
         if self.stop_record_func is not None:
-            self.stop_record_func(wait_for_stop=False)
-            time.sleep(2)
+            self.stop_record_func(wait_for_stop=True)
+            self.stop_record_func = None
 
         self.device_info = speakers
         self.source = sr.Microphone(speaker=True,

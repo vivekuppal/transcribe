@@ -10,7 +10,7 @@ import yaml
 from sdk import audio_recorder as ar
 
 from .. import interactions
-from ..providers.stt import convert_audio_to_16khz, create_stt_model
+from ..providers.stt import convert_audio_to_16khz, create_stt_model, ensure_ffmpeg_available
 
 from tsutils import configuration, duration, utilities
 
@@ -74,6 +74,8 @@ def transcribe_audio_file(args, config: dict):
 
         file_path = args.transcribe
         temp_file_path = None
+        if stt_name in ("whisper", "whisper.cpp") and not use_api:
+            ensure_ffmpeg_available()       # reading audio files (mp3, m4a ...) needs ffmpeg
         try:
             if stt_name == "whisper.cpp":
                 temp_file_path = convert_audio_to_16khz(args.transcribe)

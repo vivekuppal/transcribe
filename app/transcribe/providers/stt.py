@@ -5,9 +5,6 @@ from __future__ import annotations
 import os
 import subprocess  # nosec
 import tempfile
-import wave
-import pyaudiowpatch as pyaudio
-import custom_speech_recognition as sr
 from sdk import transcriber_models as tm
 
 from ..audio_transcriber import DeepgramTranscriber, WhisperCPPTranscriber, WhisperTranscriber
@@ -37,44 +34,6 @@ def ensure_ffmpeg_available():
     except FileNotFoundError:
         print("ERROR: The ffmpeg library is not installed. Please install ffmpeg and try again.")
         raise SystemExit(1)
-
-
-def read_wav_file_data(file_path: str):
-    """Return raw frame data from a wav file."""
-    with wave.open(file_path, "rb") as file_handle:
-        return file_handle.readframes(file_handle.getnframes())
-
-
-class WhisperCppAudioPreprocessor:
-    """Normalize audio chunks into whisper.cpp's required 16 kHz mono format."""
-
-    def __call__(self, who_spoke: str, data, source_info: dict):
-        channels = int(source_info["channels"])
-        sample_width = pyaudio.PyAudio().get_sample_size(pyaudio.paInt16)
-        frame_rate = int(source_info["sample_rate"])
-        file_descriptor, file_path = tempfile.mkstemp(suffix=".wav")
-        os.close(file_descriptor)
-        converted_path = None
-
-        try:
-            if who_spoke == "Speaker":
-                with wave.open(file_path, "wb") as wav_file:
-                    wav_file.setnchannels(channels)  # pylint: disable=E1101
-                    wav_file.setsampwidth(sample_width)  # pylint: disable=E1101
-                    wav_file.setframerate(frame_rate)  # pylint: disable=E1101
-                    wav_file.writeframes(data)  # pylint: disable=E1101
-            else:
-                audio_data = sr.AudioData(data, frame_rate, sample_width)
-                with open(file_path, "w+b") as file_handle:
-                    file_handle.write(audio_data.get_wav_data())
-
-            converted_path = convert_audio_to_16khz(file_path)
-            return read_wav_file_data(converted_path)
-        finally:
-            if os.path.exists(file_path):
-                os.unlink(file_path)
-            if converted_path and os.path.exists(converted_path):
-                os.unlink(converted_path)
 
 
 def create_stt_model(name: str, config: dict, api: bool):
@@ -120,6 +79,7 @@ def create_stt_model(name: str, config: dict, api: bool):
             "api_key": config["OpenAI"]["api_key"],
             "local_transcripton_model_file": config["OpenAI"]["local_transcripton_model_file"],
             "audio_lang": get_language_code(config["OpenAI"]["audio_lang"]),
+            "local_engine": config["General"].get("local_engine", "auto"),
         }
         return model_factory.get_stt_model_instance(
             stt_model=tm.STTEnum.WHISPER_LOCAL,
@@ -130,6 +90,7 @@ def create_stt_model(name: str, config: dict, api: bool):
         stt_model_config = {
             "api_key": config["OpenAI"]["api_key"],
             "timeout": config["OpenAI"]["response_request_timeout_seconds"],
+            "model": config["OpenAI"].get("stt_model") or "whisper-1",
             "audio_lang": get_language_code(config["OpenAI"]["audio_lang"]),
         }
         return model_factory.get_stt_model_instance(
@@ -153,7 +114,6 @@ def create_transcriber(name: str, config: dict, api: bool, runtime):
         return transcriber
 
     model = create_stt_model(name=name, config=config, api=api)
-    audio_chunk_preprocessor = WhisperCppAudioPreprocessor() if name.lower() == "whisper.cpp" else None
 
     if name.lower() == "deepgram":
         transcriber = DeepgramTranscriber(
@@ -170,7 +130,6 @@ def create_transcriber(name: str, config: dict, api: bool, runtime):
             model,
             convo=runtime.convo,
             config=config,
-            audio_chunk_preprocessor=audio_chunk_preprocessor,
         )
     else:
         transcriber = WhisperTranscriber(

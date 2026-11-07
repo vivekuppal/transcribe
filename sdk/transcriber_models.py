@@ -4,16 +4,17 @@ import datetime
 import json
 import re
 import subprocess
+import tempfile
+import threading
 import wave
 from enum import Enum
 from abc import abstractmethod
 import openai
-import whisper
-import torch
-from deepgram import (DeepgramClient, FileSource, PrerecordedOptions)
+from sdk import audio_format
 from sdk.transcription_result import TranscriptSegment, TranscriptionHypothesis
 from tsutils import utilities
-# import pprint
+# torch, whisper, faster_whisper and deepgram are imported where they are used: importing
+# torch alone takes seconds, and only the selected speech to text engine needs any of them.
 
 
 class STTEnum(Enum):
@@ -27,6 +28,20 @@ class STTEnum(Enum):
 
 
 MODELS_DIR = f"{utilities.get_data_path(app_name='Transcribe')}/models/"
+FASTER_WHISPER = "faster-whisper"
+OPENAI_WHISPER = "openai-whisper"
+
+
+def pick_local_whisper_engine(setting: str = "auto") -> str:
+    """Choose the local Whisper engine: 'auto' prefers faster-whisper when it is installed."""
+    setting = str(setting or "auto").strip().lower()
+    if setting in (FASTER_WHISPER, OPENAI_WHISPER):
+        return setting
+    try:
+        import faster_whisper  # noqa: F401  pylint: disable=import-outside-toplevel,unused-import
+        return FASTER_WHISPER
+    except ImportError:
+        return OPENAI_WHISPER
 
 
 class STTModelFactory:
@@ -60,6 +75,23 @@ class STTModelFactory:
 class STTModelInterface:
     """Interface all Speech To Text Models must adhere to
     """
+    # True when the microphone and speaker workers may call transcribe_pcm at the same time.
+    thread_safe = False
+
+    def transcribe_pcm(self, pcm: bytes, sample_rate: int = audio_format.TARGET_SAMPLE_RATE):
+        """Transcribe 16-bit mono PCM held in memory (the live path).
+
+        Engines that can take audio from memory override this. The default writes one
+        temporary WAV file for engines that only read files.
+        """
+        file_descriptor, path = tempfile.mkstemp(suffix=".wav")
+        os.close(file_descriptor)
+        try:
+            audio_format.write_pcm16_wav(path, pcm, sample_rate)
+            return self.get_transcription(path)
+        finally:
+            if os.path.exists(path):
+                os.unlink(path)
 
     @abstractmethod
     def get_transcription(self, wav_file_path: str):
@@ -153,6 +185,7 @@ class SenseVoiceSTTModel(STTModelInterface):
         model_name = stt_model_config.get("model", "FunAudioLLM/SenseVoiceSmall")
         device = stt_model_config.get("device", "auto")
         if device == "auto":
+            import torch  # pylint: disable=import-outside-toplevel
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
         print("[INFO] Using SenseVoiceSmall for transcription.")
@@ -252,7 +285,11 @@ class SenseVoiceSTTModel(STTModelInterface):
         ]
 
 class WhisperSTTModel(STTModelInterface):
-    """Speech to Text using the Whisper Local model
+    """Speech to Text with a local Whisper model.
+
+    Uses faster-whisper (CTranslate2, int8 on CPU) when it is installed: about four times
+    faster than openai-whisper on a CPU and it does not need torch. Falls back to
+    openai-whisper otherwise, or when ``General.local_engine`` says so.
     """
     def __init__(self, stt_model_config: dict):
         self.model = stt_model_config['local_transcripton_model_file']
@@ -260,10 +297,48 @@ class WhisperSTTModel(STTModelInterface):
         model_filename = MODELS_DIR + self.model + ".pt"
         self.model_name = self.model + ".pt"
         self.model_filename = os.path.join(MODELS_DIR, model_filename)
-        self.download_model()
-        self.audio_model: whisper.Whisper = whisper.load_model(self.model_filename)
-        print(f'[INFO] Speech To Text - Whisper using GPU: {str(torch.cuda.is_available())}')
-        openai.api_key = stt_model_config["api_key"]
+        self.engine = pick_local_whisper_engine(stt_model_config.get('local_engine', 'auto'))
+        self.use_gpu = False
+        self.audio_model = None
+        self._switch_lock = threading.Lock()
+        if self.engine == FASTER_WHISPER:
+            try:
+                self.audio_model = self._load_faster_whisper()
+            except Exception as exception:  # pylint: disable=broad-except
+                # e.g. no internet for the first download: use openai-whisper (and its .pt file) instead
+                print(f'[WARN] faster-whisper could not load model {self.model} ({exception}); '
+                      'using openai-whisper instead.')
+                self.engine = OPENAI_WHISPER
+        if self.engine == OPENAI_WHISPER:
+            import torch  # pylint: disable=import-outside-toplevel
+            import whisper  # pylint: disable=import-outside-toplevel
+            self.download_model()
+            self.use_gpu = bool(torch.cuda.is_available())
+            self.audio_model = whisper.load_model(self.model_filename)
+        # faster-whisper runs two transcriptions at once (num_workers=2); openai-whisper cannot.
+        self.thread_safe = self.engine == FASTER_WHISPER
+        print(f'[INFO] Speech To Text - local Whisper ({self.engine}, model {self.model}), '
+              f'using GPU: {self.use_gpu}')
+
+    def _load_faster_whisper(self, allow_gpu: bool = True):
+        from faster_whisper import WhisperModel  # pylint: disable=import-outside-toplevel
+        download_root = os.path.join(MODELS_DIR, "faster-whisper")
+        utilities.ensure_directory_exists(download_root)
+        if allow_gpu:
+            try:
+                import ctranslate2  # pylint: disable=import-outside-toplevel
+                if ctranslate2.get_cuda_device_count() > 0:
+                    model = WhisperModel(self.model, device="cuda", compute_type="float16",
+                                         download_root=download_root, num_workers=2)
+                    self.use_gpu = True
+                    self._gpu_model = model
+                    return model
+            except Exception as exception:  # pylint: disable=broad-except
+                print(f'[WARN] faster-whisper could not use the GPU ({exception}); using the CPU.')
+        model = WhisperModel(self.model, device="cpu", compute_type="int8",
+                             download_root=download_root, num_workers=2)
+        self.use_gpu = False
+        return model
 
     def download_model(self):
         """Download the appropriate OpenAI model if needed"""
@@ -300,13 +375,33 @@ class WhisperSTTModel(STTModelInterface):
             print('Could not find the correct model file')
             sys.exit()
 
+    def _transcribe(self, audio) -> dict:
+        """Transcribe a file path or a 16 kHz float32 array into openai-whisper's result shape."""
+        language = self.lang or None
+        if self.engine == FASTER_WHISPER:
+            model = self.audio_model
+            try:
+                return self._faster_whisper_transcribe(model, audio, language)
+            except Exception:  # pylint: disable=broad-except
+                if model is not getattr(self, "_gpu_model", None):
+                    raise
+                # The GPU was found but its CUDA libraries (cuBLAS / cuDNN) are missing: this
+                # shows up only on the first transcription. Continue on the CPU for good. The
+                # other source's worker may fail on the GPU at the same moment: one load only.
+                with self._switch_lock:
+                    if self.audio_model is model:
+                        print('[WARN] faster-whisper failed on the GPU; switching to the CPU.')
+                        self.audio_model = self._load_faster_whisper(allow_gpu=False)
+                return self._faster_whisper_transcribe(self.audio_model, audio, language)
+        # condition_on_previous_text=False: short live windows do not benefit from it and it
+        # can make Whisper loop on repeated text.
+        return self.audio_model.transcribe(audio, fp16=self.use_gpu, language=language,
+                                           temperature=0, condition_on_previous_text=False)
+
     def get_sentences(self, wav_file_path) -> dict:
         """Get transcription from the provided audio file as individual sentences
         """
-        result = self.audio_model.transcribe(wav_file_path,
-                                             fp16=False,
-                                             language=self.lang,
-                                             temperature=0)
+        result = self._transcribe(wav_file_path)
         sentences = []
         for segment in result['segments']:
             start = str(datetime.timedelta(seconds=int(segment['start'])))
@@ -318,34 +413,36 @@ class WhisperSTTModel(STTModelInterface):
         """Get transcription from the provided audio file
         """
         try:
-            # For translation provide a decode_option for task=translate
-            # options = {}
-            # options['task'] = 'translate'
-            result = self.audio_model.transcribe(wav_file_path,
-                                                 fp16=False,
-                                                 language=self.lang,
-                                                 temperature=0)
+            return self._transcribe(wav_file_path)
         except Exception as exception:
             print('WhisperSTTModel:get_transcription - Encountered error')
             print(exception)
             return ''
-        # print('-----------------------------------------------------------------------------')
-        # pprint.pprint(result)
-        # print('-----------------------------------------------------------------------------')
-        # return result['text'].strip()
-        return result
+
+    @staticmethod
+    def _faster_whisper_transcribe(model, audio, language) -> dict:
+        segments, info = model.transcribe(
+            audio, language=language, beam_size=1, temperature=0,
+            condition_on_previous_text=False)
+        items = [{"id": index, "start": float(segment.start), "end": float(segment.end),
+                  "text": segment.text} for index, segment in enumerate(segments)]
+        return {"text": "".join(item["text"] for item in items).strip(),
+                "segments": items, "language": getattr(info, "language", language)}
+
+    def transcribe_pcm(self, pcm: bytes, sample_rate: int = audio_format.TARGET_SAMPLE_RATE):
+        """Both engines take a 16 kHz float32 array directly: no file and no ffmpeg."""
+        if sample_rate != audio_format.TARGET_SAMPLE_RATE:
+            return super().transcribe_pcm(pcm, sample_rate)
+        try:
+            return self._transcribe(audio_format.pcm16_to_float32(pcm))
+        except Exception as exception:
+            print('WhisperSTTModel:transcribe_pcm - Encountered error')
+            print(exception)
+            return ''
 
     def set_lang(self, lang: str):
-        """Set Language for STT
-        """
+        """Set Language for STT (the same model serves every language)."""
         self.lang = lang
-        self.download_model()
-        self._load_model()
-
-    def _load_model(self):
-        """Load Model for STT
-        """
-        self.audio_model = whisper.load_model(self.model_filename)
 
     def process_response(self, response) -> str:
         """
@@ -390,13 +487,16 @@ class WhisperSTTModel(STTModelInterface):
 class APIWhisperSTTModel(STTModelInterface):
     """Speech to Text using the Whisper API
     """
+    thread_safe = True
     def __init__(self, stt_model_config: dict):
         # Check for api_key
         if stt_model_config["api_key"] is None:
             raise Exception("Attempt to create Open AI Whisper STT Model without an api key.")  # pylint: disable=W0719
         print('[INFO] Using Open AI Whisper API for transcription.')
-        self.stt_client = openai.OpenAI(api_key=stt_model_config['api_key'], base_url=None)
+        # One retry at most: a live request that is retried for long only holds back newer audio.
+        self.stt_client = openai.OpenAI(api_key=stt_model_config['api_key'], base_url=None, max_retries=1)
         self.timeout = stt_model_config['timeout']
+        self.model = stt_model_config.get('model') or 'whisper-1'
         # lang parameter is not required for API invocation. This exists solely
         # to support --api option from command line.
         # A better solution is to create a base class for APIWhisperSTTModel,
@@ -408,18 +508,35 @@ class APIWhisperSTTModel(STTModelInterface):
         """Set STT Language"""
         self.lang = lang
 
+    def _request(self, file) -> dict:
+        kwargs = {"model": self.model, "file": file, "timeout": self.timeout}
+        if isinstance(self.lang, str) and len(self.lang) == 2:
+            kwargs["language"] = self.lang      # the API accepts only ISO-639-1 codes ("en")
+        if self.model.startswith("whisper"):
+            # verbose_json adds segment timestamps, which let the live transcript commit
+            # finished text and keep every request short.
+            kwargs["response_format"] = "verbose_json"
+        return self.stt_client.audio.transcriptions.create(**kwargs)
+
     def get_transcription(self, wav_file_path) -> dict:
         """Get transcription from the provided audio file
         """
         try:
             with open(wav_file_path, "rb") as audio_file:
-                result = self.stt_client.audio.transcriptions.create(model='whisper-1', file=audio_file)
+                return self._request(audio_file)
         except Exception as exception:
             print('Exception in transcribing audio using whisper API.')
             print(exception)
             return ''
 
-        return result
+    def transcribe_pcm(self, pcm: bytes, sample_rate: int = audio_format.TARGET_SAMPLE_RATE):
+        """Upload 16 kHz mono WAV straight from memory."""
+        try:
+            return self._request(("audio.wav", audio_format.pcm16_to_wav_bytes(pcm, sample_rate), "audio/wav"))
+        except Exception as exception:
+            print('Exception in transcribing audio using whisper API.')
+            print(exception)
+            return ''
 
     def process_response(self, response) -> str:
         """
@@ -460,12 +577,18 @@ class APIWhisperSTTModel(STTModelInterface):
         audio_start_seconds: float = 0.0,
         audio_end_seconds: float = 0.0,
     ) -> TranscriptionHypothesis:
-        """Normalize Whisper API responses, which may only include text."""
+        """Normalize Whisper API responses (segments come with verbose_json)."""
         text = self.process_response(response) if response else ""
+        segments = []
+        for index, segment in enumerate(getattr(response, "segments", None) or []):
+            item = segment if isinstance(segment, dict) else {
+                "id": getattr(segment, "id", index), "start": getattr(segment, "start", 0.0),
+                "end": getattr(segment, "end", 0.0), "text": getattr(segment, "text", "")}
+            segments.append(_segment_from_mapping(index, item, offset_seconds=audio_start_seconds))
         return TranscriptionHypothesis(
             provider="whisper-api",
             text=text,
-            segments=_single_segment(text, audio_start_seconds, audio_end_seconds),
+            segments=segments or _single_segment(text, audio_start_seconds, audio_end_seconds),
             audio_start_seconds=audio_start_seconds,
             audio_end_seconds=audio_end_seconds,
         )
@@ -495,45 +618,40 @@ class WhisperCPPSTTModel(STTModelInterface):
         """Set STT Language"""
         self.lang = lang
 
-    def get_transcription(self, wav_file_path: str):
-        """Get text using STT
-        """
-        mod_file_path = wav_file_path
-        try:
-            log_file = f"{utilities.get_data_path(app_name='Transcribe')}/logs/whisper.cpp.txt"
-            # main.exe <filename> -oj
-            if os.path.isfile("../../bin/main.exe"):
-                subprocess.call(["../../bin/main.exe", mod_file_path, '-oj', '-m',
-                                 self.model_filename, '-l', self.lang],
-                                stdout=open(file=log_file, mode='a', encoding='utf-8'),
-                                stderr=subprocess.STDOUT)
-            else:
-                # This path is used in case of binary.
-                subprocess.call(["./bin/main.exe", mod_file_path, '-oj', '-m', self.model_filename,
-                                 '-l', self.lang],
-                                stdout=open(file=log_file, mode='a', encoding='utf-8'),
-                                stderr=subprocess.STDOUT)
-        except Exception as ex:
-            print(f'ERROR: converting wav file {wav_file_path} to text using whisper.cpp.')
-            print('Ensure that the file ../../bin/main.exe exists.')
-            print(ex)
+    # whisper.cpp renamed main.exe to whisper-cli.exe; both are accepted.
+    EXECUTABLES = ("../../bin/whisper-cli.exe", "../../bin/main.exe",
+                   "./bin/whisper-cli.exe", "./bin/main.exe")
 
-        try:
-            # Output is produced in json file wav_file_path.json
-            json_file_path = mod_file_path+".json"
-            with open(json_file_path, mode="r", encoding='utf-8') as text_file:
-                response = json.loads(text_file.read())
-                return response
-        except Exception as exception:
-            print(f'Error reading json file: {json_file_path}')
-            print(exception)
-
-        if os.path.exists(json_file_path):
-            os.unlink(json_file_path)
-        if mod_file_path != wav_file_path and os.path.exists(mod_file_path):
-            os.unlink(mod_file_path)
-
+    @classmethod
+    def _find_executable(cls):
+        for candidate in cls.EXECUTABLES:
+            if os.path.isfile(candidate):
+                return candidate
         return None
+
+    def get_transcription(self, wav_file_path: str):
+        """Get text using STT (the input must already be 16 kHz mono 16-bit WAV)."""
+        executable = self._find_executable()
+        if executable is None:
+            print('ERROR: whisper.cpp was not found. Put whisper-cli.exe (or main.exe) in the bin folder.')
+            return None
+        json_file_path = wav_file_path + ".json"
+        log_file = f"{utilities.get_data_path(app_name='Transcribe')}/logs/whisper.cpp.txt"
+        try:
+            with open(file=log_file, mode='a', encoding='utf-8') as log_handle:
+                # A hung process must not silence the source for good (it is killed after the timeout).
+                subprocess.call([executable, wav_file_path, '-oj', '-m', self.model_filename,
+                                 '-l', self.lang],
+                                stdout=log_handle, stderr=subprocess.STDOUT, timeout=120)
+            with open(json_file_path, mode="r", encoding='utf-8') as text_file:
+                return json.loads(text_file.read())
+        except Exception as exception:
+            print(f'ERROR: converting wav file {wav_file_path} to text using whisper.cpp.')
+            print(exception)
+            return None
+        finally:
+            if os.path.exists(json_file_path):
+                os.unlink(json_file_path)
 
     def process_response(self, response) -> str:
         # response is of type PrerecordedTranscriptionResponse
@@ -595,6 +713,7 @@ class DeepgramSTTModel(STTModelInterface):
     """Speech to Text using the Deepgram API.
     It primarily deals with interacting with the Deepgram API.
     """
+    thread_safe = True
     def __init__(self, stt_model_config: dict):
         # Check for api_key
         if stt_model_config["api_key"] is None:
@@ -607,40 +726,40 @@ class DeepgramSTTModel(STTModelInterface):
         self.model = stt_model_config.get("model", "nova-3")
 
         print(f'[INFO] Using Deepgram API for transcription. Model: {self.model}')
+        from deepgram import DeepgramClient  # pylint: disable=import-outside-toplevel
         self.audio_model = DeepgramClient(stt_model_config["api_key"])
 
     def set_lang(self, lang: str):
         """Set STT Language"""
         self.lang = lang
 
+    def _transcribe_buffer(self, buffer_data: bytes):
+        from deepgram import PrerecordedOptions  # pylint: disable=import-outside-toplevel
+        options = PrerecordedOptions(
+            model=self.model,
+            smart_format=True,
+            utterances=True,
+            punctuate=True,
+            paragraphs=True,
+            detect_language=True)
+        return self.audio_model.listen.prerecorded.v("1").transcribe_file({"buffer": buffer_data}, options)
+
     def get_transcription(self, wav_file_path: str):
         """Get text using STT
         """
         try:
             with open(wav_file_path, "rb") as audio_file:
-                buffer_data = audio_file.read()
-
-            payload: FileSource = {
-                "buffer": buffer_data
-                }
-
-            options = PrerecordedOptions(
-                model=self.model,
-                smart_format=True,
-                utterances=True,
-                punctuate=True,
-                paragraphs=True,
-                detect_language=True)
-
-            response = self.audio_model.listen.prerecorded.v("1").transcribe_file(payload, options)
-            # This is not necessary and just a debugging aid
-            with open('logs/deep.json', mode='a', encoding='utf-8') as deep_log:
-                deep_log.write(response.to_json(indent=4))
-
-            return response
+                return self._transcribe_buffer(audio_file.read())
         except Exception as exception:
             print(exception)
+        return None
 
+    def transcribe_pcm(self, pcm: bytes, sample_rate: int = audio_format.TARGET_SAMPLE_RATE):
+        """Send the WAV from memory (no file, and no debug copy of every response on disk)."""
+        try:
+            return self._transcribe_buffer(audio_format.pcm16_to_wav_bytes(pcm, sample_rate))
+        except Exception as exception:
+            print(exception)
         return None
 
     def get_sentences(self, wav_file_path: str):
@@ -650,7 +769,8 @@ class DeepgramSTTModel(STTModelInterface):
             with open(wav_file_path, "rb") as audio_file:
                 buffer_data = audio_file.read()
 
-            payload: FileSource = {
+            from deepgram import PrerecordedOptions  # pylint: disable=import-outside-toplevel
+            payload = {
                 "buffer": buffer_data
                 }
             if self.lang.startswith('en'):

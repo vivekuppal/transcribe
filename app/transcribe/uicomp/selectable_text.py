@@ -215,6 +215,13 @@ class SelectableText(ctk.CTkFrame):
         self.text_widget.configure(state="disabled")
         self.scroll_to_bottom()
 
+    def release_keyed_row(self, row_key: str):
+        """Stop tracking a row (its text stays). Keeps the number of live tags small."""
+        try:
+            self.text_widget.tag_delete(self._row_tag(row_key))
+        except TclError:
+            pass
+
     def finalize_keyed_row(self, row_key: str, input_text: str):
         """Replace a transient row with final text and remove its provider tag."""
         tag = self._row_tag(row_key)
