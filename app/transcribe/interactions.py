@@ -13,8 +13,6 @@ import json
 # import pprint
 import subprocess  # nosec
 import socket
-import requests
-from requests.exceptions import ConnectionError  # pylint: disable=redefined-builtin
 
 from .global_vars import AppRuntime, T_GLOBALS
 
@@ -77,21 +75,9 @@ def create_params(args: argparse.Namespace) -> dict:
 
 def params(args: argparse.Namespace):
     """Params"""
-    # atexit.register(exit_params)
-    # query_params = create_params(args)
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                   ' AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'}
-        response_g = requests.get('https://github.com/vivekuppal/transcribe',
-                                  timeout=10, headers=headers)
-        if response_g.status_code != 200:
-            root_logger.info(f'Error in response_g: {response_g}')
-        # response = requests.get(URL + "ping", params=query_params, timeout=10)
-        # if response.status_code != 200:
-        #    root_logger.info(f'Error received: {response}')
-    except ConnectionError:
-        # pprint.pprint(ce)
-        print('[INFO] Operating in Desktop mode')
+    # The original sent a request to the upstream GitHub page at every start; it could hold
+    # the start for up to 10 s (and stop it with a read timeout) and served no purpose here.
+    del args
 
 
 def detect_ps():

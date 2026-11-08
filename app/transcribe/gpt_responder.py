@@ -13,6 +13,12 @@ from tsutils import duration, utilities
 
 logger = al.get_module_logger(al.GPT_RESPONDER_LOGGER)
 
+# Wait this long for the transcript to stop changing before asking for a suggestion,
+# so one spoken sentence that arrives in two updates is answered once ...
+RESPONSE_SETTLE_SECONDS = 0.6
+# ... but never wait longer than this while someone keeps talking.
+RESPONSE_SETTLE_LIMIT_SECONDS = 3.0
+
 SUPPORTED_REASONING_EFFORTS = {
     'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'
 }
@@ -212,6 +218,18 @@ class GPTResponder:
         self._save_response_to_file(collected_messages)
         return collected_messages
 
+    def warm_up(self):
+        """Check the API key in the background at start-up.
+
+        The first suggestion otherwise waited for an extra test request to the provider.
+        """
+        try:
+            settings_section = self._get_settings_section(self.config['General']['chat_inference_provider'])
+            api_key, base_url, model = self._get_api_settings(settings_section)
+            utilities.is_api_key_valid(api_key=api_key, base_url=base_url, model=model)
+        except Exception as exception:  # pylint: disable=broad-except
+            logger.info(f'API key check at start-up did not complete: {exception}')
+
     def create_client(self, api_key: str, base_url: str = None):
         """
         Create and initialize an OpenAI API compatible client.
@@ -356,30 +374,35 @@ class GPTResponder:
                                                   update_previous=update_previous)
 
     def respond_to_transcriber(self, transcriber):
-        """Thread method to continously update the transcript
+        """Thread method: ask the LLM for a new suggestion whenever the transcript changes.
+
+        It wakes up on the transcriber's change event instead of polling every
+        ``llm_response_interval`` seconds (which added up to a whole interval of delay before
+        a question was even sent). Updates that arrive close together are answered once, and
+        two requests are still never started less than ``llm_response_interval`` apart.
         """
+        changed = transcriber.transcript_changed_event
+        last_request = None
         while True:
-
-            # Attempt to get responses only if transcript has changed
-            if transcriber.transcript_changed_event.is_set():
-                start_time = time.time()
-
-                transcriber.transcript_changed_event.clear()
-
-                # Do processing only if LLM transcription is enabled
-                if self.enabled:
-                    self.generate_response_from_transcript()
-
-                end_time = time.time()  # Measure end time
-                execution_time = end_time - start_time  # Calculate time to execute the function
-
-                remaining_time = self.llm_response_interval - execution_time
-                if remaining_time > 0:
-                    # print(f'llm_response_interval: {self.llm_response_interval}, execution time: {execution_time}')
-                    # print(f'Sleeping for a response for duration: {remaining_time}')
-                    time.sleep(remaining_time)
-            else:
-                time.sleep(self.llm_response_interval)
+            changed.wait()
+            settle_until = time.monotonic() + RESPONSE_SETTLE_LIMIT_SECONDS
+            while True:
+                changed.clear()
+                remaining = settle_until - time.monotonic()
+                if remaining <= 0 or not changed.wait(min(RESPONSE_SETTLE_SECONDS, remaining)):
+                    break
+            if not self.enabled:
+                continue
+            if last_request is not None:
+                wait = self.llm_response_interval - (time.monotonic() - last_request)
+                if wait > 0:
+                    time.sleep(wait)
+            changed.clear()     # this request covers everything transcribed until now
+            last_request = time.monotonic()
+            try:
+                self.generate_response_from_transcript()
+            except Exception as exception:  # pylint: disable=broad-except
+                logger.exception(f'Response generation failed: {exception}')
 
     def update_response_interval(self, interval):
         """Change the interval for pinging LLM

@@ -108,7 +108,8 @@ class TestSTTProviders(unittest.TestCase):
 
     @patch("app.transcribe.providers.stt.WhisperCPPTranscriber")
     @patch("app.transcribe.providers.stt.create_stt_model")
-    def test_create_transcriber_injects_whispercpp_preprocessor(self, mock_create_stt_model, mock_transcriber):
+    def test_create_transcriber_for_whispercpp_needs_no_audio_conversion(self, mock_create_stt_model, mock_transcriber):
+        """Audio already arrives as 16 kHz mono, so whisper.cpp gets no ffmpeg preprocessor."""
         runtime = SimpleNamespace(
             user_audio_recorder=SimpleNamespace(source="mic"),
             speaker_audio_recorder=SimpleNamespace(source="speaker"),
@@ -128,8 +129,8 @@ class TestSTTProviders(unittest.TestCase):
 
         kwargs = mock_transcriber.call_args.kwargs
         self.assertIs(created, transcriber_instance)
-        self.assertIn("audio_chunk_preprocessor", kwargs)
-        self.assertIsInstance(kwargs["audio_chunk_preprocessor"], stt.WhisperCppAudioPreprocessor)
+        self.assertNotIn("audio_chunk_preprocessor", kwargs)
+        self.assertFalse(hasattr(stt, "WhisperCppAudioPreprocessor"))
         runtime.set_transcriber.assert_called_once_with(transcriber_instance)
 
     @patch("app.transcribe.providers.stt.WhisperTranscriber")

@@ -16,6 +16,10 @@ OpenAI:
 # Interpret the audio from speakers, mic to be in this language
   audio_lang: English
 
+# Model for the OpenAI speech to text API (used with use_api: True).
+# whisper-1 returns segment timestamps, which keep live requests short.
+  stt_model: whisper-1
+
 # Request timeout for any response requests made to openAI API
   response_request_timeout_seconds: 10
 
@@ -88,6 +92,15 @@ General:
   live_transcription_audio_context_seconds: 10
 # Number of repeated hypotheses before text is considered stable.
   live_transcription_stability_passes: 2
+# Once the audio of one row passes this many seconds, text that is no longer changing is
+# committed and its audio leaves the buffer, so each speech to text request stays short.
+# 0 turns committing off (the buffer then grows up to live_transcription_window_seconds).
+  live_transcription_commit_seconds: 10
+# Local speech to text engine for stt: whisper without the API.
+# auto = faster-whisper (installed by setup.bat; fast on CPU, no PyTorch needed).
+# openai-whisper is optional (needs PyTorch, several GB): run app\transcribe\setup-openai-whisper.bat.
+# Possible values: auto, faster-whisper, openai-whisper
+  local_engine: auto
 # These two parameters are used together.
 # Setting clear_transcript_periodically: yes will clear transcript data at a regular interval
 # clear_transcript_interval_seconds is applicable when clear_transcript_periodically is set to Yes
@@ -115,8 +128,9 @@ General:
   disable_speaker: False
   stt: whisper
   continuous_response: True
-  # The interval at which to ping the LLM for response
-  llm_response_interval: 10
+  # Minimum number of seconds between two automatic LLM responses.
+  # A response is requested as soon as the transcript changes, never sooner than this.
+  llm_response_interval: 5
 
 # This is equivalent to -c argument on command line
 # Command line argument takes precedence over value specified in parameters.yaml

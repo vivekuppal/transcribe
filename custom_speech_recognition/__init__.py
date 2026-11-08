@@ -681,7 +681,9 @@ class Recognizer(AudioSource):
         def stopper(wait_for_stop=True):
             running[0] = False
             if wait_for_stop:
-                listener_thread.join()  # block until the background thread is done, which can take around 1 second
+                # The listener checks the flag between phrases (a phrase lasts up to phrase_time_limit);
+                # never hang the caller for ever on a stuck device.
+                listener_thread.join(timeout=(phrase_time_limit or 3) + 3)
 
         listener_thread = threading.Thread(target=threaded_listen, name=source_name+' Thread')
         listener_thread.daemon = True

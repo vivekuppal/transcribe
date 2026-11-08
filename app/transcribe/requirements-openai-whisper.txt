@@ -1,0 +1,4 @@
+# Optional: the original openai-whisper engine (local_engine: openai-whisper).
+# It needs PyTorch, which setup-openai-whisper.bat installs first (CPU build, or CUDA with --cuda).
+# faster-whisper (the standard engine) does the same job faster without it.
+openai-whisper==20250625

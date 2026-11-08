@@ -17,6 +17,53 @@ Thanks to [Lappu AI](https://www.lappuai.com/) for their support and multitude o
 
 # 👂🏻️ Transcribe ✍🏼️
 
+## ⬇️ Download (Windows)
+
+Open [Releases](https://github.com/samaliyan/transcribe/releases), download `Transcribe-<version>-windows.zip`,
+unzip it and double-click `Transcribe.exe` (Windows 10/11, 64-bit). Nothing else needs to be installed.
+The first start downloads the speech to text model once. To use an OpenAI API key, put it in `override.yaml`
+next to `Transcribe.exe`. A computer without a microphone or speaker device still starts; it uses the other source.
+
+To publish a new version (maintainers): Actions › Windows package › Run workflow, enter a version such as `1.0.1`.
+The package is built and tested on Windows (window start and a real transcription of a sample file) before it is
+published. Every push to a branch other than main builds and tests the package too, without publishing it.
+
+## ⚡ Faster live pipeline (this fork)
+
+This fork rebuilds the live audio path so transcripts and suggestions keep up with the conversation:
+
+- **Audio is converted once, in memory.** Each captured phrase becomes 16 kHz mono when it is recorded
+  (about 6 times less data than 48 kHz stereo). No temporary WAV file and no ffmpeg run per phrase;
+  ffmpeg is now only needed to transcribe files from the command line with openai-whisper or whisper.cpp.
+- **Microphone and speaker are transcribed in parallel**, each on its own worker, so one slow request
+  never holds back the other side.
+- **No growing backlog.** When transcription is slower than speech, the audio that is waiting is merged
+  into one request instead of one request per phrase.
+- **Short requests during long speech.** Text the model has finished with is committed and its audio leaves
+  the buffer (`live_transcription_commit_seconds`, default 10). Requests stay around 10–15 s of audio
+  instead of growing to the 30 s window, and the OpenAI API path now asks for segment timestamps
+  (`verbose_json`) so this also works there.
+- **Faster local speech to text, much smaller install.** `faster-whisper` (CTranslate2, int8 on CPU) is the
+  local engine: the same Whisper models, about 4 times faster on a CPU, and no PyTorch. `setup.bat` no longer
+  downloads PyTorch with CUDA (about 2.5 GB); the install is now a few hundred MB. An NVIDIA GPU is optional
+  (`app\transcribe\setup-gpu.bat`); without its libraries the CPU is used. The original `openai-whisper`
+  engine is optional too (`app\transcribe\setup-openai-whisper.bat`, then `local_engine: openai-whisper`).
+  The 2023 whisper.cpp files were removed from `bin`; see `bin\README.md` for the current build.
+- **Suggestions start when the transcript changes**, instead of on a fixed timer. `llm_response_interval`
+  (default now 5 s) is the minimum gap between two automatic requests; a very low value means more requests
+  (and cost) while someone talks. The API key is checked in the background at start-up instead of before the
+  first answer.
+- **Lighter UI and database work.** A speaker's newest row is updated in place (no search and reflow of the
+  whole transcript per update), the answer box is redrawn only when its text changes, and streamed answer
+  tokens no longer cause a database query, update and commit each.
+
+In a simulation (`tools/latency_simulation.py`) with 90 s of non-stop speech and the same speech to text cost for both versions
+(0.4 s + 0.05 s per second of audio, typical of a cloud API) the average delay before words appear went from
+1.7 s to 0.9 s and the audio sent went from 765 s to 309 s. With a slow local engine (0.5 s + 0.35 s per second
+of audio) the old pipeline fell behind and still had half of the words missing 40 s after the speaker
+stopped; the new one kept a delay of about 6 s with no words missing.
+
+
 [Join the community](https://transcribe-workspace.slack.com/channels/general)
 
 Write an [email](waveblueseawave@gmail.com) to receive invite to the community channel or share your email in an issue.
@@ -34,7 +81,7 @@ Transcribe provides real time transcription for microphone and speaker output. I
 - Security Features
 - Choose Audio Inputs (Speaker or Mic or Both)
 - Speech to Text
-    - Offline - FREE
+    - Offline - FREE (faster-whisper; optional: openai-whisper, whisper.cpp, SenseVoice)
     - Online - paid
       - OpenAI Whisper - **(Encouraged)**
       - OpenAI Realtime (`gpt-live-transcribe`)
@@ -156,11 +203,14 @@ OpenAI:
 
 
 ## 🆕 Best Performance with GPU 🥇
-Application performs best with GPU support.
+Local speech to text runs well on a CPU. With an NVIDIA GPU it is faster still: after `setup.bat`, run
 
-Make sure you have installed CUDA libraries if you have GPU: https://developer.nvidia.com/cuda-downloads
+```
+app\transcribe\setup-gpu.bat
+```
 
-Application will automatically detect and use GPU once CUDA libraries are installed.
+It installs the CUDA 12 libraries the engine needs into the virtual environment (no separate CUDA
+installation). The GPU is then detected and used by itself; without it the CPU is used.
 
 ## 🆕 Getting Started 🥇
 
@@ -171,9 +221,10 @@ Follow below steps to run transcribe on your local machine.
 - Python >=3.11.0
 - (Optional) An OpenAI API key (set up a paid [OpenAI account](https://platform.openai.com/))
 - Windows OS (Not tested on others)
-- FFmpeg
+- (Optional) FFmpeg — only for transcribing files from the command line with openai-whisper or whisper.cpp.
+  Live transcription and the standard local engine do not need it.
 
-Steps to install FFmpeg on your system.
+Steps to install FFmpeg on your system, if you need it.
 
 First, install Chocolatey, a package manager for Windows.
 
