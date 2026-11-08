@@ -32,16 +32,80 @@ FASTER_WHISPER = "faster-whisper"
 OPENAI_WHISPER = "openai-whisper"
 
 
+def _installed(module: str) -> bool:
+    import importlib.util  # pylint: disable=import-outside-toplevel
+    if module in sys.modules:
+        return sys.modules[module] is not None
+    try:
+        return importlib.util.find_spec(module) is not None
+    except (ImportError, ValueError):
+        return False
+
+
 def pick_local_whisper_engine(setting: str = "auto") -> str:
-    """Choose the local Whisper engine: 'auto' prefers faster-whisper when it is installed."""
+    """Choose the local Whisper engine.
+
+    faster-whisper is the standard engine (installed by requirements.txt). openai-whisper needs
+    PyTorch (gigabytes) and is only used when it is chosen, or installed and faster-whisper is not.
+    """
     setting = str(setting or "auto").strip().lower()
     if setting in (FASTER_WHISPER, OPENAI_WHISPER):
         return setting
-    try:
-        import faster_whisper  # noqa: F401  pylint: disable=import-outside-toplevel,unused-import
+    if _installed("faster_whisper") or not _installed("whisper"):
         return FASTER_WHISPER
-    except ImportError:
-        return OPENAI_WHISPER
+    return OPENAI_WHISPER
+
+
+# Models openai-whisper's own download code (below) knows; others are loaded by name.
+OPENAI_WHISPER_URLS = ("tiny", "base", "small", "medium", "large", "large-v1", "large-v2", "large-v3")
+
+
+def gpu_check() -> int:
+    """0 = faster-whisper can use an NVIDIA GPU, 2 = no NVIDIA GPU, 1 = a GPU but its libraries do not load."""
+    add_nvidia_dll_directories()
+    try:
+        import ctranslate2  # pylint: disable=import-outside-toplevel
+        count = ctranslate2.get_cuda_device_count()
+    except Exception as exception:  # pylint: disable=broad-except
+        print(f"CTranslate2 could not be loaded: {exception}")
+        return 1
+    if count <= 0:
+        print("No NVIDIA GPU was found.")
+        return 2
+    if sys.platform == "win32":
+        import ctypes  # pylint: disable=import-outside-toplevel
+        for library in ("cublas64_12.dll", "cudnn64_9.dll"):
+            try:
+                ctypes.WinDLL(library)
+            except OSError as exception:
+                print(f"{library} could not be loaded: {exception}")
+                return 1
+    print(f"NVIDIA GPUs found: {count}; CTranslate2 {ctranslate2.__version__}")
+    return 0
+
+
+def add_nvidia_dll_directories():
+    """Windows: let CTranslate2 find the CUDA libraries that setup-gpu.bat installs with pip
+    (nvidia-cublas-cu12, nvidia-cudnn-cu12). They live in site-packages and are not on PATH."""
+    if sys.platform != "win32":
+        return []
+    import importlib.util  # pylint: disable=import-outside-toplevel
+    added = []
+    try:
+        spec = importlib.util.find_spec("nvidia")
+    except (ImportError, ValueError):
+        spec = None
+    for root in (list(spec.submodule_search_locations or []) if spec else []):
+        for package in ("cublas", "cudnn", "cuda_runtime", "cuda_nvrtc"):
+            folder = os.path.join(root, package, "bin")
+            if os.path.isdir(folder) and folder not in added:
+                try:
+                    os.add_dll_directory(folder)  # pylint: disable=no-member
+                except (AttributeError, OSError):
+                    pass
+                os.environ["PATH"] = folder + os.pathsep + os.environ.get("PATH", "")
+                added.append(folder)
+    return added
 
 
 class STTModelFactory:
@@ -287,9 +351,9 @@ class SenseVoiceSTTModel(STTModelInterface):
 class WhisperSTTModel(STTModelInterface):
     """Speech to Text with a local Whisper model.
 
-    Uses faster-whisper (CTranslate2, int8 on CPU) when it is installed: about four times
-    faster than openai-whisper on a CPU and it does not need torch. Falls back to
-    openai-whisper otherwise, or when ``General.local_engine`` says so.
+    Uses faster-whisper (CTranslate2, int8 on CPU): about four times faster than openai-whisper
+    on a CPU, and it does not need PyTorch. openai-whisper is optional and used only when
+    ``General.local_engine`` chooses it (or when it is the only engine installed).
     """
     def __init__(self, stt_model_config: dict):
         self.model = stt_model_config['local_transcripton_model_file']
@@ -305,22 +369,39 @@ class WhisperSTTModel(STTModelInterface):
             try:
                 self.audio_model = self._load_faster_whisper()
             except Exception as exception:  # pylint: disable=broad-except
-                # e.g. no internet for the first download: use openai-whisper (and its .pt file) instead
+                if not _installed("whisper"):
+                    raise RuntimeError(
+                        f'The local speech to text model "{self.model}" could not be loaded ({exception}). '
+                        'The first start downloads it from Hugging Face: check the internet connection '
+                        'or proxy and start again.') from exception
+                # openai-whisper is installed too (optional): use it and its .pt file instead
                 print(f'[WARN] faster-whisper could not load model {self.model} ({exception}); '
                       'using openai-whisper instead.')
                 self.engine = OPENAI_WHISPER
         if self.engine == OPENAI_WHISPER:
-            import torch  # pylint: disable=import-outside-toplevel
-            import whisper  # pylint: disable=import-outside-toplevel
-            self.download_model()
+            try:
+                import torch  # pylint: disable=import-outside-toplevel
+                import whisper  # pylint: disable=import-outside-toplevel
+            except ImportError as exception:
+                raise RuntimeError(
+                    'local_engine is set to openai-whisper, but it is not installed. It is optional '
+                    '(it needs PyTorch, several GB): run setup-openai-whisper.bat, or set '
+                    'local_engine: auto to use faster-whisper.') from exception
             self.use_gpu = bool(torch.cuda.is_available())
-            self.audio_model = whisper.load_model(self.model_filename)
+            if self.model in OPENAI_WHISPER_URLS:
+                self.download_model()
+                self.audio_model = whisper.load_model(self.model_filename)
+            else:       # e.g. turbo: openai-whisper downloads it by name
+                utilities.ensure_directory_exists(MODELS_DIR)
+                self.audio_model = whisper.load_model(self.model, download_root=MODELS_DIR)
         # faster-whisper runs two transcriptions at once (num_workers=2); openai-whisper cannot.
         self.thread_safe = self.engine == FASTER_WHISPER
         print(f'[INFO] Speech To Text - local Whisper ({self.engine}, model {self.model}), '
               f'using GPU: {self.use_gpu}')
 
     def _load_faster_whisper(self, allow_gpu: bool = True):
+        if allow_gpu:
+            add_nvidia_dll_directories()
         from faster_whisper import WhisperModel  # pylint: disable=import-outside-toplevel
         download_root = os.path.join(MODELS_DIR, "faster-whisper")
         utilities.ensure_directory_exists(download_root)
@@ -372,7 +453,8 @@ class WhisperSTTModel(STTModelInterface):
             file_url = 'https://openaipublic.azureedge.net/main/whisper/models/e5b1a55b89c1367dacf97e3e19bfd829a01529dbfdeefa8caeb59b3f1b81dadb/' + self.model_name
             utilities.download_using_bits(file_url=file_url, file_path=self.model_filename)
         else:
-            print('Could not find the correct model file')
+            print(f'The model "{self.model}" is not available for openai-whisper '
+                  '(use faster-whisper: local_engine: auto).')
             sys.exit()
 
     def _transcribe(self, audio) -> dict:
@@ -602,6 +684,8 @@ class WhisperCPPSTTModel(STTModelInterface):
     def __init__(self, stt_model_config: dict):
         self.lang = stt_model_config['audio_lang']
         model = stt_model_config['local_transcripton_model_file']
+        # whisper.cpp names the turbo model by its full name
+        model = {"ggml-turbo": "ggml-large-v3-turbo"}.get(model, model)
         self.model_filename = MODELS_DIR + model + ".bin"
         self.model = model
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import importlib.util
 import os
 import unittest
 
@@ -111,6 +112,7 @@ class TestRecognition(unittest.TestCase):
     #         audio = r.record(source)
     #     self.assertEqual(r.recognize_ibm(audio, username=os.environ["IBM_USERNAME"], password=os.environ["IBM_PASSWORD"], language="zh-CN"), "砸 自己 的 脚 ")
 
+    @unittest.skipUnless(importlib.util.find_spec("whisper"), "openai-whisper is optional")
     def test_whisper_english(self):
         r = sr.Recognizer()
         with sr.AudioFile(self.AUDIO_FILE_EN) as source:
@@ -118,6 +120,7 @@ class TestRecognition(unittest.TestCase):
         result = r.recognize_whisper(audio, language="english", **self.WHISPER_CONFIG)
         self.assertEqual(result.strip().rstrip("."), "1, 2, 3")
 
+    @unittest.skipUnless(importlib.util.find_spec("whisper"), "openai-whisper is optional")
     def test_whisper_french(self):
         r = sr.Recognizer()
         with sr.AudioFile(self.AUDIO_FILE_FR) as source:
@@ -125,6 +128,7 @@ class TestRecognition(unittest.TestCase):
         self.assertEqual(r.recognize_whisper(audio, language="french", **self.WHISPER_CONFIG),
                          " et c'est la dictée numéro 1.")
 
+    @unittest.skipUnless(importlib.util.find_spec("whisper"), "openai-whisper is optional")
     def test_whisper_chinese(self):
         r = sr.Recognizer()
         with sr.AudioFile(self.AUDIO_FILE_ZH) as source:

@@ -647,7 +647,8 @@ class TestModelsTakeAudioFromMemory(unittest.TestCase):
         fake_torch.cuda = SimpleNamespace(is_available=lambda: False)
         with patch.dict(sys.modules, {"faster_whisper": fake, "ctranslate2": gpu, "whisper": fake_whisper,
                                       "torch": fake_torch}), \
-                patch.object(tm.WhisperSTTModel, "download_model"):
+                patch.object(tm.WhisperSTTModel, "download_model"), \
+                patch.object(tm, "_installed", return_value=True):     # the optional engine is installed
             model = tm.WhisperSTTModel({"local_transcripton_model_file": "base", "audio_lang": "en"})
         self.assertEqual(model.engine, tm.OPENAI_WHISPER)
         self.assertFalse(model.thread_safe)
@@ -673,10 +674,61 @@ class TestModelsTakeAudioFromMemory(unittest.TestCase):
         self.assertEqual(model.lang, "de")
 
     def test_engine_choice(self):
-        with patch.dict(sys.modules, {"faster_whisper": None}):
+        def installed(*names):
+            return patch.object(tm, "_installed", side_effect=lambda module: module in names)
+        with installed("faster_whisper", "whisper"):
+            self.assertEqual(tm.pick_local_whisper_engine("auto"), tm.FASTER_WHISPER)
+        with installed("whisper"):                     # only the old engine (an old install)
             self.assertEqual(tm.pick_local_whisper_engine("auto"), tm.OPENAI_WHISPER)
+        with installed():                              # nothing: faster-whisper, which reports clearly
+            self.assertEqual(tm.pick_local_whisper_engine("auto"), tm.FASTER_WHISPER)
         self.assertEqual(tm.pick_local_whisper_engine("openai-whisper"), tm.OPENAI_WHISPER)
         self.assertEqual(tm.pick_local_whisper_engine("Faster-Whisper"), tm.FASTER_WHISPER)
+
+    def test_requirements_no_longer_pull_in_pytorch(self):
+        here = os.path.dirname(os.path.dirname(__file__))
+        with open(os.path.join(here, "requirements.txt"), encoding="utf-8") as handle:
+            lines = [line.split("#")[0].strip().lower() for line in handle]
+        packages = [line for line in lines if line]
+        self.assertTrue(any(p.startswith("faster-whisper") for p in packages))
+        self.assertFalse(any(p.startswith(("openai-whisper", "torch")) for p in packages))
+        setup = os.path.join(os.path.dirname(os.path.dirname(here)), "setup.bat")
+        with open(setup, encoding="utf-8") as handle:
+            self.assertNotIn("torch", handle.read())
+
+    def test_missing_optional_openai_whisper_is_reported_clearly(self):
+        with patch.dict(sys.modules, {"whisper": None, "torch": None}):
+            with self.assertRaises(RuntimeError) as raised:
+                tm.WhisperSTTModel({"local_transcripton_model_file": "base", "audio_lang": "en",
+                                    "local_engine": "openai-whisper"})
+        self.assertIn("setup-openai-whisper.bat", str(raised.exception))
+
+    def test_first_download_failing_without_openai_whisper_is_reported_clearly(self):
+        fake, gpu, _ = self._fake_faster(fail_any_load=True)
+        with patch.dict(sys.modules, {"faster_whisper": fake, "ctranslate2": gpu}), \
+                patch.object(tm, "_installed", return_value=False):
+            with self.assertRaises(RuntimeError) as raised:
+                tm.WhisperSTTModel({"local_transcripton_model_file": "base", "audio_lang": "en"})
+        self.assertIn("internet", str(raised.exception))
+
+    def test_gpu_libraries_installed_with_pip_are_found_on_windows(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            for package in ("cublas", "cudnn"):
+                os.makedirs(os.path.join(root, "nvidia", package, "bin"))
+            spec = SimpleNamespace(submodule_search_locations=[os.path.join(root, "nvidia")])
+            added_dirs = []
+            with patch.object(tm.sys, "platform", "win32"), \
+                    patch("importlib.util.find_spec", return_value=spec), \
+                    patch.object(tm.os, "add_dll_directory", side_effect=added_dirs.append, create=True), \
+                    patch.dict(tm.os.environ, {"PATH": "x"}):
+                added = tm.add_nvidia_dll_directories()
+                path = tm.os.environ["PATH"]
+        self.assertEqual(len(added), 2)
+        self.assertEqual(added_dirs, added)
+        self.assertTrue(all(folder in path for folder in added))
+        with patch.object(tm.sys, "platform", "linux"):
+            self.assertEqual(tm.add_nvidia_dll_directories(), [])
 
     def test_deepgram_sends_wav_bytes_from_memory(self):
         fake = types.ModuleType("deepgram")
@@ -899,3 +951,77 @@ class TestDisplayRows(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFileTranscriptionNeedsFfmpegOnlyWhereUsed(unittest.TestCase):
+    def run_batch(self, stt, engine):
+        import tempfile
+        from app.transcribe.cli import batch
+        model = MagicMock(engine=engine)
+        model.get_sentences.return_value = ["0:00 - 0:01: hi"]
+        with tempfile.TemporaryDirectory() as folder:
+            audio = os.path.join(folder, "talk.mp3")
+            with open(audio, "wb") as handle:
+                handle.write(b"x")
+            args = SimpleNamespace(output_file=os.path.join(folder, "out.txt"), transcribe=audio)
+            config = {"General": {"stt": stt, "use_api": False}}
+            cwd = os.getcwd()
+            os.chdir(folder)
+            try:
+                with patch.object(batch, "create_stt_model", return_value=model) as create, \
+                        patch.object(batch, "pick_local_whisper_engine", return_value=engine), \
+                        patch.object(batch, "ensure_ffmpeg_available",
+                                     side_effect=lambda: self.assertFalse(create.called)) as ffmpeg, \
+                        patch.object(batch, "convert_audio_to_16khz", return_value=audio + ".wav"):
+                    batch.transcribe_audio_file(args, config)
+            finally:
+                os.chdir(cwd)
+        return ffmpeg.called
+
+    def test_faster_whisper_reads_files_itself(self):
+        self.assertFalse(self.run_batch("whisper", "faster-whisper"))
+
+    def test_openai_whisper_and_whispercpp_still_check_for_ffmpeg(self):
+        self.assertTrue(self.run_batch("whisper", "openai-whisper"))
+        self.assertTrue(self.run_batch("whisper.cpp", None))
+
+
+class TestOptionalEngines(unittest.TestCase):
+    def test_gpu_check_codes(self):
+        no_gpu = types.ModuleType("ctranslate2")
+        no_gpu.get_cuda_device_count = lambda: 0
+        one_gpu = types.ModuleType("ctranslate2")
+        one_gpu.get_cuda_device_count = lambda: 1
+        one_gpu.__version__ = "4.6.0"
+        with patch.dict(sys.modules, {"ctranslate2": no_gpu}):
+            self.assertEqual(tm.gpu_check(), 2)
+        with patch.dict(sys.modules, {"ctranslate2": one_gpu}), patch.object(tm.sys, "platform", "linux"):
+            self.assertEqual(tm.gpu_check(), 0)
+        with patch.dict(sys.modules, {"ctranslate2": None}):
+            self.assertEqual(tm.gpu_check(), 1)
+
+    def test_gpu_check_fails_when_cuda_libraries_do_not_load_on_windows(self):
+        import ctypes
+        one_gpu = types.ModuleType("ctranslate2")
+        one_gpu.get_cuda_device_count = lambda: 1
+        with patch.dict(sys.modules, {"ctranslate2": one_gpu}), patch.object(tm.sys, "platform", "win32"), \
+                patch.object(tm, "add_nvidia_dll_directories"), \
+                patch.object(ctypes, "WinDLL", side_effect=OSError("not found"), create=True):
+            self.assertEqual(tm.gpu_check(), 1)
+
+    def test_turbo_with_whispercpp_uses_its_file_name(self):
+        with patch.object(tm.os.path, "isfile", return_value=True):
+            model = tm.WhisperCPPSTTModel({"audio_lang": "en", "local_transcripton_model_file": "ggml-turbo"})
+        self.assertTrue(model.model_filename.endswith("ggml-large-v3-turbo.bin"))
+
+    def test_turbo_with_openai_whisper_is_loaded_by_name(self):
+        fake_whisper = types.ModuleType("whisper")
+        fake_whisper.load_model = MagicMock(return_value=MagicMock())
+        fake_torch = types.ModuleType("torch")
+        fake_torch.cuda = SimpleNamespace(is_available=lambda: False)
+        with patch.dict(sys.modules, {"whisper": fake_whisper, "torch": fake_torch}), \
+                patch.object(tm.utilities, "ensure_directory_exists"):
+            tm.WhisperSTTModel({"local_transcripton_model_file": "turbo", "audio_lang": "en",
+                                "local_engine": "openai-whisper"})
+        self.assertEqual(fake_whisper.load_model.call_args.args[0], "turbo")
+        self.assertEqual(fake_whisper.load_model.call_args.kwargs["download_root"], tm.MODELS_DIR)
