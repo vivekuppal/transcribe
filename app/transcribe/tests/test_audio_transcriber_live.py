@@ -52,14 +52,16 @@ class TestAudioTranscriberLiveBehavior(unittest.TestCase):
         )
 
     def test_audio_buffer_is_trimmed_by_configured_window(self):
+        # Buffers hold 16 kHz mono 16-bit PCM: 32000 bytes per second; the window is 0.1 s.
         source_info = self.transcriber.audio_sources_properties["You"]
-        source_info["last_sample"] = b"0123456789"
+        source_info["last_sample"] = bytes(range(256)) * 50          # 12800 bytes = 0.4 s
 
         with source_info["mutex"]:
             self.transcriber._trim_audio_buffer_locked(source_info)
 
-        self.assertEqual(source_info["last_sample"], b"89")
-        self.assertEqual(source_info["buffer_start_seconds"], 0.4)
+        self.assertEqual(len(source_info["last_sample"]), 3200)       # 0.1 s kept
+        self.assertEqual(source_info["last_sample"], (bytes(range(256)) * 50)[-3200:])
+        self.assertAlmostEqual(source_info["buffer_start_seconds"], 0.3)
 
     def test_update_transcript_can_force_insert_or_update(self):
         now = datetime.datetime.utcnow()

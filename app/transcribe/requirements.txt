@@ -1,6 +1,13 @@
 numpy==1.26.4; python_version < "3.13"
 numpy==2.1.3; python_version >= "3.13"
-openai-whisper==20250625
+# Local speech to text (CTranslate2): no PyTorch needed. For a GPU run setup-gpu.bat.
+# openai-whisper (needs PyTorch, several GB) is optional: requirements-openai-whisper.txt.
+faster-whisper>=1.1,<2
+# 4.5+ is built for CUDA 12 / cuDNN 9 (what setup-gpu.bat installs).
+ctranslate2>=4.5,<5
+# PyAV 19 removed an argument faster-whisper 1.2.1 still passes when it reads audio files
+# (TypeError: open() got an unexpected keyword argument 'metadata_errors').
+av>=11,<19
 Wave==0.0.2
 standard-aifc==3.13.0; python_version >= "3.13"
 audioop-lts==0.2.2; python_version >= "3.13"
@@ -17,8 +24,6 @@ gtts
 # in case of continuous play back of files in quick succession
 playsound==1.2.2
 deepgram-sdk==3.2.5
-# PyTorch is installed separately by setup.bat so its package index is not
-# used to resolve unrelated dependencies from this file.
 bandit==1.7.8
 SqlAlchemy==2.0.31
 setuptools

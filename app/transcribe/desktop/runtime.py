@@ -4,20 +4,20 @@ from __future__ import annotations
 
 import queue
 import threading
-import time
 
 from .. import interactions
 from ..audio_player import AudioPlayer
 from ..db.app_db import AppDB
 from ..providers.llm import create_responder
-from ..providers.stt import create_transcriber, ensure_ffmpeg_available
+from ..providers.stt import create_transcriber
 
 from tsutils import utilities
 
 
 def initialize_desktop_runtime(runtime, config: dict):
     """Initialize the desktop runtime state without launching the UI."""
-    ensure_ffmpeg_available()
+    # Live transcription no longer needs ffmpeg (audio is converted in memory); only file
+    # transcription from the command line checks for it.
     initiate_db(runtime)
     if config["General"]["stt"].lower() == "openai-realtime":
         max_chunks = max(2, int(config.get("OpenAIRealtime", {}).get("max_raw_audio_chunks", 240)))
@@ -49,7 +49,9 @@ def start_audio_capture(runtime):
     """Start microphone and speaker capture threads."""
     user_stop_func = runtime.user_audio_recorder.record_audio(runtime.audio_queue)
     runtime.user_audio_recorder.stop_record_func = user_stop_func
-    time.sleep(2)
+    # Open the two devices one after the other (some drivers fail when both open at once),
+    # but only wait as long as the microphone actually takes instead of a fixed 2 seconds.
+    runtime.user_audio_recorder.wait_until_capturing(timeout=2.0)
     speaker_stop_func = runtime.speaker_audio_recorder.record_audio(runtime.audio_queue)
     runtime.speaker_audio_recorder.stop_record_func = speaker_stop_func
 
@@ -81,6 +83,7 @@ def initiate_app_threads(runtime, config: dict):
         print(f"FATAL: Could not create Chat Reponder for {chat}")
         raise SystemExit(1)
     runtime.responder.enabled = bool(config["General"]["continuous_response"])
+    threading.Thread(target=runtime.responder.warm_up, name="ResponderWarmUp", daemon=True).start()
 
     respond_thread = threading.Thread(
         target=runtime.responder.respond_to_transcriber,
