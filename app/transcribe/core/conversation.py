@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from heapq import merge
 import datetime
+import sys
 import threading
 from pathlib import Path
 
@@ -15,7 +16,9 @@ from ..db import llm_responses as llmrdb
 from tsutils import configuration
 
 
-APP_DIR = Path(__file__).resolve().parent.parent
+# parameters.yaml / override.yaml: next to Transcribe.exe in the packaged program, else in app/transcribe.
+APP_DIR = (Path(sys.executable).resolve().parent if getattr(sys, "frozen", False)
+           else Path(__file__).resolve().parent.parent)
 
 
 class Conversation:

@@ -22,3 +22,5 @@ app/transcribe/logs/mic.wav.bak
 app/transcribe/logs/speaker.wav
 app/transcribe/logs/speaker.wav.bak
 app/transcribe/logs/deep.json
+dist/
+build/pyinstaller-work/

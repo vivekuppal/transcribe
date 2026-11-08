@@ -5,6 +5,9 @@ numpy==2.1.3; python_version >= "3.13"
 faster-whisper>=1.1,<2
 # 4.5+ is built for CUDA 12 / cuDNN 9 (what setup-gpu.bat installs).
 ctranslate2>=4.5,<5
+# PyAV 19 removed an argument faster-whisper 1.2.1 still passes when it reads audio files
+# (TypeError: open() got an unexpected keyword argument 'metadata_errors').
+av>=11,<19
 Wave==0.0.2
 standard-aifc==3.13.0; python_version >= "3.13"
 audioop-lts==0.2.2; python_version >= "3.13"
