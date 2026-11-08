@@ -400,6 +400,10 @@ class WhisperSTTModel(STTModelInterface):
               f'using GPU: {self.use_gpu}')
 
     def _load_faster_whisper(self, allow_gpu: bool = True):
+        # Hugging Face (where the model is downloaded from) otherwise prints notes about tokens
+        # and optional packages that mean nothing to the user.
+        os.environ.setdefault("HF_HUB_VERBOSITY", "error")
+        os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
         if allow_gpu:
             add_nvidia_dll_directories()
         from faster_whisper import WhisperModel  # pylint: disable=import-outside-toplevel

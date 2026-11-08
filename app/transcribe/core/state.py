@@ -86,16 +86,30 @@ class AppRuntime:
         """Initialize the active microphone and speaker devices."""
         print("[INFO] Using default microphone.")
         data_dir = utilities.get_data_path(app_name="Transcribe")
-        self.user_audio_recorder = ar.MicRecorder(audio_file_name=f"{data_dir}/logs/mic.wav")
-        if not config["General"]["disable_mic"] and config["General"]["mic_device_index"] != -1:
+        # A missing microphone or speaker (or one that fails to open) no longer stops the program:
+        # it continues with the other source.
+        self.user_audio_recorder = ar.open_recorder(ar.MicRecorder, "You",
+                                                    audio_file_name=f"{data_dir}/logs/mic.wav")
+        if (getattr(self.user_audio_recorder, "available", True) and not config["General"]["disable_mic"]
+                and config["General"]["mic_device_index"] != -1):
             print("[INFO] Override default microphone with device specified in parameters file.")
-            self.user_audio_recorder.set_device(index=int(config["General"]["mic_device_index"]))
+            self._use_device(self.user_audio_recorder, int(config["General"]["mic_device_index"]))
 
         print("[INFO] Using default speaker.")
-        self.speaker_audio_recorder = ar.SpeakerRecorder(audio_file_name=f"{data_dir}/logs/speaker.wav")
-        if not config["General"]["disable_speaker"] and config["General"]["speaker_device_index"] != -1:
+        self.speaker_audio_recorder = ar.open_recorder(ar.SpeakerRecorder, "Speaker",
+                                                       audio_file_name=f"{data_dir}/logs/speaker.wav")
+        if (getattr(self.speaker_audio_recorder, "available", True) and not config["General"]["disable_speaker"]
+                and config["General"]["speaker_device_index"] != -1):
             print("[INFO] Override default speaker with device specified in parameters file.")
-            self.speaker_audio_recorder.set_device(index=int(config["General"]["speaker_device_index"]))
+            self._use_device(self.speaker_audio_recorder, int(config["General"]["speaker_device_index"]))
+
+    @staticmethod
+    def _use_device(recorder, index: int):
+        """Switch to the device chosen in the settings; keep the default one if that fails."""
+        try:
+            recorder.set_device(index=index)
+        except Exception as exception:  # pylint: disable=broad-except
+            print(f"[WARN] Device {index} could not be used ({exception}); keeping the default device.")
 
     def set_read_response(self, value: bool):
         """Signal that the current response should be read aloud."""

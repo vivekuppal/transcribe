@@ -17,6 +17,17 @@ Thanks to [Lappu AI](https://www.lappuai.com/) for their support and multitude o
 
 # 👂🏻️ Transcribe ✍🏼️
 
+## ⬇️ Download (Windows)
+
+Open [Releases](https://github.com/samaliyan/transcribe/releases), download `Transcribe-<version>-windows.zip`,
+unzip it and double-click `Transcribe.exe` (Windows 10/11, 64-bit). Nothing else needs to be installed.
+The first start downloads the speech to text model once. To use an OpenAI API key, put it in `override.yaml`
+next to `Transcribe.exe`. A computer without a microphone or speaker device still starts; it uses the other source.
+
+To publish a new version (maintainers): Actions › Windows package › Run workflow, enter a version such as `1.0.1`.
+The package is built and tested on Windows (window start and a real transcription of a sample file) before it is
+published. Every push to a branch other than main builds and tests the package too, without publishing it.
+
 ## ⚡ Faster live pipeline (this fork)
 
 This fork rebuilds the live audio path so transcripts and suggestions keep up with the conversation:

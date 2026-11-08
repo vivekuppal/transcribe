@@ -145,6 +145,9 @@ class BaseRecorder:
         logger.info(BaseRecorder.adjust_for_noise.__name__)
         print(f"[INFO] Adjusting for ambient noise from {device_name}. {msg}")
         with self.source:
+            if getattr(self.source, "stream", None) is None:
+                # (the audio library reports the cause on the console; say it plainly here)
+                raise OSError(f"{device_name} could not be opened")
             self.recorder.adjust_for_ambient_noise(self.source)
         print(f"[INFO] Completed ambient noise adjustment for {device_name}.")
 
@@ -259,6 +262,50 @@ class BaseRecorder:
             wf.writeframes(data)    # pylint: disable=E1101
             # print(f'datasize: {len(data)}')
         # print(f'filesize: {os.path.getsize(self.audio_file_name)}')
+
+
+class UnavailableRecorder:
+    """Stands in for a microphone or speaker that could not be opened (none connected, no
+    permission, or the device failed). The program keeps working with the other source."""
+
+    def __init__(self, source_name: str, reason: str):
+        self.source_name = source_name
+        self.reason = reason
+        self.enabled = False
+        self.available = False
+        self.stop_record_func = None
+        self.device_index = None
+        self.device_info = {"name": "not available"}
+        # The audio format the transcribers expect from a source; no audio ever arrives.
+        self.source = type("NoAudioSource", (), {"SAMPLE_RATE": 16000, "SAMPLE_WIDTH": 2,
+                                                 "channels": 1, "stream": None})()
+        print(f"[WARN] {source_name}: no audio device could be opened ({reason}). "
+              "Continuing without it.")
+        logger.warning("%s: no audio device could be opened (%s)", source_name, reason)
+
+    def get_name(self):
+        return f"{self.source_name} - not available"
+
+    def record_audio(self, audio_queue):  # pylint: disable=unused-argument
+        return lambda wait_for_stop=True: None
+
+    def wait_until_capturing(self, timeout: float = 3.0) -> bool:  # pylint: disable=unused-argument
+        return False
+
+    def write_wav_data_to_file(self):
+        return None
+
+    def set_device(self, index: int):
+        raise RuntimeError(f"{self.source_name} is not available: {self.reason}")
+
+
+def open_recorder(recorder_class, source_name: str, **kwargs):
+    """Open a recorder; a missing or failing device gives an UnavailableRecorder instead of a crash."""
+    try:
+        return recorder_class(source_name=source_name, **kwargs)
+    except Exception as exception:  # pylint: disable=broad-except
+        reason = str(exception).strip() or exception.__class__.__name__
+        return UnavailableRecorder(source_name, reason)
 
 
 class MicRecorder(BaseRecorder):

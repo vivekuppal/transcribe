@@ -1,0 +1,148 @@
+name: Windows package
+
+# Every push to a branch other than main builds the package and tests it (nothing is published).
+# "Run workflow" on the Actions page builds it, tests it and publishes it as a release.
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number, e.g. 1.0.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Check the version number
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          VERSION="${VERSION#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::The version must look like 1.0.0 (got '$VERSION')."; exit 1
+          fi
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Version v$VERSION already exists. Use a higher number."; exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r app\transcribe\requirements.txt pyinstaller
+
+      - name: Build
+        id: build
+        shell: bash
+        run: python build/build.py --version "${VERSION:-dev}"
+
+      - name: Check the package contents
+        shell: bash
+        run: |
+          for f in Transcribe.exe parameters.yaml override.yaml version.txt bin/README.md; do
+            test -f "dist/Transcribe/$f" || { echo "::error::Missing in package: $f"; exit 1; }
+          done
+          ls dist/Transcribe/_internal/customtkinter/assets/themes/blue.json >/dev/null \
+            || { echo "::error::customtkinter themes are missing"; exit 1; }
+          if ls dist/Transcribe/_internal | grep -qi '^torch'; then
+            echo "::error::PyTorch ended up in the package"; exit 1
+          fi
+
+      - name: Test the exe (help screen, then transcribe a sample file with the local engine)
+        shell: bash
+        working-directory: dist/Transcribe
+        run: |
+          ./Transcribe.exe --help > help.txt 2>&1 || { cat help.txt; echo "::error::Transcribe.exe --help failed"; exit 1; }
+          grep -q -- "--transcribe" help.txt || { cat help.txt; echo "::error::unexpected help output"; exit 1; }
+          ./Transcribe.exe -t "$GITHUB_WORKSPACE/tests/english.wav" -m tiny -o sample.txt > run.txt 2>&1 || true
+          cat run.txt
+          test -s sample.txt || { echo "::error::The exe did not transcribe the sample file"; exit 1; }
+          cat sample.txt
+          tr -d '[:punct:]' < sample.txt | tr 'A-Z' 'a-z' | grep -Eq "(1|one).*(2|two).*(3|three)" \
+            || { echo "::error::Unexpected transcription"; exit 1; }
+          rm -f help.txt run.txt sample.txt uid.lock
+
+      - name: Test the exe (opens its window like a user would)
+        shell: pwsh
+        working-directory: dist/Transcribe
+        run: |
+          $p = Start-Process -FilePath .\Transcribe.exe -PassThru -RedirectStandardOutput gui-out.txt -RedirectStandardError gui-err.txt
+          $title = ""
+          for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) {
+            Start-Sleep -Seconds 1
+            $p.Refresh()
+            $title = $p.MainWindowTitle
+            if ($title) { break }
+          }
+          Start-Sleep -Seconds 8
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bitmap.Save("$env:GITHUB_WORKSPACE\window.png")
+          $alive = -not $p.HasExited
+          if ($alive) { Stop-Process -Id $p.Id -Force }
+          Start-Sleep -Seconds 2
+          Get-Content gui-out.txt, gui-err.txt -ErrorAction SilentlyContinue | Select-Object -Last 40
+          Remove-Item gui-out.txt, gui-err.txt, uid.lock -ErrorAction SilentlyContinue
+          if (-not $title) { Write-Output "::error::The window did not open"; exit 1 }
+          if (-not $alive) { Write-Output "::error::The program closed by itself"; exit 1 }
+          Write-Output "::notice::Window opened: $title"
+
+      - name: Keep the screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: window-screenshot
+          path: window.png
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Report the size
+        shell: bash
+        run: |
+          size=$(du -sm dist/Transcribe | cut -f1)
+          zip=$(ls dist/*.zip)
+          zipsize=$(( $(stat -c %s "$zip") / 1000000 ))
+          echo "::notice::Package folder ${size} MB, zip ${zipsize} MB"
+
+      - name: Keep the zip (downloadable from this run for 14 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcribe-windows
+          path: dist/*.zip
+          retention-days: 14
+
+      - name: Publish the release
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip=$(ls dist/*.zip)
+          cat > notes.md <<NOTES
+          ## Download
+
+          **$(basename "$zip")** below: unzip it and double-click **Transcribe.exe** (Windows 10/11, 64-bit).
+          The first start downloads the speech to text model once (internet needed).
+          To use an OpenAI API key, put it in \`override.yaml\` next to the exe.
+
+          NOTES
+          gh release create "v$VERSION" "$zip" --target "$GITHUB_SHA" --title "Transcribe $VERSION" \
+            --notes-file notes.md --generate-notes

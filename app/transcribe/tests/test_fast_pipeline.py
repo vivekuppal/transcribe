@@ -1025,3 +1025,54 @@ class TestOptionalEngines(unittest.TestCase):
                                 "local_engine": "openai-whisper"})
         self.assertEqual(fake_whisper.load_model.call_args.args[0], "turbo")
         self.assertEqual(fake_whisper.load_model.call_args.kwargs["download_root"], tm.MODELS_DIR)
+
+
+class TestMissingAudioDevices(unittest.TestCase):
+    def test_a_device_that_cannot_be_opened_gives_a_stand_in(self):
+        from sdk import audio_recorder as ar
+
+        class Broken:
+            def __init__(self, **kwargs):
+                raise OSError("Default Mic could not be opened")
+
+        recorder = ar.open_recorder(Broken, "You", audio_file_name="x.wav")
+        self.assertIsInstance(recorder, ar.UnavailableRecorder)
+        self.assertFalse(recorder.enabled)
+        self.assertIn("could not be opened", recorder.reason)
+        stop = recorder.record_audio(None)
+        stop(wait_for_stop=True)
+        started = time.monotonic()
+        self.assertFalse(recorder.wait_until_capturing(timeout=2))
+        self.assertLess(time.monotonic() - started, 0.1)            # no waiting for a device that is not there
+        self.assertEqual((recorder.source.SAMPLE_RATE, recorder.source.channels), (16000, 1))
+        with self.assertRaises(RuntimeError):
+            recorder.set_device(1)
+
+    def test_the_program_starts_with_only_one_source(self):
+        from sdk import audio_recorder as ar
+        from app.transcribe.core import state
+
+        class GoodSpeaker:
+            available = True
+
+            def __init__(self, **kwargs):
+                self.source = SimpleNamespace(SAMPLE_RATE=48000, channels=2)
+
+        def broken_mic(**kwargs):
+            raise OSError("no microphone")
+
+        runtime = state.create_app_runtime()
+        config = {"General": {"disable_mic": False, "mic_device_index": 3,
+                              "disable_speaker": False, "speaker_device_index": -1}}
+        with patch.object(ar, "MicRecorder", broken_mic), patch.object(ar, "SpeakerRecorder", GoodSpeaker), \
+                patch.object(state.utilities, "get_data_path", return_value="."):
+            runtime.initiate_audio_devices(config)
+        self.assertIsInstance(runtime.user_audio_recorder, ar.UnavailableRecorder)
+        self.assertIsInstance(runtime.speaker_audio_recorder, GoodSpeaker)
+
+    def test_a_configured_device_that_fails_keeps_the_default(self):
+        from app.transcribe.core import state
+        recorder = MagicMock()
+        recorder.set_device.side_effect = OSError("gone")
+        state.AppRuntime._use_device(recorder, 7)                  # does not raise
+        recorder.set_device.assert_called_once_with(index=7)
