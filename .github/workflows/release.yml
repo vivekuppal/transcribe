@@ -81,41 +81,36 @@ jobs:
             || { echo "::error::Unexpected transcription"; exit 1; }
           rm -f help.txt run.txt sample.txt uid.lock
 
-      - name: Test the exe (opens its window like a user would)
+      - name: Test the exe (opens its window like a user would, also with Hugging Face unreachable)
         shell: pwsh
         working-directory: dist/Transcribe
         run: |
-          $p = Start-Process -FilePath .\Transcribe.exe -PassThru -RedirectStandardOutput gui-out.txt -RedirectStandardError gui-err.txt
-          $title = ""
-          for ($i = 0; $i -lt 60 -and -not $p.HasExited; $i++) {
+          function Start-Window($label, $proxy) {
+            $env:HTTPS_PROXY = $proxy; $env:HTTP_PROXY = $proxy
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            $p = Start-Process -FilePath .\Transcribe.exe -PassThru -RedirectStandardOutput "out-$label.txt" -RedirectStandardError "err-$label.txt"
+            $window = $null; $ready = $null; $title = ""
+            while ($watch.Elapsed.TotalSeconds -lt 120 -and -not $p.HasExited) {
+              Start-Sleep -Milliseconds 250
+              $p.Refresh(); $title = $p.MainWindowTitle
+              if ($title -and -not $window) { $window = $watch.Elapsed.TotalSeconds }
+              if ($title -eq "Transcribe") { $ready = $watch.Elapsed.TotalSeconds; break }
+            }
+            $alive = -not $p.HasExited
+            if ($alive) { Stop-Process -Id $p.Id -Force }
             Start-Sleep -Seconds 1
-            $p.Refresh()
-            $title = $p.MainWindowTitle
-            if ($title) { break }
+            Remove-Item Env:HTTPS_PROXY, Env:HTTP_PROXY -ErrorAction SilentlyContinue
+            Get-Content "out-$label.txt", "err-$label.txt" -ErrorAction SilentlyContinue | Select-String "START|INFO|WARN|ERROR|Error"
+            Remove-Item "out-$label.txt", "err-$label.txt", uid.lock -ErrorAction SilentlyContinue
+            if (-not $window) { Write-Output "::error::($label) The window did not open"; exit 1 }
+            if (-not $alive) { Write-Output "::error::($label) The program closed by itself"; exit 1 }
+            if (-not $ready) { Write-Output "::error::($label) The speech to text model was not ready after 120 s (title: $title)"; exit 1 }
+            Write-Output ("::notice::({0}) window after {1:N1} s, speech to text ready after {2:N1} s" -f $label, $window, $ready)
           }
-          Start-Sleep -Seconds 8
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-          [System.Drawing.Graphics]::FromImage($bitmap).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-          $bitmap.Save("$env:GITHUB_WORKSPACE\window.png")
-          $alive = -not $p.HasExited
-          if ($alive) { Stop-Process -Id $p.Id -Force }
-          Start-Sleep -Seconds 2
-          Get-Content gui-out.txt, gui-err.txt -ErrorAction SilentlyContinue | Select-Object -Last 40
-          Remove-Item gui-out.txt, gui-err.txt, uid.lock -ErrorAction SilentlyContinue
-          if (-not $title) { Write-Output "::error::The window did not open"; exit 1 }
-          if (-not $alive) { Write-Output "::error::The program closed by itself"; exit 1 }
-          Write-Output "::notice::Window opened: $title"
-
-      - name: Keep the screenshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: window-screenshot
-          path: window.png
-          if-no-files-found: ignore
-          retention-days: 14
+          Start-Window "normal" $null
+          # Where Hugging Face is slow or blocked (as in some countries), the start must not wait for it:
+          # the model downloaded by the test above is opened from disk.
+          Start-Window "hugging-face-unreachable" "http://10.255.255.1:9"
 
       - name: Report the size
         shell: bash
