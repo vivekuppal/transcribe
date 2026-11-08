@@ -60,6 +60,9 @@ jobs:
           done
           ls dist/Transcribe/_internal/customtkinter/assets/themes/blue.json >/dev/null \
             || { echo "::error::customtkinter themes are missing"; exit 1; }
+          # a window program (no console window when double-clicked): PE subsystem 2
+          python -c "import struct,sys; d=open('dist/Transcribe/Transcribe.exe','rb').read(4096); o=struct.unpack_from('<I',d,0x3C)[0]; s=struct.unpack_from('<H',d,o+0x5C)[0]; print('subsystem',s); sys.exit(0 if s==2 else 1)" \
+            || { echo "::error::Transcribe.exe would open a console window"; exit 1; }
           if ls dist/Transcribe/_internal | grep -qi '^torch'; then
             echo "::error::PyTorch ended up in the package"; exit 1
           fi

@@ -39,6 +39,8 @@ def run_pyinstaller():
         "--workpath", str(BUILD / "pyinstaller-work"),
         "--specpath", str(BUILD / "pyinstaller-work"),
         "--paths", str(ROOT),
+        # A window program: no console window next to it (launcher.py routes its output).
+        "--windowed",
         # The whole application, also the parts that are imported only when chosen.
         "--collect-submodules", "app",
         "--collect-submodules", "sdk",
